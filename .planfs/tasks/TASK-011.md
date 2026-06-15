@@ -1,7 +1,7 @@
 ---
 id: TASK-011
 title: Build Kanban board view
-status: todo
+status: done
 priority: high
 assignee: justin
 epic: EPIC-phase-2-enhanced
@@ -20,8 +20,8 @@ Add a webview-based board for task status management.
 
 ## Acceptance Criteria
 
-- [ ] Columns represent supported task statuses
-- [ ] Cards show title, assignee, and priority
-- [ ] Drag-and-drop updates task status on disk
-- [ ] Board refreshes when `.planfs` files change
-- [ ] Filtering and sorting hooks are available for later tasks
+- [x] Columns represent supported task statuses
+- [x] Cards show title, assignee, and priority
+- [x] Drag-and-drop updates task status on disk
+- [x] Board refreshes when `.planfs` files change
+- [x] Filtering and sorting hooks are available for later tasks

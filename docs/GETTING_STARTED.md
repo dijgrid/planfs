@@ -199,17 +199,22 @@ planfs list tasks --assignee justin
 ### Create Task from CLI
 
 ```bash
-planfs create task
+planfs create task --title "Write the next thing"
 ```
 
-Follow the prompts to create a new task.
+The MVP CLI requires `--title`.
 
 ### Create Task from VS Code
 
 1. Open command palette (Cmd+Shift+P)
 2. Type "PlanFS: Create Task"
-3. Fill in the form
-4. Save
+3. Enter the task title
+
+### View Kanban Board
+
+1. Open command palette (Cmd+Shift+P)
+2. Type "PlanFS: Open Board"
+3. Drag cards between status columns to update task files
 
 ### Edit Task
 

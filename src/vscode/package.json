@@ -19,6 +19,7 @@
   ],
   "activationEvents": [
     "workspaceContains:.planfs",
+    "onCommand:planfs.openBoard",
     "onCommand:planfs.createTask",
     "onCommand:planfs.createEpic",
     "onCommand:planfs.createMilestone",
@@ -28,6 +29,10 @@
   "main": "./dist/extension.js",
   "contributes": {
     "commands": [
+      {
+        "command": "planfs.openBoard",
+        "title": "PlanFS: Open Board"
+      },
       {
         "command": "planfs.createTask",
         "title": "PlanFS: Create Task"

@@ -12,7 +12,7 @@ It currently provides:
 
 - `planfs-core`: parsing, loading, serialization, and validation
 - `planfs-cli`: command-line validation and querying
-- `planfs-vscode`: VS Code explorer and task creation commands
+- `planfs-vscode`: VS Code explorer, board view, and task creation commands
 - `planfs-schema`: shared entity schemas
 - `.planfs/`: this repository's own roadmap represented as PlanFS data
 
@@ -89,7 +89,32 @@ milestone: MILESTONE-v0-1
 Describe the work in Markdown.
 ```
 
-For VS Code extension development, build the workspace, open `src/vscode` in VS Code, and press `F5` to launch an extension host against a repository with a `.planfs/` directory.
+## VS Code Extension Development
+
+The extension package lives in `src/vscode`, but it depends on the workspace packages. Build from the repository root first:
+
+```sh
+npm install
+npm run build --workspaces
+```
+
+Then load and test the extension:
+
+1. Open this repository in VS Code.
+2. Open the Run and Debug view.
+3. Select `Run PlanFS Extension`.
+4. Press `F5` to launch an Extension Development Host.
+5. In the Extension Development Host, open this repository or another folder containing `.planfs/`.
+6. Use the command palette to run `PlanFS: Open Board`, `PlanFS: Create Task`, or `PlanFS: Refresh Explorer`.
+7. Check the PlanFS activity bar view for tasks, epics, milestones, and decisions.
+
+After changing TypeScript, rebuild before relaunching:
+
+```sh
+npm run build --workspaces
+```
+
+For package-specific notes, see [src/vscode/README.md](./src/vscode/README.md).
 
 ## Documentation
 

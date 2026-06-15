@@ -4,7 +4,15 @@
 
 import * as vscode from 'vscode';
 import { loadRepository, getAllEntities } from 'planfs-core';
-import { Entity, Task, Epic, Milestone, Decision } from 'planfs-core';
+import {
+  Decision,
+  Entity,
+  Epic,
+  Milestone,
+  Repository,
+  Task,
+  TaskStatus
+} from 'planfs-core';
 
 export class ExplorerProvider implements vscode.TreeDataProvider<TreeItem> {
   private _onDidChangeTreeData: vscode.EventEmitter<TreeItem | undefined | null | void> =
@@ -12,7 +20,7 @@ export class ExplorerProvider implements vscode.TreeDataProvider<TreeItem> {
   readonly onDidChangeTreeData: vscode.Event<TreeItem | undefined | null | void> =
     this._onDidChangeTreeData.event;
 
-  private repository: any = null;
+  private repository: Repository | null = null;
   private entities: Entity[] = [];
 
   async refresh(): Promise<void> {
@@ -116,7 +124,7 @@ export class TreeItem extends vscode.TreeItem {
     public readonly collapsibleState: vscode.TreeItemCollapsibleState,
     public readonly type?: string,
     public readonly id?: string,
-    public readonly entity?: any
+    public readonly entity?: Entity
   ) {
     super(label, collapsibleState);
 
@@ -131,22 +139,33 @@ export class TreeItem extends vscode.TreeItem {
       if (this.entity.type === 'task') {
         const status = (this.entity as Task).status;
         this.description = status;
-
-        // Color code by status
-        switch (status) {
-          case 'done':
-            this.iconPath = new vscode.ThemeColor('testing.iconPassed');
-            break;
-          case 'in-progress':
-            this.iconPath = new vscode.ThemeColor('testing.iconQueued');
-            break;
-          case 'review':
-            this.iconPath = new vscode.ThemeColor('testing.iconUnset');
-            break;
-          default:
-            this.iconPath = new vscode.ThemeColor('testing.iconFailed');
-        }
+        this.iconPath = getTaskStatusIcon(status);
       }
     }
+  }
+}
+
+function getTaskStatusIcon(status: TaskStatus): vscode.ThemeIcon {
+  switch (status) {
+    case 'done':
+      return new vscode.ThemeIcon(
+        'pass-filled',
+        new vscode.ThemeColor('testing.iconPassed')
+      );
+    case 'in-progress':
+      return new vscode.ThemeIcon(
+        'sync',
+        new vscode.ThemeColor('testing.iconQueued')
+      );
+    case 'review':
+      return new vscode.ThemeIcon(
+        'eye',
+        new vscode.ThemeColor('testing.iconUnset')
+      );
+    case 'todo':
+      return new vscode.ThemeIcon(
+        'circle-outline',
+        new vscode.ThemeColor('testing.iconFailed')
+      );
   }
 }

@@ -1,0 +1,19 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Run PlanFS Extension",
+      "type": "extensionHost",
+      "request": "launch",
+      "preLaunchTask": "npm: build",
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}/src/vscode",
+        "${workspaceFolder}"
+      ],
+      "outFiles": [
+        "${workspaceFolder}/src/vscode/dist/**/*.js"
+      ],
+      "sourceMaps": true
+    }
+  ]
+}
