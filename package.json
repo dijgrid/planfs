@@ -1,0 +1,37 @@
+{
+  "name": "planfs",
+  "version": "0.1.0",
+  "description": "Planning as Code - Git-native project management system",
+  "private": true,
+  "workspaces": [
+    "src/schema",
+    "src/core",
+    "src/vscode",
+    "src/cli"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces",
+    "test": "npm test --workspaces",
+    "lint": "eslint . --ext .ts,.tsx",
+    "format": "prettier --write '**/*.{ts,tsx,json,md}'",
+    "clean": "npm run clean --workspaces && rm -rf dist coverage"
+  },
+  "keywords": [
+    "planning",
+    "project-management",
+    "git",
+    "vscode",
+    "extension"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^18.0.0",
+    "@types/jest": "^29.0.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.0.0",
+    "prettier": "^3.0.0",
+    "typescript": "^5.0.0"
+  }
+}

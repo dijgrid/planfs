@@ -1,0 +1,383 @@
+/**
+ * Validation module
+ * Validates entities against schemas
+ */
+
+import Ajv, { ErrorObject, ValidateFunction } from 'ajv';
+import {
+  taskSchema,
+  epicSchema,
+  milestoneSchema,
+  decisionSchema
+} from 'planfs-schema';
+import {
+  Entity,
+  Task,
+  Epic,
+  Milestone,
+  Decision,
+  ValidationError,
+  ValidationResult
+} from './types';
+
+const ajv = new Ajv({ strict: false, validateFormats: false });
+const schemaValidators: Record<Entity['type'], ValidateFunction> = {
+  task: ajv.compile(taskSchema),
+  epic: ajv.compile(epicSchema),
+  milestone: ajv.compile(milestoneSchema),
+  decision: ajv.compile(decisionSchema)
+};
+
+/**
+ * Validate a single entity
+ */
+export function validateEntity(entity: Entity): ValidationError[] {
+  const errors: ValidationError[] = [];
+  const validateSchema = schemaValidators[entity.type];
+
+  if (validateSchema && !validateSchema(entity)) {
+    errors.push(...formatSchemaErrors(entity, validateSchema.errors ?? []));
+  }
+
+  // Check required fields
+  if (!entity.id) {
+    errors.push({
+      message: 'Entity must have an id',
+      severity: 'error'
+    });
+  }
+
+  if (!entity.title) {
+    errors.push({
+      id: entity.id,
+      message: 'Entity must have a title',
+      severity: 'error'
+    });
+  }
+
+  // Type-specific validation
+  switch (entity.type) {
+    case 'task':
+      errors.push(...validateTask(entity as Task));
+      break;
+    case 'epic':
+      errors.push(...validateEpic(entity as Epic));
+      break;
+    case 'milestone':
+      errors.push(...validateMilestone(entity as Milestone));
+      break;
+    case 'decision':
+      errors.push(...validateDecision(entity as Decision));
+      break;
+  }
+
+  return errors;
+}
+
+function formatSchemaErrors(
+  entity: Entity,
+  schemaErrors: ErrorObject[]
+): ValidationError[] {
+  return schemaErrors.map(error => {
+    const field = error.instancePath
+      ? error.instancePath.replace(/^\//, '').replace(/\//g, '.')
+      : error.params && 'missingProperty' in error.params
+        ? String(error.params.missingProperty)
+        : 'entity';
+
+    return {
+      id: entity.id,
+      path: entity.filePath,
+      message: `Schema validation failed for ${field}: ${error.message ?? 'invalid value'}`,
+      severity: 'error'
+    };
+  });
+}
+
+function validateTask(task: Task): ValidationError[] {
+  const errors: ValidationError[] = [];
+
+  // Validate task status
+  const validStatuses = ['todo', 'in-progress', 'review', 'done'];
+  if (task.status && !validStatuses.includes(task.status)) {
+    errors.push({
+      id: task.id,
+      message: `Invalid task status: ${task.status}. Must be one of: ${validStatuses.join(', ')}`,
+      severity: 'error'
+    });
+  }
+
+  // Validate priority
+  if (task.priority) {
+    const validPriorities = ['low', 'medium', 'high', 'critical'];
+    if (!validPriorities.includes(task.priority)) {
+      errors.push({
+        id: task.id,
+        message: `Invalid task priority: ${task.priority}. Must be one of: ${validPriorities.join(', ')}`,
+        severity: 'error'
+      });
+    }
+  }
+
+  // Validate dependencies format
+  if (task.dependsOn) {
+    if (!Array.isArray(task.dependsOn)) {
+      errors.push({
+        id: task.id,
+        message: 'Task dependsOn must be an array',
+        severity: 'error'
+      });
+    }
+  }
+
+  // Validate tags format
+  if (task.tags) {
+    if (!Array.isArray(task.tags)) {
+      errors.push({
+        id: task.id,
+        message: 'Task tags must be an array',
+        severity: 'error'
+      });
+    }
+  }
+
+  // Validate date format
+  if (task.dueDate && !isValidISODate(task.dueDate)) {
+    errors.push({
+      id: task.id,
+      message: `Invalid dueDate format: ${task.dueDate}. Must be ISO 8601`,
+      severity: 'warning'
+    });
+  }
+
+  return errors;
+}
+
+function validateEpic(epic: Epic): ValidationError[] {
+  const errors: ValidationError[] = [];
+
+  // Validate epic status
+  const validStatuses = ['active', 'completed', 'on-hold', 'archived'];
+  if (epic.status && !validStatuses.includes(epic.status)) {
+    errors.push({
+      id: epic.id,
+      message: `Invalid epic status: ${epic.status}. Must be one of: ${validStatuses.join(', ')}`,
+      severity: 'error'
+    });
+  }
+
+  return errors;
+}
+
+function validateMilestone(milestone: Milestone): ValidationError[] {
+  const errors: ValidationError[] = [];
+
+  // Validate milestone status
+  const validStatuses = ['active', 'completed', 'delayed'];
+  if (milestone.status && !validStatuses.includes(milestone.status)) {
+    errors.push({
+      id: milestone.id,
+      message: `Invalid milestone status: ${milestone.status}. Must be one of: ${validStatuses.join(', ')}`,
+      severity: 'error'
+    });
+  }
+
+  // Validate target date
+  if (!milestone.targetDate) {
+    errors.push({
+      id: milestone.id,
+      message: 'Milestone targetDate is required',
+      severity: 'error'
+    });
+  } else if (!isValidISODate(milestone.targetDate)) {
+    errors.push({
+      id: milestone.id,
+      message: `Invalid targetDate format: ${milestone.targetDate}. Must be ISO 8601`,
+      severity: 'error'
+    });
+  }
+
+  return errors;
+}
+
+function validateDecision(decision: Decision): ValidationError[] {
+  const errors: ValidationError[] = [];
+
+  // Validate decision status
+  const validStatuses = ['proposed', 'accepted', 'rejected', 'superseded'];
+  if (decision.status && !validStatuses.includes(decision.status)) {
+    errors.push({
+      id: decision.id,
+      message: `Invalid decision status: ${decision.status}. Must be one of: ${validStatuses.join(', ')}`,
+      severity: 'error'
+    });
+  }
+
+  return errors;
+}
+
+/**
+ * Validate a collection of entities for global constraints
+ */
+export function validateRepository(entities: Entity[]): ValidationError[] {
+  const errors: ValidationError[] = [];
+  const idMap = new Map<string, Entity>();
+
+  // Check for duplicate IDs
+  for (const entity of entities) {
+    if (idMap.has(entity.id)) {
+      errors.push({
+        id: entity.id,
+        path: entity.filePath,
+        message: `Duplicate entity ID: ${entity.id}`,
+        severity: 'error'
+      });
+    }
+    idMap.set(entity.id, entity);
+  }
+
+  // Check references
+  for (const entity of entities) {
+    const refErrors = checkEntityReferences(entity, idMap);
+    errors.push(...refErrors);
+  }
+
+  // Check for circular dependencies
+  const circularDeps = findCircularDependencies(entities);
+  for (const [id, chain] of circularDeps) {
+    errors.push({
+      id,
+      message: `Circular dependency detected: ${chain.join(' -> ')} -> ${id}`,
+      severity: 'error'
+    });
+  }
+
+  return errors;
+}
+
+function checkEntityReferences(
+  entity: Entity,
+  idMap: Map<string, Entity>
+): ValidationError[] {
+  const errors: ValidationError[] = [];
+
+  if (entity.type === 'task') {
+    const task = entity as Task;
+
+    // Check epic reference
+    if (task.epic && !idMap.has(task.epic)) {
+      errors.push({
+        id: task.id,
+        message: `Referenced epic not found: ${task.epic}`,
+        severity: 'error'
+      });
+    }
+
+    // Check milestone reference
+    if (task.milestone && !idMap.has(task.milestone)) {
+      errors.push({
+        id: task.id,
+        message: `Referenced milestone not found: ${task.milestone}`,
+        severity: 'error'
+      });
+    }
+
+    // Check dependencies
+    if (task.dependsOn) {
+      for (const dep of task.dependsOn) {
+        if (!idMap.has(dep)) {
+          errors.push({
+            id: task.id,
+            message: `Referenced task not found: ${dep}`,
+            severity: 'error'
+          });
+        }
+      }
+    }
+  }
+
+  return errors;
+}
+
+function findCircularDependencies(entities: Entity[]): Map<string, string[]> {
+  const circularDeps = new Map<string, string[]>();
+  const taskMap = new Map<string, Task>();
+
+  // Build task map
+  for (const entity of entities) {
+    if (entity.type === 'task') {
+      taskMap.set(entity.id, entity as Task);
+    }
+  }
+
+  // DFS to find cycles
+  for (const taskId of taskMap.keys()) {
+    const cycle = findCycle(taskId, taskMap, new Set(), []);
+    if (cycle) {
+      circularDeps.set(taskId, cycle);
+    }
+  }
+
+  return circularDeps;
+}
+
+function findCycle(
+  nodeId: string,
+  taskMap: Map<string, Task>,
+  visiting: Set<string>,
+  path: string[]
+): string[] | undefined {
+  if (visiting.has(nodeId)) {
+    const cycleStart = path.indexOf(nodeId);
+    return cycleStart >= 0 ? path.slice(cycleStart) : path;
+  }
+
+  const task = taskMap.get(nodeId);
+  if (!task) {
+    return undefined;
+  }
+
+  visiting.add(nodeId);
+  path.push(nodeId);
+
+  for (const dep of task.dependsOn ?? []) {
+    const cycle = findCycle(dep, taskMap, new Set(visiting), [...path]);
+    if (cycle) {
+      return cycle;
+    }
+  }
+
+  return undefined;
+}
+
+/**
+ * Check if a string is a valid ISO 8601 date
+ */
+function isValidISODate(dateString: string): boolean {
+  try {
+    const date = new Date(dateString);
+    return date instanceof Date && !isNaN(date.getTime());
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Validate all entities and return comprehensive result
+ */
+export function validateAll(entities: Entity[]): ValidationResult {
+  const errors: ValidationError[] = [];
+
+  // Validate individual entities
+  for (const entity of entities) {
+    errors.push(...validateEntity(entity));
+  }
+
+  // Validate repository constraints
+  errors.push(...validateRepository(entities));
+
+  return {
+    valid: !errors.some(e => e.severity === 'error'),
+    errors
+  };
+}

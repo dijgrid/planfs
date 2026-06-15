@@ -1,0 +1,93 @@
+{
+  "name": "planfs-vscode",
+  "displayName": "PlanFS",
+  "description": "Git-native project management for VS Code",
+  "version": "0.1.0",
+  "publisher": "planfs",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.60.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "planning",
+    "project-management",
+    "git",
+    "tasks"
+  ],
+  "activationEvents": [
+    "workspaceContains:.planfs",
+    "onCommand:planfs.createTask",
+    "onCommand:planfs.createEpic",
+    "onCommand:planfs.createMilestone",
+    "onCommand:planfs.openTask",
+    "onCommand:planfs.refreshExplorer"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "planfs.createTask",
+        "title": "PlanFS: Create Task"
+      },
+      {
+        "command": "planfs.createEpic",
+        "title": "PlanFS: Create Epic"
+      },
+      {
+        "command": "planfs.createMilestone",
+        "title": "PlanFS: Create Milestone"
+      },
+      {
+        "command": "planfs.openTask",
+        "title": "PlanFS: Open Task"
+      },
+      {
+        "command": "planfs.refreshExplorer",
+        "title": "PlanFS: Refresh Explorer"
+      }
+    ],
+    "views": {
+      "planfs-sidebar": [
+        {
+          "id": "planfs-explorer",
+          "name": "PlanFS Explorer",
+          "contextualTitle": "Project Planning"
+        }
+      ]
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "planfs-sidebar",
+          "title": "PlanFS",
+          "icon": "resources/sidebar-icon.svg"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "build:watch": "tsc --watch",
+    "test": "jest --passWithNoTests",
+    "lint": "eslint src --ext .ts",
+    "vscode:prepublish": "npm run build",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "planfs-core": "0.1.0"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.0",
+    "@types/node": "^18.16.0",
+    "@types/vscode": "^1.60.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.40.0",
+    "jest": "^29.5.0",
+    "ts-jest": "^29.1.0",
+    "typescript": "^5.0.0"
+  }
+}
