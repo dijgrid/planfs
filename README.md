@@ -76,6 +76,8 @@ node src/cli/dist/cli.js git commit-message
 node src/cli/dist/cli.js git validate-message "TASK-001: update planning docs"
 node src/cli/dist/cli.js list tasks --status todo --epic EPIC-phase-2-enhanced
 node src/cli/dist/cli.js create task --title "Write the next thing"
+node src/cli/dist/cli.js create epic --title "Phase 6 - Polish"
+node src/cli/dist/cli.js create milestone --title "v0.2" --target-date 2026-09-01
 ```
 
 A task file looks like this:

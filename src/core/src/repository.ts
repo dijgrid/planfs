@@ -234,6 +234,23 @@ export function getNextTaskId(repository: Repository): string {
 }
 
 /**
+ * Get an available epic ID from a title
+ */
+export function getNextEpicId(repository: Repository, title: string): string {
+  return getAvailableSlugId('EPIC', title, repository.epics);
+}
+
+/**
+ * Get an available milestone ID from a title
+ */
+export function getNextMilestoneId(
+  repository: Repository,
+  title: string
+): string {
+  return getAvailableSlugId('MILESTONE', title, repository.milestones);
+}
+
+/**
  * Create a new task template
  */
 export function createTaskTemplate(id: string, title: string): Task {
@@ -249,4 +266,70 @@ export function createTaskTemplate(id: string, title: string): Task {
     createdAt: now,
     updatedAt: now
   };
+}
+
+/**
+ * Create a new epic template
+ */
+export function createEpicTemplate(id: string, title: string): Epic {
+  const now = new Date().toISOString();
+  return {
+    id,
+    type: 'epic',
+    title,
+    status: 'active',
+    filePath: '',
+    metadata: {},
+    body: '',
+    createdAt: now,
+    updatedAt: now
+  };
+}
+
+/**
+ * Create a new milestone template
+ */
+export function createMilestoneTemplate(
+  id: string,
+  title: string,
+  targetDate: string
+): Milestone {
+  const now = new Date().toISOString();
+  return {
+    id,
+    type: 'milestone',
+    title,
+    status: 'active',
+    targetDate,
+    filePath: '',
+    metadata: {},
+    body: '',
+    createdAt: now,
+    updatedAt: now
+  };
+}
+
+function getAvailableSlugId<T extends Entity>(
+  prefix: string,
+  title: string,
+  existing: Map<string, T>
+): string {
+  const base = `${prefix}-${slugify(title)}`;
+  let candidate = base;
+  let suffix = 2;
+
+  while (existing.has(candidate)) {
+    candidate = `${base}-${suffix}`;
+    suffix += 1;
+  }
+
+  return candidate;
+}
+
+function slugify(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '') || 'untitled';
 }

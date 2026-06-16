@@ -47,13 +47,70 @@ describe('CLI commands', () => {
     expect(logSpy).toHaveBeenCalledWith('✓ Created task: TASK-001');
   });
 
-  it('rejects unsupported entity creation', async () => {
+  it('creates, lists, shows, and validates epics and milestones', async () => {
     await expect(
-      createCommand(rootPath, 'epic', { title: 'Not yet' })
+      createCommand(rootPath, 'epic', {
+        title: 'Phase 6 - Polish',
+        owner: 'justin',
+        description: 'Polish the PlanFS workflow.'
+      })
+    ).resolves.toBe(0);
+    await expect(
+      createCommand(rootPath, 'epic', {
+        title: 'Phase 6 - Polish'
+      })
+    ).resolves.toBe(0);
+    await expect(
+      createCommand(rootPath, 'milestone', {
+        title: 'Phase 6 - Polish',
+        targetDate: '2026-09-01',
+        owner: 'justin'
+      })
+    ).resolves.toBe(0);
+
+    await expect(listCommand(rootPath, { type: 'epics' })).resolves.toBe(0);
+    await expect(listCommand(rootPath, { type: 'milestones' })).resolves.toBe(0);
+    await expect(showCommand(rootPath, 'EPIC-phase-6-polish', {})).resolves.toBe(0);
+    await expect(
+      showCommand(rootPath, 'MILESTONE-phase-6-polish', {})
+    ).resolves.toBe(0);
+    await expect(validateCommand(rootPath, {})).resolves.toBe(0);
+
+    const epic = await fs.readFile(
+      path.join(rootPath, '.planfs', 'epics', 'EPIC-phase-6-polish.md'),
+      'utf-8'
+    );
+    const duplicateEpic = await fs.readFile(
+      path.join(rootPath, '.planfs', 'epics', 'EPIC-phase-6-polish-2.md'),
+      'utf-8'
+    );
+    const milestone = await fs.readFile(
+      path.join(
+        rootPath,
+        '.planfs',
+        'milestones',
+        'MILESTONE-phase-6-polish.md'
+      ),
+      'utf-8'
+    );
+
+    expect(epic).toContain('id: EPIC-phase-6-polish');
+    expect(epic).toContain('owner: justin');
+    expect(duplicateEpic).toContain('id: EPIC-phase-6-polish-2');
+    expect(milestone).toContain('targetDate: 2026-09-01');
+    expect(logSpy).toHaveBeenCalledWith('✓ Created epic: EPIC-phase-6-polish');
+    expect(logSpy).toHaveBeenCalledWith(
+      '✓ Created milestone: MILESTONE-phase-6-polish'
+    );
+  });
+
+  it('requires target date when creating milestones', async () => {
+    await expect(
+      createCommand(rootPath, 'milestone', { title: 'No date' })
     ).resolves.toBe(1);
 
     expect(errorSpy).toHaveBeenCalledWith(
-      'Error: creating epic entities is not supported yet'
+      'Error: --target-date is required when creating milestones'
     );
   });
 

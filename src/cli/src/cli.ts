@@ -169,7 +169,7 @@ export async function main(): Promise<void> {
         y
           .positional('type', {
             describe: 'Entity type to create',
-            choices: ['task']
+            choices: ['task', 'epic', 'milestone']
           })
           .option('title', {
             alias: 't',
@@ -187,6 +187,18 @@ export async function main(): Promise<void> {
           .option('assignee', {
             type: 'string',
             description: 'Assignee'
+          })
+          .option('owner', {
+            type: 'string',
+            description: 'Owner for epics and milestones'
+          })
+          .option('description', {
+            type: 'string',
+            description: 'Description/body for epics and milestones'
+          })
+          .option('target-date', {
+            type: 'string',
+            description: 'Target date for milestones'
           }),
       async (args) => {
         const exitCode = await createCommand(
@@ -196,7 +208,10 @@ export async function main(): Promise<void> {
             title: args.title as string | undefined,
             status: args.status as string | undefined,
             priority: args.priority as string | undefined,
-            assignee: args.assignee as string | undefined
+            assignee: args.assignee as string | undefined,
+            owner: args.owner as string | undefined,
+            description: args.description as string | undefined,
+            targetDate: args.targetDate as string | undefined
           }
         );
         process.exit(exitCode);
