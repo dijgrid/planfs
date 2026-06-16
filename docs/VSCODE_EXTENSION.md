@@ -21,6 +21,7 @@ In VS Code:
 5. Use the command palette:
    - `PlanFS: Open Board`
    - `PlanFS: Open Insights`
+   - `PlanFS: Open Structured Editor`
    - `PlanFS: Create Task`
    - `PlanFS: Refresh Explorer`
 
@@ -66,6 +67,7 @@ After installation, open a repository containing `.planfs/`. The PlanFS activity
 
 - `PlanFS: Open Board`
 - `PlanFS: Open Insights`
+- `PlanFS: Open Structured Editor`
 - `PlanFS: Create Task`
 - `PlanFS: Refresh Explorer`
 

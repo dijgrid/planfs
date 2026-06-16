@@ -4,6 +4,7 @@
 
 import * as vscode from 'vscode';
 import { BoardProvider } from './board';
+import { EntityEditorProvider } from './editor';
 import { ExplorerProvider } from './explorer';
 import { InsightsProvider } from './insights';
 import { createTaskCommand, createEpicCommand, createMilestoneCommand } from './commands/create';
@@ -12,6 +13,7 @@ import { openTaskCommand } from './commands/open';
 let explorerProvider: ExplorerProvider;
 let boardProvider: BoardProvider;
 let insightsProvider: InsightsProvider;
+let editorProvider: EntityEditorProvider;
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   console.log('PlanFS extension activated');
@@ -20,6 +22,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   explorerProvider = new ExplorerProvider();
   boardProvider = new BoardProvider(context.extensionUri);
   insightsProvider = new InsightsProvider(context.extensionUri);
+  editorProvider = new EntityEditorProvider(context.extensionUri);
   vscode.window.registerTreeDataProvider('planfs-explorer', explorerProvider);
 
   // Register commands
@@ -30,6 +33,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand('planfs.createEpic', () => createEpicCommand()),
     vscode.commands.registerCommand('planfs.createMilestone', () => createMilestoneCommand()),
     vscode.commands.registerCommand('planfs.openTask', (item) => openTaskCommand(item)),
+    vscode.commands.registerCommand('planfs.openEditor', (item) => editorProvider.open(item?.entity?.id)),
     vscode.commands.registerCommand('planfs.applySavedFilter', () => explorerProvider.applySavedFilter()),
     vscode.commands.registerCommand('planfs.clearSavedFilter', () => explorerProvider.clearSavedFilter()),
     vscode.commands.registerCommand('planfs.refreshExplorer', () => explorerProvider.refresh())

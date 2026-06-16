@@ -9,6 +9,7 @@ VS Code extension for PlanFS project management.
 - **Insights** - Dependency graph, timeline, and reports
 - **Create Tasks** - Quick command to create new tasks
 - **Open Task Files** - Click to open and edit task files directly
+- **Structured Editor** - Form-based task, epic, and milestone editing with validation
 - **Auto Refresh** - Automatically refreshes explorer when files change
 - **Board Refresh** - Automatically refreshes an open board when files change
 - **Saved Filters** - Apply reusable `.planfs/filters/*.json` definitions in the explorer and board
@@ -40,6 +41,8 @@ Click the PlanFS icon in the Activity Bar to see the explorer view showing:
 
 Use `PlanFS: Apply Saved Filter` to filter the explorer with a named filter from `.planfs/filters/`. Use `PlanFS: Clear Saved Filter` to return to the full repository view.
 
+Use `PlanFS: Open Structured Editor` to edit tasks, epics, and milestones through forms. The editor keeps Markdown body content editable, offers assisted inputs for related PlanFS entities, and blocks invalid saves with validation feedback.
+
 ### Create Task
 
 1. Press Cmd+Shift+P (or Ctrl+Shift+P on Windows/Linux)
@@ -60,9 +63,15 @@ Use `PlanFS: Apply Saved Filter` to filter the explorer with a named filter from
 2. Type "PlanFS: Open Insights"
 3. Review dependency graph, roadmap timeline, and reports
 
-### Open Task
+### Open Task Or Structured Editor
 
 Click on any task in the explorer to open the task file in the editor.
+
+To use the form editor:
+
+1. Press Cmd+Shift+P (or Ctrl+Shift+P on Windows/Linux)
+2. Type "PlanFS: Open Structured Editor"
+3. Select a task, epic, or milestone
 
 ### Refresh Explorer
 

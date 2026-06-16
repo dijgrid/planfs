@@ -177,6 +177,7 @@ export class TreeItem extends vscode.TreeItem {
     super(label, collapsibleState);
 
     if (this.entity) {
+      this.contextValue = this.entity.type;
       this.command = {
         command: 'planfs.openTask',
         title: 'Open',
