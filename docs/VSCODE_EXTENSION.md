@@ -34,16 +34,10 @@ From the repository root:
 
 ```sh
 npm install
-npm run build --workspaces
-mkdir -p dist/vscode-package
-rsync -a --delete --exclude node_modules src/vscode/ dist/vscode-package/
-npm_config_cache=/private/tmp/planfs-npm-cache npm pack --workspace src/schema --pack-destination dist
-npm_config_cache=/private/tmp/planfs-npm-cache npm pack --workspace src/core --pack-destination dist
-npm_config_cache=/private/tmp/planfs-npm-cache npm install --prefix dist/vscode-package --omit=dev --no-save ./dist/planfs-schema-0.1.0.tgz ./dist/planfs-core-0.1.0.tgz yaml ajv
-cd dist/vscode-package
-npx @vscode/vsce package --out ../planfs-vscode-0.1.0.vsix
-cd ../..
+npm run package:vscode
 ```
+
+The script builds the workspace packages, stages the extension under `dist/vscode-package`, packages local workspace dependencies, creates the VSIX, and prints the install command at the end.
 
 The VSIX will be written to:
 
@@ -80,15 +74,7 @@ After installation, open a repository containing `.planfs/`. The PlanFS activity
 After changing extension or core code:
 
 ```sh
-npm run build --workspaces
-mkdir -p dist/vscode-package
-rsync -a --delete --exclude node_modules src/vscode/ dist/vscode-package/
-npm_config_cache=/private/tmp/planfs-npm-cache npm pack --workspace src/schema --pack-destination dist
-npm_config_cache=/private/tmp/planfs-npm-cache npm pack --workspace src/core --pack-destination dist
-npm_config_cache=/private/tmp/planfs-npm-cache npm install --prefix dist/vscode-package --omit=dev --no-save ./dist/planfs-schema-0.1.0.tgz ./dist/planfs-core-0.1.0.tgz yaml ajv
-cd dist/vscode-package
-npx @vscode/vsce package --out ../planfs-vscode-0.1.0.vsix
-cd ../..
+npm run package:vscode
 code --install-extension dist/planfs-vscode-0.1.0.vsix --force
 ```
 

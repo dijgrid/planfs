@@ -113,6 +113,7 @@ npm run build
 ```bash
 planfs validate
 planfs list tasks
+planfs branch
 planfs create task
 ```
 
@@ -371,6 +372,7 @@ Check out `examples/` directory for sample projects:
 cd examples/basic-project
 planfs validate
 planfs list tasks
+planfs branch
 ```
 
 ## Troubleshooting

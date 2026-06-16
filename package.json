@@ -17,6 +17,7 @@
     "build": "npm run build --workspaces",
     "test": "npm test --workspaces",
     "lint": "eslint . --ext .ts,.tsx",
+    "package:vscode": "sh scripts/package-vscode.sh",
     "format": "prettier --write '**/*.{ts,tsx,json,md}'",
     "clean": "npm run clean --workspaces && rm -rf dist coverage"
   },
