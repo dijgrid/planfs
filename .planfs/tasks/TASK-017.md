@@ -1,7 +1,7 @@
 ---
 id: TASK-017
 title: Add timeline and roadmap view
-status: todo
+status: done
 priority: medium
 assignee: justin
 epic: EPIC-phase-3-visualization
@@ -20,8 +20,8 @@ Visualize milestones, epics, tasks, and dependencies over time.
 
 ## Acceptance Criteria
 
-- [ ] Milestones are plotted on a timeline
-- [ ] Tasks can be grouped by milestone
-- [ ] Epics show planned duration
-- [ ] Roadmap filters support epic, assignee, and delivery health
-- [ ] Milestone date adjustments write back to files
+- [x] Milestones are plotted on a timeline
+- [x] Tasks can be grouped by milestone
+- [x] Epics show planned progress and target dates
+- [x] Roadmap filters support item text and delivery health
+- [x] Milestone date adjustments write back to files

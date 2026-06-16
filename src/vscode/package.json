@@ -5,6 +5,11 @@
   "version": "0.1.0",
   "publisher": "planfs",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dijgrid/planfs.git",
+    "directory": "src/vscode"
+  },
   "engines": {
     "vscode": "^1.60.0"
   },
@@ -20,6 +25,7 @@
   "activationEvents": [
     "workspaceContains:.planfs",
     "onCommand:planfs.openBoard",
+    "onCommand:planfs.openInsights",
     "onCommand:planfs.createTask",
     "onCommand:planfs.createEpic",
     "onCommand:planfs.createMilestone",
@@ -32,6 +38,10 @@
       {
         "command": "planfs.openBoard",
         "title": "PlanFS: Open Board"
+      },
+      {
+        "command": "planfs.openInsights",
+        "title": "PlanFS: Open Insights"
       },
       {
         "command": "planfs.createTask",

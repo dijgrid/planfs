@@ -178,15 +178,53 @@ function renderBoard(webview: vscode.Webview, tasks: BoardTask[]): string {
       color-scheme: light dark;
       --gap: 12px;
       --column-width: minmax(220px, 1fr);
+      --bg: var(--vscode-editor-background);
+      --panel: color-mix(in srgb, var(--vscode-sideBar-background) 88%, var(--vscode-editor-background));
+      --panel-strong: color-mix(in srgb, var(--vscode-sideBar-background) 72%, var(--vscode-focusBorder));
+      --border: var(--vscode-panel-border);
+      --text: var(--vscode-foreground);
+      --muted: var(--vscode-descriptionForeground);
+      --accent: var(--vscode-focusBorder);
+      --todo: #7f8a99;
+      --progress: #4d9de0;
+      --review: #d9a441;
+      --done: #58a66c;
+    }
+
+    * {
+      box-sizing: border-box;
     }
 
     body {
       margin: 0;
-      padding: 16px;
-      color: var(--vscode-foreground);
-      background: var(--vscode-editor-background);
+      padding: 18px;
+      color: var(--text);
+      background: var(--bg);
       font-family: var(--vscode-font-family);
       font-size: var(--vscode-font-size);
+    }
+
+    .shell {
+      max-width: 1280px;
+      margin: 0 auto;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: end;
+      gap: 16px;
+      margin-bottom: 14px;
+    }
+
+    h1 {
+      margin: 0 0 4px;
+      font-size: 22px;
+      font-weight: 650;
+    }
+
+    .subtle {
+      color: var(--muted);
     }
 
     .toolbar {
@@ -202,7 +240,7 @@ function renderBoard(webview: vscode.Webview, tasks: BoardTask[]): string {
       color: var(--vscode-input-foreground);
       background: var(--vscode-input-background);
       border: 1px solid var(--vscode-input-border, transparent);
-      border-radius: 2px;
+      border-radius: 3px;
       padding: 6px 8px;
       min-height: 28px;
     }
@@ -221,9 +259,11 @@ function renderBoard(webview: vscode.Webview, tasks: BoardTask[]): string {
     }
 
     .column {
-      border: 1px solid var(--vscode-panel-border);
-      background: var(--vscode-sideBar-background);
+      border: 1px solid var(--border);
+      background: var(--panel);
+      border-radius: 6px;
       min-height: 220px;
+      overflow: hidden;
     }
 
     .columnHeader {
@@ -231,14 +271,15 @@ function renderBoard(webview: vscode.Webview, tasks: BoardTask[]): string {
       justify-content: space-between;
       align-items: center;
       gap: 8px;
-      padding: 10px;
-      border-bottom: 1px solid var(--vscode-panel-border);
+      padding: 11px 12px;
+      border-bottom: 1px solid var(--border);
+      background: var(--panel-strong);
       font-weight: 600;
       text-transform: capitalize;
     }
 
     .count {
-      color: var(--vscode-descriptionForeground);
+      color: var(--muted);
       font-weight: 400;
     }
 
@@ -248,17 +289,32 @@ function renderBoard(webview: vscode.Webview, tasks: BoardTask[]): string {
     }
 
     .dropzone.dragOver {
-      outline: 2px solid var(--vscode-focusBorder);
+      outline: 2px solid var(--accent);
       outline-offset: -2px;
+      background: color-mix(in srgb, var(--accent) 12%, transparent);
     }
 
     .card {
       cursor: grab;
-      border: 1px solid var(--vscode-panel-border);
-      background: var(--vscode-editor-background);
-      padding: 10px;
-      margin-bottom: 8px;
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--todo);
+      background: var(--bg);
+      padding: 11px;
+      margin-bottom: 9px;
       border-radius: 4px;
+      box-shadow: 0 1px 2px color-mix(in srgb, #000 16%, transparent);
+    }
+
+    .card.in-progress {
+      border-left-color: var(--progress);
+    }
+
+    .card.review {
+      border-left-color: var(--review);
+    }
+
+    .card.done {
+      border-left-color: var(--done);
     }
 
     .card:active {
@@ -266,7 +322,7 @@ function renderBoard(webview: vscode.Webview, tasks: BoardTask[]): string {
     }
 
     .cardId {
-      color: var(--vscode-descriptionForeground);
+      color: var(--muted);
       font-size: 11px;
       margin-bottom: 5px;
     }
@@ -298,23 +354,31 @@ function renderBoard(webview: vscode.Webview, tasks: BoardTask[]): string {
     }
 
     .empty {
-      color: var(--vscode-descriptionForeground);
+      color: var(--muted);
       font-style: italic;
       padding: 10px 0;
     }
   </style>
 </head>
 <body>
-  <div class="toolbar">
-    <input id="filter" type="search" placeholder="Filter by ID, title, assignee, epic, milestone, or tag" aria-label="Filter tasks">
-    <select id="sort" aria-label="Sort tasks">
-      <option value="id">Sort by ID</option>
-      <option value="title">Sort by title</option>
-      <option value="priority">Sort by priority</option>
-      <option value="assignee">Sort by assignee</option>
-    </select>
+  <div class="shell">
+    <header class="header">
+      <div>
+        <h1>PlanFS Board</h1>
+        <div class="subtle">Drag cards between statuses. Changes are saved to .planfs task files.</div>
+      </div>
+    </header>
+    <div class="toolbar">
+      <input id="filter" type="search" placeholder="Filter by ID, title, assignee, epic, milestone, or tag" aria-label="Filter tasks">
+      <select id="sort" aria-label="Sort tasks">
+        <option value="id">Sort by ID</option>
+        <option value="title">Sort by title</option>
+        <option value="priority">Sort by priority</option>
+        <option value="assignee">Sort by assignee</option>
+      </select>
+    </div>
+    <main id="board" class="board"></main>
   </div>
-  <main id="board" class="board"></main>
   <script nonce="${nonce}">
     const vscode = acquireVsCodeApi();
     const state = ${payload};
@@ -408,7 +472,7 @@ function renderBoard(webview: vscode.Webview, tasks: BoardTask[]): string {
 
     function renderCard(task) {
       const card = document.createElement('article');
-      card.className = 'card';
+      card.className = 'card ' + task.status;
       card.draggable = true;
       card.addEventListener('dragstart', event => {
         event.dataTransfer.setData('text/plain', task.id);

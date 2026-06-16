@@ -5,11 +5,13 @@
 import * as vscode from 'vscode';
 import { BoardProvider } from './board';
 import { ExplorerProvider } from './explorer';
+import { InsightsProvider } from './insights';
 import { createTaskCommand, createEpicCommand, createMilestoneCommand } from './commands/create';
 import { openTaskCommand } from './commands/open';
 
 let explorerProvider: ExplorerProvider;
 let boardProvider: BoardProvider;
+let insightsProvider: InsightsProvider;
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   console.log('PlanFS extension activated');
@@ -17,11 +19,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // Initialize explorer
   explorerProvider = new ExplorerProvider();
   boardProvider = new BoardProvider(context.extensionUri);
+  insightsProvider = new InsightsProvider(context.extensionUri);
   vscode.window.registerTreeDataProvider('planfs-explorer', explorerProvider);
 
   // Register commands
   context.subscriptions.push(
     vscode.commands.registerCommand('planfs.openBoard', () => boardProvider.open()),
+    vscode.commands.registerCommand('planfs.openInsights', () => insightsProvider.open()),
     vscode.commands.registerCommand('planfs.createTask', () => createTaskCommand(explorerProvider)),
     vscode.commands.registerCommand('planfs.createEpic', () => createEpicCommand()),
     vscode.commands.registerCommand('planfs.createMilestone', () => createMilestoneCommand()),
@@ -44,6 +48,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 async function refreshViews(): Promise<void> {
   await explorerProvider.refresh();
   await boardProvider.refresh();
+  await insightsProvider.refresh();
 }
 
 export function deactivate(): void {

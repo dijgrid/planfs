@@ -6,6 +6,7 @@ VS Code extension for PlanFS project management.
 
 - **PlanFS Explorer** - Tree view showing all tasks, epics, milestones, and decisions
 - **Kanban Board** - Webview board for dragging tasks between statuses
+- **Insights** - Dependency graph, timeline, and reports
 - **Create Tasks** - Quick command to create new tasks
 - **Open Task Files** - Click to open and edit task files directly
 - **Auto Refresh** - Automatically refreshes explorer when files change
@@ -14,13 +15,16 @@ VS Code extension for PlanFS project management.
 
 ## Installation
 
-Install from VS Code Extensions marketplace or build locally:
+For development, launch the extension from this repository:
 
 ```bash
 npm install
-npm run build
-# Then use F5 in VS Code to test
+npm run build --workspaces
 ```
+
+Then use `Run PlanFS Extension` from the VS Code Run and Debug view.
+
+For a local installable VSIX, see the [VS Code Extension Build and Local Install guide](https://github.com/dijgrid/planfs/blob/main/docs/VSCODE_EXTENSION.md).
 
 ## Usage
 
@@ -45,6 +49,12 @@ Click the PlanFS icon in the Activity Bar to see the explorer view showing:
 1. Press Cmd+Shift+P (or Ctrl+Shift+P on Windows/Linux)
 2. Type "PlanFS: Open Board"
 3. Drag cards between status columns to update task files
+
+### Open Insights
+
+1. Press Cmd+Shift+P (or Ctrl+Shift+P on Windows/Linux)
+2. Type "PlanFS: Open Insights"
+3. Review dependency graph, roadmap timeline, and reports
 
 ### Open Task
 
@@ -75,13 +85,12 @@ Set breakpoints in TypeScript and use VS Code debugging tools.
 
 ## Architecture
 
-The extension uses `planfs-core` for all file operations and validation. See [Architecture Documentation](../../docs/ARCHITECTURE.md).
+The extension uses `planfs-core` for all file operations and validation. See the [Architecture Documentation](https://github.com/dijgrid/planfs/blob/main/docs/ARCHITECTURE.md).
 
 ## Known Limitations (MVP)
 
 - Create Epic/Milestone not yet implemented
 - Board filtering and sorting are local to the open webview
-- No dependency graph visualization (Phase 3)
 - No git integration (Phase 4)
 
 ## License

@@ -216,6 +216,12 @@ The MVP CLI requires `--title`.
 2. Type "PlanFS: Open Board"
 3. Drag cards between status columns to update task files
 
+### View Insights
+
+1. Open command palette (Cmd+Shift+P)
+2. Type "PlanFS: Open Insights"
+3. Review dependency graph, timeline, and reports
+
 ### Edit Task
 
 1. Open task file in VS Code editor

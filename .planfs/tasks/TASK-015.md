@@ -1,7 +1,7 @@
 ---
 id: TASK-015
 title: Build dependency graph engine
-status: todo
+status: done
 priority: high
 assignee: justin
 epic: EPIC-phase-3-visualization
@@ -19,8 +19,8 @@ Model task dependency relationships for analysis and visualization.
 
 ## Acceptance Criteria
 
-- [ ] Build a dependency graph from all tasks
-- [ ] Compute direct and transitive dependencies
-- [ ] Calculate critical path
-- [ ] Compute task levels from root tasks
-- [ ] Expose graph APIs from `planfs-core`
+- [x] Build a dependency graph from all tasks
+- [x] Compute direct and transitive dependencies
+- [x] Calculate critical path
+- [x] Compute task levels from root tasks
+- [x] Expose graph APIs from `planfs-core`

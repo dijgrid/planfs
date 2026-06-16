@@ -1,7 +1,7 @@
 ---
 id: TASK-018
 title: Add reporting and export workflows
-status: todo
+status: done
 priority: medium
 assignee: justin
 epic: EPIC-phase-3-visualization
@@ -21,8 +21,8 @@ Generate portable project insight reports.
 
 ## Acceptance Criteria
 
-- [ ] Completion report by epic
-- [ ] Workload report by assignee
-- [ ] Timeline health report
-- [ ] Dependency and blocked-work report
-- [ ] Exports support CSV, JSON, and Markdown
+- [x] Completion report by epic
+- [x] Workload report by assignee
+- [x] Timeline health report
+- [x] Dependency and blocked-work report
+- [x] Exports support CSV, JSON, and Markdown
