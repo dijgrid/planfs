@@ -30,16 +30,22 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand('planfs.createEpic', () => createEpicCommand()),
     vscode.commands.registerCommand('planfs.createMilestone', () => createMilestoneCommand()),
     vscode.commands.registerCommand('planfs.openTask', (item) => openTaskCommand(item)),
+    vscode.commands.registerCommand('planfs.applySavedFilter', () => explorerProvider.applySavedFilter()),
+    vscode.commands.registerCommand('planfs.clearSavedFilter', () => explorerProvider.clearSavedFilter()),
     vscode.commands.registerCommand('planfs.refreshExplorer', () => explorerProvider.refresh())
   );
 
   // Watch for file changes
   const watcher = vscode.workspace.createFileSystemWatcher('**/.planfs/**/*.md');
+  const savedFilterWatcher = vscode.workspace.createFileSystemWatcher('**/.planfs/**/*.json');
   watcher.onDidCreate(() => refreshViews());
   watcher.onDidChange(() => refreshViews());
   watcher.onDidDelete(() => refreshViews());
+  savedFilterWatcher.onDidCreate(() => refreshViews());
+  savedFilterWatcher.onDidChange(() => refreshViews());
+  savedFilterWatcher.onDidDelete(() => refreshViews());
 
-  context.subscriptions.push(watcher);
+  context.subscriptions.push(watcher, savedFilterWatcher);
 
   // Initial load
   await explorerProvider.refresh();

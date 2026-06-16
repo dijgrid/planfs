@@ -10,3 +10,4 @@ export * from './validator';
 export * from './repository';
 export * from './graph';
 export * from './git';
+export * from './search';

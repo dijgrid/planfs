@@ -116,6 +116,7 @@ planfs list tasks
 planfs branch
 planfs git commit-message
 planfs git validate-message "TASK-001: update planning docs"
+planfs list tasks --status todo --epic EPIC-phase-2-enhanced
 planfs create task
 ```
 

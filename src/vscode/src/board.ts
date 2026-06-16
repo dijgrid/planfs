@@ -3,7 +3,14 @@
  */
 
 import * as vscode from 'vscode';
-import { loadRepository, saveEntity, Task, TaskStatus } from 'planfs-core';
+import {
+  loadRepository,
+  loadSavedFilters,
+  SavedFilter,
+  saveEntity,
+  Task,
+  TaskStatus
+} from 'planfs-core';
 
 const TASK_STATUSES: TaskStatus[] = ['todo', 'in-progress', 'review', 'done'];
 
@@ -16,6 +23,8 @@ interface BoardTask {
   epic?: string;
   milestone?: string;
   tags?: string[];
+  metadata: Record<string, unknown>;
+  body: string;
 }
 
 export class BoardProvider {
@@ -82,8 +91,9 @@ export class BoardProvider {
     try {
       const repository = await loadRepository(workspaceFolder.uri.fsPath);
       const tasks = Array.from(repository.tasks.values()).map(toBoardTask);
+      const savedFilters = await loadSavedFilters(workspaceFolder.uri.fsPath);
 
-      this.panel.webview.html = renderBoard(this.panel.webview, tasks);
+      this.panel.webview.html = renderBoard(this.panel.webview, tasks, savedFilters);
     } catch (error) {
       this.panel.webview.html = renderMessage(
         `Failed to load PlanFS board: ${error instanceof Error ? error.message : String(error)}`
@@ -144,7 +154,9 @@ function toBoardTask(task: Task): BoardTask {
     assignee: task.assignee,
     epic: task.epic,
     milestone: task.milestone,
-    tags: task.tags
+    tags: task.tags,
+    metadata: task.metadata,
+    body: task.body
   };
 }
 
@@ -162,9 +174,26 @@ function renderMessage(message: string): string {
 </html>`;
 }
 
-function renderBoard(webview: vscode.Webview, tasks: BoardTask[]): string {
+function toBoardSavedFilter(filter: SavedFilter): SavedFilter {
+  return {
+    id: filter.id,
+    name: filter.name,
+    description: filter.description,
+    criteria: filter.criteria
+  };
+}
+
+function renderBoard(
+  webview: vscode.Webview,
+  tasks: BoardTask[],
+  savedFilters: SavedFilter[]
+): string {
   const nonce = getNonce();
-  const payload = JSON.stringify({ tasks, statuses: TASK_STATUSES });
+  const payload = JSON.stringify({
+    tasks,
+    statuses: TASK_STATUSES,
+    savedFilters: savedFilters.map(toBoardSavedFilter)
+  });
 
   return `<!doctype html>
 <html lang="en">
@@ -370,6 +399,9 @@ function renderBoard(webview: vscode.Webview, tasks: BoardTask[]): string {
     </header>
     <div class="toolbar">
       <input id="filter" type="search" placeholder="Filter by ID, title, assignee, epic, milestone, or tag" aria-label="Filter tasks">
+      <select id="savedFilter" aria-label="Saved filter">
+        <option value="">All tasks</option>
+      </select>
       <select id="sort" aria-label="Sort tasks">
         <option value="id">Sort by ID</option>
         <option value="title">Sort by title</option>
@@ -391,16 +423,27 @@ function renderBoard(webview: vscode.Webview, tasks: BoardTask[]): string {
     };
 
     const filterInput = document.getElementById('filter');
+    const savedFilterInput = document.getElementById('savedFilter');
     const sortInput = document.getElementById('sort');
     const board = document.getElementById('board');
 
+    savedFilterInput.append(...state.savedFilters.map(filter => {
+      const option = document.createElement('option');
+      option.value = filter.id;
+      option.textContent = filter.name;
+      return option;
+    }));
+
     filterInput.addEventListener('input', render);
+    savedFilterInput.addEventListener('change', render);
     sortInput.addEventListener('change', render);
 
     function render() {
       const filterText = filterInput.value.trim().toLowerCase();
+      const savedFilter = state.savedFilters.find(filter => filter.id === savedFilterInput.value);
       const sortKey = sortInput.value;
       const filtered = state.tasks
+        .filter(task => matchesSavedFilter(task, savedFilter?.criteria))
         .filter(task => matchesFilter(task, filterText))
         .sort((a, b) => compareTasks(a, b, sortKey));
 
@@ -419,10 +462,45 @@ function renderBoard(webview: vscode.Webview, tasks: BoardTask[]): string {
         task.assignee,
         task.epic,
         task.milestone,
+        JSON.stringify(task.metadata),
+        task.body,
         ...(task.tags || [])
       ].filter(Boolean).join(' ').toLowerCase();
 
       return searchable.includes(filterText);
+    }
+
+    function matchesSavedFilter(task, criteria) {
+      if (!criteria) {
+        return true;
+      }
+
+      if (criteria.query && !matchesFilter(task, String(criteria.query).toLowerCase())) {
+        return false;
+      }
+
+      if (criteria.status && task.status !== criteria.status) {
+        return false;
+      }
+
+      if (criteria.assignee && task.assignee !== criteria.assignee) {
+        return false;
+      }
+
+      if (criteria.epic && task.epic !== criteria.epic) {
+        return false;
+      }
+
+      if (criteria.priority && task.priority !== criteria.priority) {
+        return false;
+      }
+
+      if (Array.isArray(criteria.tags) && criteria.tags.length > 0) {
+        const tags = new Set(task.tags || []);
+        return criteria.tags.every(tag => tags.has(tag));
+      }
+
+      return true;
     }
 
     function compareTasks(a, b, sortKey) {
