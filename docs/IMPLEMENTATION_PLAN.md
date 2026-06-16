@@ -49,6 +49,14 @@ The first Phase 4 slice should provide:
 - Copyable GitLab CI and Azure Pipelines examples
 - Documentation describing how CI should consume validation results
 
+The second Phase 4 slice adds branch-aware planning:
+
+- `planfs branch` for local branch planning context
+- Task IDs extracted from branch names and changed PlanFS files
+- Added, modified, and deleted task summaries against a base ref
+- PlanFS conflict detection with simple merge-resolution guidance
+- A Branch tab in the VS Code Insights view
+
 ## Working With The Plan
 
 Use the CLI to inspect the roadmap:

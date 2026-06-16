@@ -6,6 +6,7 @@ import * as vscode from 'vscode';
 import {
   buildTaskGraph,
   generateReports,
+  getBranchPlanningContext,
   loadRepository,
   Repository,
   saveEntity,
@@ -46,6 +47,48 @@ interface InsightsPayload {
     percentDone: number;
   }>;
   reports: ReturnType<typeof generateReports>;
+  branch: {
+    available: boolean;
+    message?: string;
+    currentBranch?: string;
+    baseRef?: string;
+    comparisonRef?: string;
+    taskIdsInBranchName: string[];
+    relatedTaskIds: string[];
+    changedFiles: Array<{
+      path: string;
+      status: string;
+      entityType?: string;
+      entityId?: string;
+    }>;
+    addedTasks: Array<{
+      id: string;
+      title: string;
+      status: string;
+      filePath: string;
+    }>;
+    modifiedTasks: Array<{
+      id: string;
+      title: string;
+      status: string;
+      filePath: string;
+      previous?: {
+        title: string;
+        status: string;
+      };
+    }>;
+    deletedTaskIds: string[];
+    conflicts: Array<{
+      path: string;
+      status: string;
+      suggestion: string;
+    }>;
+    pullRequestPreview?: {
+      title: string;
+      summary: string;
+      relatedTaskIds: string[];
+    };
+  };
   exports: {
     json: string;
     csv: string;
@@ -120,7 +163,7 @@ export class InsightsProvider {
 
     try {
       const repository = await loadRepository(workspaceFolder.uri.fsPath);
-      const payload = createPayload(repository);
+      const payload = await createPayload(repository);
       this.panel.webview.html = renderInsights(this.panel.webview, payload);
     } catch (error) {
       this.panel.webview.html = renderMessage(
@@ -165,10 +208,11 @@ function getWorkspaceFolder(): vscode.WorkspaceFolder | undefined {
   return vscode.workspace.workspaceFolders?.[0];
 }
 
-function createPayload(repository: Repository): InsightsPayload {
+async function createPayload(repository: Repository): Promise<InsightsPayload> {
   const graph = buildTaskGraph(repository.tasks.values());
   const reports = generateReports(repository);
   const validation = validateRepositoryState(repository);
+  const branch = await createBranchPayload(repository.root);
 
   const milestones = reports.timeline.map(report => ({
     id: report.milestoneId,
@@ -213,6 +257,7 @@ function createPayload(repository: Repository): InsightsPayload {
     milestones,
     epics,
     reports,
+    branch,
     exports: {
       json: '',
       csv: '',
@@ -227,6 +272,38 @@ function createPayload(repository: Repository): InsightsPayload {
   };
 
   return payload;
+}
+
+async function createBranchPayload(rootPath: string): Promise<InsightsPayload['branch']> {
+  try {
+    const context = await getBranchPlanningContext(rootPath);
+    return {
+      available: true,
+      currentBranch: context.currentBranch,
+      baseRef: context.baseRef,
+      comparisonRef: context.comparisonRef,
+      taskIdsInBranchName: context.taskIdsInBranchName,
+      relatedTaskIds: context.relatedTaskIds,
+      changedFiles: context.changedFiles,
+      addedTasks: context.addedTasks,
+      modifiedTasks: context.modifiedTasks,
+      deletedTaskIds: context.deletedTaskIds,
+      conflicts: context.conflicts,
+      pullRequestPreview: context.pullRequestPreview
+    };
+  } catch (error) {
+    return {
+      available: false,
+      message: error instanceof Error ? error.message : String(error),
+      taskIdsInBranchName: [],
+      relatedTaskIds: [],
+      changedFiles: [],
+      addedTasks: [],
+      modifiedTasks: [],
+      deletedTaskIds: [],
+      conflicts: []
+    };
+  }
 }
 
 async function exportReport(format: string, content: string): Promise<void> {
@@ -588,6 +665,48 @@ function renderInsights(webview: vscode.Webview, payload: InsightsPayload): stri
       grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
     }
 
+    .branchGrid {
+      display: grid;
+      grid-template-columns: minmax(280px, 1.1fr) minmax(280px, 0.9fr);
+      gap: 12px;
+      align-items: start;
+    }
+
+    .pillRow {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .pill {
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 3px 8px;
+      color: var(--text);
+      background: color-mix(in srgb, var(--panel-strong) 48%, transparent);
+      font-size: 12px;
+    }
+
+    .fileList {
+      display: grid;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .fileRow {
+      display: grid;
+      grid-template-columns: 82px minmax(0, 1fr);
+      gap: 8px;
+      align-items: start;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .filePath {
+      overflow-wrap: anywhere;
+    }
+
     table {
       width: 100%;
       border-collapse: collapse;
@@ -619,11 +738,13 @@ function renderInsights(webview: vscode.Webview, payload: InsightsPayload): stri
       <button class="tab active" data-tab="graph">Dependency Graph</button>
       <button class="tab" data-tab="timeline">Timeline</button>
       <button class="tab" data-tab="reports">Reports</button>
+      <button class="tab" data-tab="branch">Branch</button>
     </nav>
 
     <section id="graph" class="panel active"></section>
     <section id="timeline" class="panel"></section>
     <section id="reports" class="panel"></section>
+    <section id="branch" class="panel"></section>
   </div>
 
   <script nonce="${nonce}">
@@ -642,6 +763,7 @@ function renderInsights(webview: vscode.Webview, payload: InsightsPayload): stri
     renderGraph();
     renderTimeline();
     renderReports();
+    renderBranch();
 
     function renderGraph() {
       const root = document.getElementById('graph');
@@ -804,6 +926,81 @@ function renderInsights(webview: vscode.Webview, payload: InsightsPayload): stri
         ? '<tr><td colspan="2" class="subtle">No missing dependencies.</td></tr>'
         : state.reports.blockedTasks.map(item => '<tr><td>' + escapeHtml(item.id) + '</td><td>' + escapeHtml(item.missingDependencies.join(', ')) + '</td></tr>').join('');
       return '<article class="card"><h2>Blocked Work</h2><table><thead><tr><th>Task</th><th>Missing</th></tr></thead><tbody>' + rows + '</tbody></table></article>';
+    }
+
+    function renderBranch() {
+      const root = document.getElementById('branch');
+      const branch = state.branch;
+
+      if (!branch.available) {
+        root.innerHTML = '<article class="card"><h2>Branch Context</h2><p class="subtle">Branch context is unavailable.</p><p class="subtle">' + escapeHtml(branch.message || 'No Git comparison could be loaded.') + '</p></article>';
+        return;
+      }
+
+      root.innerHTML = [
+        renderMetrics([
+          ['Changed Files', branch.changedFiles.length],
+          ['Added Tasks', branch.addedTasks.length],
+          ['Modified Tasks', branch.modifiedTasks.length],
+          ['Conflicts', branch.conflicts.length]
+        ]),
+        '<div class="branchGrid">',
+        '<article class="card">',
+        '<h2>Current Branch</h2>',
+        '<p><strong>' + escapeHtml(branch.currentBranch) + '</strong></p>',
+        '<p class="subtle">Compared with ' + escapeHtml(branch.comparisonRef || branch.baseRef || 'base') + '</p>',
+        '<h3>Related Tasks</h3>',
+        renderPills(branch.relatedTaskIds),
+        '<h3>PR Preview</h3>',
+        '<p><strong>' + escapeHtml(branch.pullRequestPreview?.title || branch.currentBranch) + '</strong></p>',
+        '<p class="subtle">' + escapeHtml(branch.pullRequestPreview?.summary || 'No PlanFS task changes detected.') + '</p>',
+        '</article>',
+        '<article class="card">',
+        '<h2>Changed PlanFS Files</h2>',
+        renderChangedFiles(branch.changedFiles),
+        '</article>',
+        '</div>',
+        '<div class="reportGrid" style="margin-top:12px">',
+        renderBranchTasks('Added Tasks', branch.addedTasks),
+        renderBranchTasks('Modified Tasks', branch.modifiedTasks),
+        renderBranchConflicts(branch.conflicts),
+        '</div>'
+      ].join('');
+    }
+
+    function renderPills(values) {
+      if (!values || values.length === 0) {
+        return '<p class="subtle">No related task IDs detected.</p>';
+      }
+
+      return '<div class="pillRow">' + values.map(value => '<span class="pill">' + escapeHtml(value) + '</span>').join('') + '</div>';
+    }
+
+    function renderChangedFiles(files) {
+      if (!files || files.length === 0) {
+        return '<p class="subtle">No PlanFS files changed against the base ref.</p>';
+      }
+
+      return '<div class="fileList">' + files.map(file =>
+        '<div class="fileRow"><span class="pill">' + escapeHtml(file.status) + '</span><span class="filePath">' + escapeHtml(file.path) + '</span></div>'
+      ).join('') + '</div>';
+    }
+
+    function renderBranchTasks(title, tasks) {
+      const rows = !tasks || tasks.length === 0
+        ? '<tr><td colspan="3" class="subtle">None.</td></tr>'
+        : tasks.map(task => {
+          const previous = task.previous ? escapeHtml(task.previous.status + ' -> ' + task.status) : escapeHtml(task.status);
+          return '<tr><td>' + escapeHtml(task.id) + '</td><td>' + escapeHtml(task.title) + '</td><td>' + previous + '</td></tr>';
+        }).join('');
+      return '<article class="card"><h2>' + escapeHtml(title) + '</h2><table><thead><tr><th>Task</th><th>Title</th><th>Status</th></tr></thead><tbody>' + rows + '</tbody></table></article>';
+    }
+
+    function renderBranchConflicts(conflicts) {
+      const rows = !conflicts || conflicts.length === 0
+        ? '<tr><td colspan="3" class="subtle">No PlanFS conflicts detected.</td></tr>'
+        : conflicts.map(conflict => '<tr><td>' + escapeHtml(conflict.status) + '</td><td>' + escapeHtml(conflict.path) + '</td><td>' + escapeHtml(conflict.suggestion) + '</td></tr>').join('');
+      return '<article class="card"><h2>Conflicts</h2><table><thead><tr><th>Status</th><th>File</th><th>Suggestion</th></tr></thead><tbody>' + rows + '</tbody></table></article>';
     }
 
     function renderMetrics(items) {

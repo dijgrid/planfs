@@ -9,6 +9,7 @@ import { validateCommand } from './commands/validate';
 import { listCommand } from './commands/list';
 import { showCommand } from './commands/show';
 import { createCommand } from './commands/create';
+import { branchCommand } from './commands/branch';
 import pkg from '../package.json';
 
 export async function main(): Promise<void> {
@@ -34,6 +35,29 @@ export async function main(): Promise<void> {
       async (args) => {
         const exitCode = await validateCommand(process.cwd(), {
           verbose: args.verbose as boolean,
+          format: args.format as 'text' | 'json'
+        });
+        process.exit(exitCode);
+      }
+    )
+    .command(
+      'branch',
+      'Show PlanFS changes on the current Git branch',
+      (y) =>
+        y
+          .option('base', {
+            type: 'string',
+            description: 'Base branch or ref to compare against'
+          })
+          .option('format', {
+            type: 'string',
+            choices: ['text', 'json'],
+            default: 'text',
+            description: 'Output format'
+          }),
+      async (args) => {
+        const exitCode = await branchCommand(process.cwd(), {
+          base: args.base as string | undefined,
           format: args.format as 'text' | 'json'
         });
         process.exit(exitCode);
