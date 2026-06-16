@@ -5,10 +5,14 @@
 import {
   generateEntityContent,
   getNextTaskId,
+  getNextEpicId,
+  getNextMilestoneId,
   createTaskTemplate,
+  createEpicTemplate,
+  createMilestoneTemplate,
   getAllEntities
 } from '../src/repository';
-import { Task, Epic, Repository } from '../src/types';
+import { Task, Epic, Milestone, Repository } from '../src/types';
 
 describe('Repository', () => {
   describe('generateEntityContent', () => {
@@ -226,6 +230,76 @@ describe('Repository', () => {
 
       expect(new Date(task.createdAt || '').getTime()).toBeGreaterThan(0);
       expect(new Date(task.updatedAt || '').getTime()).toBeGreaterThan(0);
+    });
+  });
+
+  describe('slug IDs and structural templates', () => {
+    it('should generate slug epic and milestone IDs', () => {
+      const repo: Repository = {
+        root: '',
+        tasks: new Map(),
+        epics: new Map(),
+        milestones: new Map(),
+        decisions: new Map()
+      };
+
+      expect(getNextEpicId(repo, 'Phase 6 - Polish')).toBe('EPIC-phase-6-polish');
+      expect(getNextMilestoneId(repo, 'Phase 6 - Polish')).toBe('MILESTONE-phase-6-polish');
+    });
+
+    it('should append numeric suffixes for duplicate slug IDs', () => {
+      const epic: Epic = {
+        id: 'EPIC-phase-6-polish',
+        type: 'epic',
+        title: 'Phase 6 - Polish',
+        status: 'active',
+        filePath: '',
+        metadata: {},
+        body: ''
+      };
+      const milestone: Milestone = {
+        id: 'MILESTONE-phase-6-polish',
+        type: 'milestone',
+        title: 'Phase 6 - Polish',
+        status: 'active',
+        targetDate: '2026-09-01',
+        filePath: '',
+        metadata: {},
+        body: ''
+      };
+      const repo: Repository = {
+        root: '',
+        tasks: new Map(),
+        epics: new Map([[epic.id, epic]]),
+        milestones: new Map([[milestone.id, milestone]]),
+        decisions: new Map()
+      };
+
+      expect(getNextEpicId(repo, 'Phase 6 - Polish')).toBe('EPIC-phase-6-polish-2');
+      expect(getNextMilestoneId(repo, 'Phase 6 - Polish')).toBe('MILESTONE-phase-6-polish-2');
+    });
+
+    it('should create valid epic and milestone templates', () => {
+      const epic = createEpicTemplate('EPIC-new-work', 'New Work');
+      const milestone = createMilestoneTemplate(
+        'MILESTONE-new-work',
+        'New Work',
+        '2026-09-01'
+      );
+
+      expect(epic).toMatchObject({
+        id: 'EPIC-new-work',
+        title: 'New Work',
+        type: 'epic',
+        status: 'active'
+      });
+      expect(milestone).toMatchObject({
+        id: 'MILESTONE-new-work',
+        title: 'New Work',
+        type: 'milestone',
+        status: 'active',
+        targetDate: '2026-09-01'
+      });
     });
   });
 

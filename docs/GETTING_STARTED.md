@@ -200,13 +200,15 @@ planfs list tasks --status todo
 planfs list tasks --assignee justin
 ```
 
-### Create Task from CLI
+### Create Planning Artifacts from CLI
 
 ```bash
 planfs create task --title "Write the next thing"
+planfs create epic --title "Phase 6 - Polish"
+planfs create milestone --title "v0.2" --target-date 2026-09-01
 ```
 
-The MVP CLI requires `--title`.
+The CLI requires `--title` for all created entities. Milestones also require `--target-date`.
 
 ### Create Task from VS Code
 

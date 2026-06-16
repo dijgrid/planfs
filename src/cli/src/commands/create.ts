@@ -7,7 +7,11 @@ import {
   loadRepository,
   saveEntity,
   createTaskTemplate,
+  createEpicTemplate,
+  createMilestoneTemplate,
   getNextTaskId,
+  getNextEpicId,
+  getNextMilestoneId,
   initializeRepository
 } from 'planfs-core';
 
@@ -16,6 +20,9 @@ export interface CreateOptions {
   status?: string;
   priority?: string;
   assignee?: string;
+  owner?: string;
+  description?: string;
+  targetDate?: string;
   nonInteractive?: boolean;
 }
 
@@ -25,7 +32,7 @@ export async function createCommand(
   options: CreateOptions
 ): Promise<number> {
   try {
-    if (entityType !== 'task') {
+    if (!['task', 'epic', 'milestone'].includes(entityType)) {
       console.error(`Error: creating ${entityType} entities is not supported yet`);
       return 1;
     }
@@ -50,24 +57,70 @@ export async function createCommand(
     }
 
     const repo = await loadRepository(rootPath);
-    const taskId = getNextTaskId(repo);
-    const task = createTaskTemplate(taskId, options.title);
+    if (entityType === 'task') {
+      const taskId = getNextTaskId(repo);
+      const task = createTaskTemplate(taskId, options.title);
+
+      if (options.status) {
+        task.status = options.status as any;
+      }
+      if (options.priority) {
+        task.priority = options.priority as any;
+      }
+      if (options.assignee) {
+        task.assignee = options.assignee;
+      }
+
+      await saveEntity(rootPath, task);
+      printCreated('task', task.id, task.title, task.status);
+      return 0;
+    }
+
+    if (entityType === 'epic') {
+      const epicId = getNextEpicId(repo, options.title);
+      const epic = createEpicTemplate(epicId, options.title);
+
+      if (options.status) {
+        epic.status = options.status as any;
+      }
+      if (options.owner) {
+        epic.owner = options.owner;
+      }
+      if (options.description) {
+        epic.description = options.description;
+        epic.body = options.description;
+      }
+
+      await saveEntity(rootPath, epic);
+      printCreated('epic', epic.id, epic.title, epic.status);
+      return 0;
+    }
+
+    if (!options.targetDate) {
+      console.error('Error: --target-date is required when creating milestones');
+      return 1;
+    }
+
+    const milestoneId = getNextMilestoneId(repo, options.title);
+    const milestone = createMilestoneTemplate(
+      milestoneId,
+      options.title,
+      options.targetDate
+    );
 
     if (options.status) {
-      task.status = options.status as any;
+      milestone.status = options.status as any;
     }
-    if (options.priority) {
-      task.priority = options.priority as any;
+    if (options.owner) {
+      milestone.owner = options.owner;
     }
-    if (options.assignee) {
-      task.assignee = options.assignee;
+    if (options.description) {
+      milestone.description = options.description;
+      milestone.body = options.description;
     }
 
-    await saveEntity(rootPath, task);
-
-    console.log(`✓ Created task: ${task.id}`);
-    console.log(`  Title: ${task.title}`);
-    console.log(`  Status: ${task.status}`);
+    await saveEntity(rootPath, milestone);
+    printCreated('milestone', milestone.id, milestone.title, milestone.status);
 
     return 0;
   } catch (error) {
@@ -77,4 +130,15 @@ export async function createCommand(
     );
     return 1;
   }
+}
+
+function printCreated(
+  entityType: string,
+  id: string,
+  title: string,
+  status: string
+): void {
+  console.log(`✓ Created ${entityType}: ${id}`);
+  console.log(`  Title: ${title}`);
+  console.log(`  Status: ${status}`);
 }

@@ -81,7 +81,11 @@ planfs create task --title "Implement feature X" --priority high
 # With assignee
 planfs create task --title "Fix bug" --status todo --assignee user@example.com
 
-# Epic and milestone creation are planned, but not implemented in the MVP CLI.
+# Create epic
+planfs create epic --title "Phase 6 - Polish" --owner justin
+
+# Create milestone
+planfs create milestone --title "v0.2" --target-date 2026-09-01 --owner justin
 ```
 
 ## Usage
