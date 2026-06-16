@@ -3,13 +3,19 @@
  */
 
 import * as vscode from 'vscode';
-import { loadRepository, getAllEntities } from 'planfs-core';
+import {
+  loadRepository,
+  getAllEntities,
+  loadSavedFilters,
+  searchEntities
+} from 'planfs-core';
 import {
   Decision,
   Entity,
   Epic,
   Milestone,
   Repository,
+  SavedFilter,
   Task,
   TaskStatus
 } from 'planfs-core';
@@ -22,6 +28,8 @@ export class ExplorerProvider implements vscode.TreeDataProvider<TreeItem> {
 
   private repository: Repository | null = null;
   private entities: Entity[] = [];
+  private savedFilters: SavedFilter[] = [];
+  private activeFilter: SavedFilter | null = null;
 
   async refresh(): Promise<void> {
     try {
@@ -31,7 +39,10 @@ export class ExplorerProvider implements vscode.TreeDataProvider<TreeItem> {
         this.entities = [];
       } else {
         this.repository = await loadRepository(workspaceFolder.uri.fsPath);
-        this.entities = getAllEntities(this.repository);
+        this.savedFilters = await loadSavedFilters(workspaceFolder.uri.fsPath);
+        this.entities = this.activeFilter
+          ? searchEntities(this.repository, this.activeFilter.criteria)
+          : getAllEntities(this.repository);
       }
     } catch (error) {
       console.error('Failed to load repository:', error);
@@ -40,6 +51,38 @@ export class ExplorerProvider implements vscode.TreeDataProvider<TreeItem> {
     }
 
     this._onDidChangeTreeData.fire(null);
+  }
+
+  async applySavedFilter(): Promise<void> {
+    if (this.savedFilters.length === 0) {
+      vscode.window.showInformationMessage('No PlanFS saved filters found');
+      return;
+    }
+
+    const selected = await vscode.window.showQuickPick(
+      this.savedFilters.map(filter => ({
+        label: filter.name,
+        description: filter.id,
+        detail: filter.description,
+        filter
+      })),
+      {
+        title: 'Apply PlanFS Saved Filter',
+        placeHolder: 'Select a saved filter'
+      }
+    );
+
+    if (!selected) {
+      return;
+    }
+
+    this.activeFilter = selected.filter;
+    await this.refresh();
+  }
+
+  async clearSavedFilter(): Promise<void> {
+    this.activeFilter = null;
+    await this.refresh();
   }
 
   getTreeItem(element: TreeItem): vscode.TreeItem {
@@ -54,6 +97,11 @@ export class ExplorerProvider implements vscode.TreeDataProvider<TreeItem> {
     if (!element) {
       // Root level - show categories
       return Promise.resolve([
+        new TreeItem(
+          this.activeFilter ? `Filter: ${this.activeFilter.name}` : 'No saved filter',
+          vscode.TreeItemCollapsibleState.None,
+          'filter'
+        ),
         new TreeItem('Tasks', vscode.TreeItemCollapsibleState.Collapsed, 'tasks', 'tasks'),
         new TreeItem('Epics', vscode.TreeItemCollapsibleState.Collapsed, 'epics', 'epics'),
         new TreeItem('Milestones', vscode.TreeItemCollapsibleState.Collapsed, 'milestones', 'milestones'),
@@ -63,7 +111,7 @@ export class ExplorerProvider implements vscode.TreeDataProvider<TreeItem> {
 
     // Show items in category
     if (element.type === 'tasks') {
-      const tasks = Array.from(this.repository.tasks.values()) as Task[];
+      const tasks = this.entities.filter(entity => entity.type === 'task') as Task[];
       return Promise.resolve(
         tasks.map(t => new TreeItem(
           `${t.id}: ${t.title}`,
@@ -76,7 +124,7 @@ export class ExplorerProvider implements vscode.TreeDataProvider<TreeItem> {
     }
 
     if (element.type === 'epics') {
-      const epics = Array.from(this.repository.epics.values()) as Epic[];
+      const epics = this.entities.filter(entity => entity.type === 'epic') as Epic[];
       return Promise.resolve(
         epics.map(e => new TreeItem(
           `${e.id}: ${e.title}`,
@@ -89,7 +137,7 @@ export class ExplorerProvider implements vscode.TreeDataProvider<TreeItem> {
     }
 
     if (element.type === 'milestones') {
-      const milestones = Array.from(this.repository.milestones.values()) as Milestone[];
+      const milestones = this.entities.filter(entity => entity.type === 'milestone') as Milestone[];
       return Promise.resolve(
         milestones.map(m => new TreeItem(
           `${m.id}: ${m.title}`,
@@ -102,7 +150,7 @@ export class ExplorerProvider implements vscode.TreeDataProvider<TreeItem> {
     }
 
     if (element.type === 'decisions') {
-      const decisions = Array.from(this.repository.decisions.values()) as Decision[];
+      const decisions = this.entities.filter(entity => entity.type === 'decision') as Decision[];
       return Promise.resolve(
         decisions.map(d => new TreeItem(
           `${d.id}: ${d.title}`,

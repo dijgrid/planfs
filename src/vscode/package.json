@@ -30,6 +30,8 @@
     "onCommand:planfs.createEpic",
     "onCommand:planfs.createMilestone",
     "onCommand:planfs.openTask",
+    "onCommand:planfs.applySavedFilter",
+    "onCommand:planfs.clearSavedFilter",
     "onCommand:planfs.refreshExplorer"
   ],
   "main": "./dist/extension.js",
@@ -58,6 +60,14 @@
       {
         "command": "planfs.openTask",
         "title": "PlanFS: Open Task"
+      },
+      {
+        "command": "planfs.applySavedFilter",
+        "title": "PlanFS: Apply Saved Filter"
+      },
+      {
+        "command": "planfs.clearSavedFilter",
+        "title": "PlanFS: Clear Saved Filter"
       },
       {
         "command": "planfs.refreshExplorer",

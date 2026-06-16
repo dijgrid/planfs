@@ -1,0 +1,9 @@
+{
+  "id": "open-phase-2",
+  "name": "Open Phase 2 Work",
+  "description": "Open tasks in the Phase 2 enhanced editing epic.",
+  "criteria": {
+    "epic": "EPIC-phase-2-enhanced",
+    "status": "todo"
+  }
+}

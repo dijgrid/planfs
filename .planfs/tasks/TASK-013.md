@@ -1,7 +1,7 @@
 ---
 id: TASK-013
 title: Implement search and saved filters
-status: todo
+status: done
 priority: medium
 assignee: justin
 epic: EPIC-phase-2-enhanced
@@ -20,7 +20,14 @@ Help users find work quickly across large `.planfs` directories.
 
 ## Acceptance Criteria
 
-- [ ] Full-text search covers IDs, titles, metadata, and body content
-- [ ] Filters can target status, assignee, epic, priority, and tags
-- [ ] Saved filter definitions are named and reusable
-- [ ] Explorer and board views can consume filtered results
+- [x] Full-text search covers IDs, titles, metadata, and body content
+- [x] Filters can target status, assignee, epic, priority, and tags
+- [x] Saved filter definitions are named and reusable
+- [x] Explorer and board views can consume filtered results
+
+## Implementation Notes
+
+- Added shared search and filter helpers in `planfs-core`.
+- Saved filters are JSON files under `.planfs/filters/`.
+- The VS Code explorer can apply or clear saved filters from the command palette.
+- The VS Code board can select saved filters and combines them with local text search and sorting.

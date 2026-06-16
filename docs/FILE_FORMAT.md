@@ -324,6 +324,37 @@ Implement JWT-based login endpoint with proper error handling.
 
 ---
 
+## Saved Filters
+
+Saved filters are named reusable query definitions stored as JSON under `.planfs/filters/`. They are not project entities, so they do not use Markdown frontmatter.
+
+```json
+{
+  "id": "open-phase-2",
+  "name": "Open Phase 2 Work",
+  "description": "Open tasks in the Phase 2 enhanced editing epic.",
+  "criteria": {
+    "query": "editor",
+    "status": "todo",
+    "assignee": "justin",
+    "epic": "EPIC-phase-2-enhanced",
+    "priority": "high",
+    "tags": ["vscode", "phase-2"]
+  }
+}
+```
+
+All criteria fields are optional. `query` searches IDs, titles, metadata, and Markdown body content. Structured task filters can target `status`, `assignee`, `epic`, `priority`, and `tags`.
+
+Saved filters are stored in `.planfs/filters/`:
+
+```
+.planfs/filters/open-phase-2.json
+.planfs/filters/my-work.json
+```
+
+---
+
 ## ID Format & Conventions
 
 ### Naming Conventions

@@ -11,6 +11,7 @@ VS Code extension for PlanFS project management.
 - **Open Task Files** - Click to open and edit task files directly
 - **Auto Refresh** - Automatically refreshes explorer when files change
 - **Board Refresh** - Automatically refreshes an open board when files change
+- **Saved Filters** - Apply reusable `.planfs/filters/*.json` definitions in the explorer and board
 - **Status Badges** - Visual indicators for task status
 
 ## Installation
@@ -37,6 +38,8 @@ Click the PlanFS icon in the Activity Bar to see the explorer view showing:
 - **Milestones** - All milestones
 - **Decisions** - All decisions
 
+Use `PlanFS: Apply Saved Filter` to filter the explorer with a named filter from `.planfs/filters/`. Use `PlanFS: Clear Saved Filter` to return to the full repository view.
+
 ### Create Task
 
 1. Press Cmd+Shift+P (or Ctrl+Shift+P on Windows/Linux)
@@ -49,6 +52,7 @@ Click the PlanFS icon in the Activity Bar to see the explorer view showing:
 1. Press Cmd+Shift+P (or Ctrl+Shift+P on Windows/Linux)
 2. Type "PlanFS: Open Board"
 3. Drag cards between status columns to update task files
+4. Select a saved filter to reuse repository-wide filter definitions
 
 ### Open Insights
 
@@ -90,8 +94,7 @@ The extension uses `planfs-core` for all file operations and validation. See the
 ## Known Limitations (MVP)
 
 - Create Epic/Milestone not yet implemented
-- Board filtering and sorting are local to the open webview
-- No git integration (Phase 4)
+- Structured entity editors are still in progress
 
 ## License
 
