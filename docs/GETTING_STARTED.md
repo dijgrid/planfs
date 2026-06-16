@@ -114,6 +114,8 @@ npm run build
 planfs validate
 planfs list tasks
 planfs branch
+planfs git commit-message
+planfs git validate-message "TASK-001: update planning docs"
 planfs create task
 ```
 
@@ -373,6 +375,7 @@ cd examples/basic-project
 planfs validate
 planfs list tasks
 planfs branch
+planfs git commit-message
 ```
 
 ## Troubleshooting

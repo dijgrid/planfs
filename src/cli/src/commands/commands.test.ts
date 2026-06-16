@@ -2,6 +2,7 @@ import { promises as fs } from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { createCommand } from './create';
+import { gitCommand } from './git';
 import { listCommand } from './list';
 import { showCommand } from './show';
 import { validateCommand } from './validate';
@@ -83,5 +84,25 @@ describe('CLI commands', () => {
         errors: []
       }
     });
+  });
+
+  it('validates commit message task references', async () => {
+    await createCommand(rootPath, 'task', {
+      title: 'Wire Git helpers',
+      priority: 'medium'
+    });
+
+    await expect(
+      gitCommand(
+        rootPath,
+        'validate-message',
+        'TASK-001: wire Git helpers',
+        {}
+      )
+    ).resolves.toBe(0);
+
+    await expect(
+      gitCommand(rootPath, 'validate-message', 'TASK-999: unknown task', {})
+    ).resolves.toBe(1);
   });
 });

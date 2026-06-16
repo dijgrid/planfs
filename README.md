@@ -72,6 +72,8 @@ node src/cli/dist/cli.js list tasks
 node src/cli/dist/cli.js list epics
 node src/cli/dist/cli.js show TASK-001
 node src/cli/dist/cli.js branch
+node src/cli/dist/cli.js git commit-message
+node src/cli/dist/cli.js git validate-message "TASK-001: update planning docs"
 node src/cli/dist/cli.js create task --title "Write the next thing"
 ```
 
