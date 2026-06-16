@@ -8,28 +8,68 @@ import {
   validateRepositoryState,
   getAllEntities
 } from 'planfs-core';
+import type { ValidationResult } from 'planfs-core';
 
 export interface ValidateOptions {
   verbose?: boolean;
+  format?: 'text' | 'json';
+}
+
+interface ValidateSummary {
+  entities: number;
+  tasks: number;
+  epics: number;
+  milestones: number;
+  decisions: number;
+}
+
+interface ValidateOutput {
+  valid: boolean;
+  summary: ValidateSummary;
+  result: ValidationResult;
 }
 
 export async function validateCommand(
   rootPath: string,
   options: ValidateOptions
 ): Promise<number> {
+  const format = options.format ?? 'text';
+
   try {
-    console.log('Loading repository...');
+    if (format === 'text') {
+      console.log('Loading repository...');
+    }
+
     const repo = await loadRepository(rootPath);
 
     const entities = getAllEntities(repo);
-    console.log(`Found ${entities.length} entities`);
-    console.log(`  Tasks: ${repo.tasks.size}`);
-    console.log(`  Epics: ${repo.epics.size}`);
-    console.log(`  Milestones: ${repo.milestones.size}`);
-    console.log(`  Decisions: ${repo.decisions.size}`);
+    const summary: ValidateSummary = {
+      entities: entities.length,
+      tasks: repo.tasks.size,
+      epics: repo.epics.size,
+      milestones: repo.milestones.size,
+      decisions: repo.decisions.size
+    };
 
-    console.log('\nValidating...');
+    if (format === 'text') {
+      console.log(`Found ${summary.entities} entities`);
+      console.log(`  Tasks: ${summary.tasks}`);
+      console.log(`  Epics: ${summary.epics}`);
+      console.log(`  Milestones: ${summary.milestones}`);
+      console.log(`  Decisions: ${summary.decisions}`);
+      console.log('\nValidating...');
+    }
+
     const result = validateRepositoryState(repo);
+
+    if (format === 'json') {
+      writeJson({
+        valid: result.valid,
+        summary,
+        result
+      });
+      return result.valid ? 0 : 1;
+    }
 
     if (result.valid) {
       console.log('✓ Repository is valid!');
@@ -63,10 +103,36 @@ export async function validateCommand(
       return 1;
     }
   } catch (error) {
-    console.error(
-      'Error:',
-      error instanceof Error ? error.message : String(error)
-    );
+    const message = error instanceof Error ? error.message : String(error);
+
+    if (format === 'json') {
+      writeJson({
+        valid: false,
+        summary: {
+          entities: 0,
+          tasks: 0,
+          epics: 0,
+          milestones: 0,
+          decisions: 0
+        },
+        result: {
+          valid: false,
+          errors: [
+            {
+              message,
+              severity: 'error'
+            }
+          ]
+        }
+      });
+    } else {
+      console.error('Error:', message);
+    }
+
     return 1;
   }
+}
+
+function writeJson(output: ValidateOutput): void {
+  console.log(JSON.stringify(output, null, 2));
 }

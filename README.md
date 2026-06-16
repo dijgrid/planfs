@@ -121,6 +121,7 @@ For package-specific notes, see [src/vscode/README.md](./src/vscode/README.md).
 - [Getting Started](./docs/GETTING_STARTED.md)
 - [Architecture](./docs/ARCHITECTURE.md)
 - [File Format](./docs/FILE_FORMAT.md)
+- [CI Validation](./docs/CI.md)
 - [VS Code Extension Build and Local Install](./docs/VSCODE_EXTENSION.md)
 - [Implementation Plan](./docs/IMPLEMENTATION_PLAN.md)
 - [Contributing](./docs/CONTRIBUTING.md)

@@ -11,7 +11,7 @@ This document is a human-readable index for the roadmap, not a parallel planning
 | Phase 1 | `EPIC-mvp-core` | `MILESTONE-v0-1` | Core parser, validation, VS Code explorer, CLI, docs, examples |
 | Phase 2 | `EPIC-phase-2-enhanced` | `MILESTONE-phase-2` | Kanban board, structured editors, search, saved filters, Git helpers |
 | Phase 3 | `EPIC-phase-3-visualization` | `MILESTONE-phase-3` | Dependency graph, roadmap timeline, reporting, exports |
-| Phase 4 | `EPIC-phase-4-collaboration` | `MILESTONE-phase-4` | Pull request integrations, CI validation, branch-aware planning, team workflows |
+| Phase 4 | `EPIC-phase-4-collaboration` | `MILESTONE-phase-4` | CI validation, branch-aware planning, pull request integrations, team workflows |
 | Phase 5 | `EPIC-phase-5-advanced` | `MILESTONE-phase-5` | Custom fields, templates, bulk operations, performance, risks, requirements |
 
 ## Phase 1 Status
@@ -30,6 +30,24 @@ Completed Phase 1 task records:
 - `TASK-008` - Add CLI task creation
 - `TASK-009` - Add Phase 1 test coverage
 - `TASK-010` - Publish MVP documentation and examples
+
+## Phase 4 Implementation Sequence
+
+Phase 4 should build collaboration features from the inside out. The first contract is a deterministic validation command that can run in CI without editor or provider dependencies. Branch and pull request features can then consume the same validated PlanFS data model.
+
+Recommended order:
+
+1. `TASK-020` - Add CI validation workflows
+2. `TASK-021` - Add branch-aware planning views
+3. `TASK-019` - Add pull request integrations
+4. `TASK-022` - Add team discussion and notification features
+
+The first Phase 4 slice should provide:
+
+- `planfs validate --format json` for machine-readable automation output
+- A GitHub Actions workflow that blocks invalid PlanFS changes
+- Copyable GitLab CI and Azure Pipelines examples
+- Documentation describing how CI should consume validation results
 
 ## Working With The Plan
 

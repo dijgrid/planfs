@@ -24,10 +24,17 @@ export async function main(): Promise<void> {
             type: 'boolean',
             description: 'Show detailed output',
             default: false
+          })
+          .option('format', {
+            type: 'string',
+            choices: ['text', 'json'],
+            default: 'text',
+            description: 'Output format'
           }),
       async (args) => {
         const exitCode = await validateCommand(process.cwd(), {
-          verbose: args.verbose as boolean
+          verbose: args.verbose as boolean,
+          format: args.format as 'text' | 'json'
         });
         process.exit(exitCode);
       }

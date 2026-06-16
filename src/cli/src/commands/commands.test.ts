@@ -55,4 +55,33 @@ describe('CLI commands', () => {
       'Error: creating epic entities is not supported yet'
     );
   });
+
+  it('emits machine-readable validation output', async () => {
+    await createCommand(rootPath, 'task', {
+      title: 'Check CI output',
+      priority: 'medium'
+    });
+
+    await expect(
+      validateCommand(rootPath, { format: 'json' })
+    ).resolves.toBe(0);
+
+    const lastLog = logSpy.mock.calls[logSpy.mock.calls.length - 1]?.[0];
+    const output = JSON.parse(lastLog as string);
+
+    expect(output).toMatchObject({
+      valid: true,
+      summary: {
+        entities: 1,
+        tasks: 1,
+        epics: 0,
+        milestones: 0,
+        decisions: 0
+      },
+      result: {
+        valid: true,
+        errors: []
+      }
+    });
+  });
 });
