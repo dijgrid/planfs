@@ -10,6 +10,7 @@ import { listCommand } from './commands/list';
 import { showCommand } from './commands/show';
 import { createCommand } from './commands/create';
 import { branchCommand } from './commands/branch';
+import { gitCommand, GitAction } from './commands/git';
 import pkg from '../package.json';
 
 export async function main(): Promise<void> {
@@ -60,6 +61,45 @@ export async function main(): Promise<void> {
           base: args.base as string | undefined,
           format: args.format as 'text' | 'json'
         });
+        process.exit(exitCode);
+      }
+    )
+    .command(
+      'git <action> [message..]',
+      'Use Git-aware PlanFS helpers',
+      (y) =>
+        y
+          .positional('action', {
+            describe: 'Git helper to run',
+            choices: ['commit-message', 'validate-message']
+          })
+          .positional('message', {
+            describe: 'Commit message to validate',
+            type: 'string'
+          })
+          .option('base', {
+            type: 'string',
+            description: 'Base branch or ref for commit message suggestions'
+          })
+          .option('format', {
+            type: 'string',
+            choices: ['text', 'json'],
+            default: 'text',
+            description: 'Output format'
+          }),
+      async (args) => {
+        const message = Array.isArray(args.message)
+          ? args.message.join(' ')
+          : args.message as string | undefined;
+        const exitCode = await gitCommand(
+          process.cwd(),
+          args.action as GitAction,
+          message,
+          {
+            base: args.base as string | undefined,
+            format: args.format as 'text' | 'json'
+          }
+        );
         process.exit(exitCode);
       }
     )

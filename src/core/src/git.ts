@@ -70,6 +70,19 @@ export interface BranchPlanningContext {
   pullRequestPreview: BranchPullRequestPreview;
 }
 
+export interface CommitMessageSuggestion {
+  message: string;
+  taskIds: string[];
+  source: 'related-task' | 'branch-name';
+}
+
+export interface CommitMessageValidationResult {
+  valid: boolean;
+  taskIds: string[];
+  missingTaskIds: string[];
+  warnings: string[];
+}
+
 export async function getBranchPlanningContext(
   rootPath: string,
   options: BranchPlanningOptions = {}
@@ -161,6 +174,49 @@ export async function getBranchPlanningContext(
 
 export function extractTaskIds(value: string): string[] {
   return unique(value.match(/TASK-\d+/gi)?.map(match => match.toUpperCase()) ?? []);
+}
+
+export async function suggestCommitMessage(
+  rootPath: string,
+  options: BranchPlanningOptions = {}
+): Promise<CommitMessageSuggestion> {
+  const repository = await loadRepository(rootPath);
+  const context = await getBranchPlanningContext(rootPath, options);
+  const primaryTaskId = context.relatedTaskIds[0];
+
+  if (primaryTaskId) {
+    const task = repository.tasks.get(primaryTaskId);
+    return {
+      message: `${primaryTaskId}: ${task?.title ?? branchToTitle(context.currentBranch)}`,
+      taskIds: context.relatedTaskIds,
+      source: 'related-task'
+    };
+  }
+
+  return {
+    message: branchToTitle(context.currentBranch),
+    taskIds: [],
+    source: 'branch-name'
+  };
+}
+
+export async function validateCommitMessage(
+  rootPath: string,
+  message: string
+): Promise<CommitMessageValidationResult> {
+  const repository = await loadRepository(rootPath);
+  const taskIds = extractTaskIds(message);
+  const missingTaskIds = taskIds.filter(id => !repository.tasks.has(id));
+  const warnings = taskIds.length === 0
+    ? ['Commit message does not reference a PlanFS task ID.']
+    : [];
+
+  return {
+    valid: missingTaskIds.length === 0,
+    taskIds,
+    missingTaskIds,
+    warnings
+  };
 }
 
 function parseChangedFiles(output: string): BranchChangedFile[] {
@@ -360,6 +416,16 @@ function createPreviewSummary(
   }
 
   return parts.join(', ');
+}
+
+function branchToTitle(branch: string): string {
+  return branch
+    .replace(/^refs\/heads\//, '')
+    .replace(/^(feature|fix|bugfix|hotfix|chore|docs|task)\//, '')
+    .replace(/TASK-\d+/gi, '')
+    .replace(/[-_]+/g, ' ')
+    .trim()
+    .replace(/\s+/g, ' ') || branch;
 }
 
 function unique(values: string[]): string[] {

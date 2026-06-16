@@ -1,7 +1,7 @@
 ---
 id: TASK-014
 title: Add Git-aware planning helpers
-status: todo
+status: done
 priority: medium
 assignee: justin
 epic: EPIC-phase-2-enhanced
@@ -19,7 +19,14 @@ Start connecting planning artifacts to branch and commit workflows.
 
 ## Acceptance Criteria
 
-- [ ] Extract task IDs from branch names
-- [ ] Show tasks related to the current branch
-- [ ] Suggest task IDs for commit messages
-- [ ] Validate commit message task references
+- [x] Extract task IDs from branch names
+- [x] Show tasks related to the current branch
+- [x] Suggest task IDs for commit messages
+- [x] Validate commit message task references
+
+## Implementation Notes
+
+- Branch context is available through `planfs branch` and the VS Code Insights Branch tab.
+- Commit message suggestions are available through `planfs git commit-message`.
+- Commit message reference validation is available through `planfs git validate-message`.
+- Provider-backed pull request integration remains tracked by Phase 4 tasks.

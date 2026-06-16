@@ -52,6 +52,7 @@ The first Phase 4 slice should provide:
 The second Phase 4 slice adds branch-aware planning:
 
 - `planfs branch` for local branch planning context
+- `planfs git commit-message` and `planfs git validate-message` for commit workflows
 - Task IDs extracted from branch names and changed PlanFS files
 - Added, modified, and deleted task summaries against a base ref
 - PlanFS conflict detection with simple merge-resolution guidance

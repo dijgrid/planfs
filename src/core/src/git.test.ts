@@ -3,7 +3,12 @@ import { promises as fs } from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { promisify } from 'util';
-import { getBranchPlanningContext, extractTaskIds } from './git';
+import {
+  getBranchPlanningContext,
+  extractTaskIds,
+  suggestCommitMessage,
+  validateCommitMessage
+} from './git';
 
 const execFileAsync = promisify(execFile);
 
@@ -56,6 +61,46 @@ describe('git planning helpers', () => {
     expect(context.relatedTaskIds).toEqual(['TASK-003', 'TASK-002', 'TASK-001']);
     expect(context.pullRequestPreview.summary).toContain('1 added task');
     expect(context.pullRequestPreview.summary).toContain('1 modified task');
+  });
+
+  it('suggests a commit message from related branch tasks', async () => {
+    const suggestion = await suggestCommitMessage(rootPath, {
+      baseRef: 'main'
+    });
+
+    expect(suggestion).toEqual({
+      message: 'TASK-003: branch context',
+      taskIds: ['TASK-003', 'TASK-002', 'TASK-001'],
+      source: 'related-task'
+    });
+  });
+
+  it('validates commit message task references', async () => {
+    await expect(
+      validateCommitMessage(rootPath, 'TASK-001: update the base task')
+    ).resolves.toEqual({
+      valid: true,
+      taskIds: ['TASK-001'],
+      missingTaskIds: [],
+      warnings: []
+    });
+
+    await expect(
+      validateCommitMessage(rootPath, 'TASK-999: missing reference')
+    ).resolves.toMatchObject({
+      valid: false,
+      taskIds: ['TASK-999'],
+      missingTaskIds: ['TASK-999']
+    });
+
+    await expect(
+      validateCommitMessage(rootPath, 'update planning docs')
+    ).resolves.toEqual({
+      valid: true,
+      taskIds: [],
+      missingTaskIds: [],
+      warnings: ['Commit message does not reference a PlanFS task ID.']
+    });
   });
 
   async function writeTask(
