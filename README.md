@@ -12,7 +12,7 @@ It currently provides:
 
 - `planfs-core`: parsing, loading, serialization, and validation
 - `planfs-cli`: command-line validation and querying
-- `planfs-vscode`: VS Code explorer, board, insights views, and task creation commands
+- `planfs-vscode`: VS Code explorer, board, insights views, structured editing, and task creation commands
 - `planfs-schema`: shared entity schemas
 - `.planfs/`: this repository's own roadmap represented as PlanFS data
 

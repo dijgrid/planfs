@@ -30,6 +30,7 @@
     "onCommand:planfs.createEpic",
     "onCommand:planfs.createMilestone",
     "onCommand:planfs.openTask",
+    "onCommand:planfs.openEditor",
     "onCommand:planfs.applySavedFilter",
     "onCommand:planfs.clearSavedFilter",
     "onCommand:planfs.refreshExplorer"
@@ -62,6 +63,10 @@
         "title": "PlanFS: Open Task"
       },
       {
+        "command": "planfs.openEditor",
+        "title": "PlanFS: Open Structured Editor"
+      },
+      {
         "command": "planfs.applySavedFilter",
         "title": "PlanFS: Apply Saved Filter"
       },
@@ -80,6 +85,15 @@
           "id": "planfs-explorer",
           "name": "PlanFS Explorer",
           "contextualTitle": "Project Planning"
+        }
+      ]
+    },
+    "menus": {
+      "view/item/context": [
+        {
+          "command": "planfs.openEditor",
+          "when": "view == planfs-explorer && viewItem =~ /^(task|epic|milestone)$/",
+          "group": "inline"
         }
       ]
     },
