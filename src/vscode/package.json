@@ -3,24 +3,41 @@
   "displayName": "PlanFS",
   "description": "Git-native project management for VS Code",
   "version": "0.1.0",
-  "publisher": "planfs",
+  "publisher": "dijgrid",
   "license": "MIT",
+  "icon": "resources/icon.png",
+  "preview": true,
   "repository": {
     "type": "git",
     "url": "https://github.com/dijgrid/planfs.git",
     "directory": "src/vscode"
   },
+  "homepage": "https://github.com/dijgrid/planfs#readme",
+  "bugs": {
+    "url": "https://github.com/dijgrid/planfs/issues"
+  },
+  "galleryBanner": {
+    "color": "#0B1220",
+    "theme": "dark"
+  },
   "engines": {
     "vscode": "^1.60.0"
   },
   "categories": [
-    "Other"
+    "Other",
+    "Visualization"
   ],
   "keywords": [
+    "planfs",
     "planning",
     "project-management",
     "git",
-    "tasks"
+    "tasks",
+    "kanban",
+    "roadmap",
+    "markdown",
+    "workflow",
+    "developer-tools"
   ],
   "activationEvents": [
     "workspaceContains:.planfs",
