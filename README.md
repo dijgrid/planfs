@@ -74,6 +74,8 @@ node src/cli/dist/cli.js show TASK-001
 node src/cli/dist/cli.js branch
 node src/cli/dist/cli.js git commit-message
 node src/cli/dist/cli.js git validate-message "TASK-001: update planning docs"
+node src/cli/dist/cli.js pr summary
+node src/cli/dist/cli.js pr providers --format json
 node src/cli/dist/cli.js list tasks --status todo --epic EPIC-phase-2-enhanced
 node src/cli/dist/cli.js create task --title "Write the next thing"
 node src/cli/dist/cli.js create epic --title "Phase 6 - Polish"

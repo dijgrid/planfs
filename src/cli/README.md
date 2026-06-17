@@ -10,6 +10,7 @@ Command-line interface for PlanFS.
 - **List** - Query entities with filtering
 - **Show** - Display entity details
 - **Create** - Create new entities
+- **PR** - Generate pull request planning context
 
 ## Installation
 
@@ -86,6 +87,16 @@ planfs create epic --title "Phase 6 - Polish" --owner justin
 
 # Create milestone
 planfs create milestone --title "v0.2" --target-date 2026-09-01 --owner justin
+```
+
+### Pull Requests
+
+Generate pull request planning context from the current branch:
+
+```bash
+planfs pr summary
+planfs pr summary --format json
+planfs pr providers --format json
 ```
 
 ## Usage

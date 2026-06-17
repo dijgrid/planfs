@@ -1,7 +1,7 @@
 ---
 id: TASK-019
 title: Add pull request integrations
-status: todo
+status: done
 priority: high
 assignee: justin
 epic: EPIC-phase-4-collaboration
@@ -21,7 +21,14 @@ Link code review workflows to planning artifacts.
 
 ## Acceptance Criteria
 
-- [ ] Branch names are scanned for task IDs
-- [ ] PR templates mention related tasks
-- [ ] PR status appears in task views
-- [ ] GitHub, GitLab, and Azure DevOps are supported behind clear provider boundaries
+- [x] Branch names are scanned for task IDs
+- [x] PR templates mention related tasks
+- [x] PR status appears in task views
+- [x] GitHub, GitLab, and Azure DevOps are supported behind clear provider boundaries
+
+## Implementation Notes
+
+- Added `planfs pr summary` to generate Markdown or JSON planning context for pull requests.
+- Added `.github/pull_request_template.md` with PlanFS related-task prompts.
+- Task detail views show linked PR references detected from task links.
+- Provider boundaries are explicit for GitHub, GitLab, and Azure DevOps; hosted API adapters can build on those boundaries later.
