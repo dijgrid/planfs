@@ -10,7 +10,8 @@ import {
   readFile,
   writeFile,
   planfsDirectoryExists,
-  ensurePlanfsStructure
+  ensurePlanfsStructure,
+  PlanfsInitializationResult
 } from './files';
 import { loadEntity, getFilenameFromId, getEntityDirectory } from './loader';
 import { validateAll } from './validator';
@@ -213,8 +214,10 @@ export function getTasksByEpic(
 /**
  * Initialize a new repository
  */
-export async function initializeRepository(rootPath: string): Promise<void> {
-  await ensurePlanfsStructure(rootPath);
+export async function initializeRepository(
+  rootPath: string
+): Promise<PlanfsInitializationResult> {
+  return ensurePlanfsStructure(rootPath);
 }
 
 /**

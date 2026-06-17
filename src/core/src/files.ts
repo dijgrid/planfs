@@ -12,6 +12,21 @@ export interface DiscoveredFile {
   type: 'task' | 'epic' | 'milestone' | 'decision';
 }
 
+export interface PlanfsInitializationResult {
+  root: string;
+  created: string[];
+  existing: string[];
+}
+
+const PLANFS_DIRECTORIES = [
+  '.planfs',
+  '.planfs/tasks',
+  '.planfs/epics',
+  '.planfs/milestones',
+  '.planfs/decisions',
+  '.planfs/filters'
+];
+
 /**
  * Discover all PlanFS files in a repository
  */
@@ -83,16 +98,33 @@ export async function planfsDirectoryExists(rootPath: string): Promise<boolean> 
 /**
  * Ensure .planfs directory structure exists
  */
-export async function ensurePlanfsStructure(rootPath: string): Promise<void> {
-  const dirs = [
-    path.join(rootPath, '.planfs'),
-    path.join(rootPath, '.planfs', 'tasks'),
-    path.join(rootPath, '.planfs', 'epics'),
-    path.join(rootPath, '.planfs', 'milestones'),
-    path.join(rootPath, '.planfs', 'decisions')
-  ];
+export async function ensurePlanfsStructure(
+  rootPath: string
+): Promise<PlanfsInitializationResult> {
+  const result: PlanfsInitializationResult = {
+    root: path.join(rootPath, '.planfs'),
+    created: [],
+    existing: []
+  };
 
-  for (const dir of dirs) {
-    await fs.mkdir(dir, { recursive: true });
+  for (const dir of PLANFS_DIRECTORIES) {
+    const absolutePath = path.join(rootPath, dir);
+    if (await directoryExists(absolutePath)) {
+      result.existing.push(dir);
+    } else {
+      await fs.mkdir(absolutePath, { recursive: true });
+      result.created.push(dir);
+    }
+  }
+
+  return result;
+}
+
+async function directoryExists(dir: string): Promise<boolean> {
+  try {
+    const stats = await fs.stat(dir);
+    return stats.isDirectory();
+  } catch {
+    return false;
   }
 }

@@ -2,6 +2,9 @@
  * Tests for repository module
  */
 
+import { promises as fs } from 'fs';
+import * as os from 'os';
+import * as path from 'path';
 import {
   generateEntityContent,
   getNextTaskId,
@@ -10,7 +13,8 @@ import {
   createTaskTemplate,
   createEpicTemplate,
   createMilestoneTemplate,
-  getAllEntities
+  getAllEntities,
+  initializeRepository
 } from '../src/repository';
 import { Task, Epic, Milestone, Repository } from '../src/types';
 
@@ -338,6 +342,52 @@ describe('Repository', () => {
       expect(entities).toHaveLength(2);
       expect(entities[0].id).toBe('TASK-001');
       expect(entities[1].id).toBe('EPIC-001');
+    });
+  });
+
+  describe('initializeRepository', () => {
+    let rootPath: string;
+
+    beforeEach(async () => {
+      rootPath = await fs.mkdtemp(path.join(os.tmpdir(), 'planfs-init-'));
+    });
+
+    afterEach(async () => {
+      await fs.rm(rootPath, { recursive: true, force: true });
+    });
+
+    it('should create the standard PlanFS directory structure', async () => {
+      const result = await initializeRepository(rootPath);
+
+      expect(result.created).toEqual([
+        '.planfs',
+        '.planfs/tasks',
+        '.planfs/epics',
+        '.planfs/milestones',
+        '.planfs/decisions',
+        '.planfs/filters'
+      ]);
+
+      for (const dir of result.created) {
+        await expect(
+          fs.stat(path.join(rootPath, dir))
+        ).resolves.toMatchObject({ isDirectory: expect.any(Function) });
+      }
+    });
+
+    it('should be idempotent', async () => {
+      await initializeRepository(rootPath);
+      const result = await initializeRepository(rootPath);
+
+      expect(result.created).toEqual([]);
+      expect(result.existing).toEqual([
+        '.planfs',
+        '.planfs/tasks',
+        '.planfs/epics',
+        '.planfs/milestones',
+        '.planfs/decisions',
+        '.planfs/filters'
+      ]);
     });
   });
 });

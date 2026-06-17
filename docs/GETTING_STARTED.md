@@ -111,6 +111,7 @@ npm run build
 
 **Run commands:**
 ```bash
+planfs init
 planfs validate
 planfs list tasks
 planfs branch
@@ -143,10 +144,10 @@ cd my-project
 git init
 ```
 
-### 2. Create .planfs Directory
+### 2. Initialize PlanFS
 
 ```bash
-mkdir -p .planfs/{tasks,epics,milestones,decisions}
+planfs init
 ```
 
 ### 3. Create First Task

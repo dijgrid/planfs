@@ -3,6 +3,7 @@ import * as os from 'os';
 import * as path from 'path';
 import { createCommand } from './create';
 import { gitCommand } from './git';
+import { initCommand } from './init';
 import { listCommand } from './list';
 import { pullRequestCommand } from './pr';
 import { showCommand } from './show';
@@ -46,6 +47,30 @@ describe('CLI commands', () => {
     expect(created).toContain('id: TASK-001');
     expect(created).toContain('priority: high');
     expect(logSpy).toHaveBeenCalledWith('✓ Created task: TASK-001');
+  });
+
+  it('initializes repository structure idempotently', async () => {
+    await expect(initCommand(rootPath, { format: 'json' })).resolves.toBe(0);
+
+    const output = JSON.parse(
+      logSpy.mock.calls[logSpy.mock.calls.length - 1]?.[0] as string
+    );
+
+    expect(output.created).toEqual([
+      '.planfs',
+      '.planfs/tasks',
+      '.planfs/epics',
+      '.planfs/milestones',
+      '.planfs/decisions',
+      '.planfs/filters'
+    ]);
+
+    await expect(initCommand(rootPath, { format: 'json' })).resolves.toBe(0);
+    const secondOutput = JSON.parse(
+      logSpy.mock.calls[logSpy.mock.calls.length - 1]?.[0] as string
+    );
+    expect(secondOutput.created).toEqual([]);
+    expect(secondOutput.existing).toContain('.planfs/filters');
   });
 
   it('creates, lists, shows, and validates epics and milestones', async () => {
