@@ -7,6 +7,7 @@ Command-line interface for PlanFS.
 `planfs-cli` provides command-line tools for managing PlanFS repositories:
 
 - **Validate** - Check repository integrity
+- **Init** - Create repository structure
 - **List** - Query entities with filtering
 - **Show** - Display entity details
 - **Create** - Create new entities
@@ -26,6 +27,15 @@ npx planfs --help
 ```
 
 ## Commands
+
+### Init
+
+Initialize the repository structure:
+
+```bash
+planfs init
+planfs init --format json
+```
 
 ### Validate
 

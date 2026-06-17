@@ -67,6 +67,7 @@ Generated `dist/` directories are build output and should not be committed.
 After building, use the CLI against a repository containing `.planfs/`:
 
 ```sh
+node src/cli/dist/cli.js init
 node src/cli/dist/cli.js validate
 node src/cli/dist/cli.js list tasks
 node src/cli/dist/cli.js list epics
@@ -113,7 +114,7 @@ Then load and test the extension:
 3. Select `Run PlanFS Extension`.
 4. Press `F5` to launch an Extension Development Host.
 5. In the Extension Development Host, open this repository or another folder containing `.planfs/`.
-6. Use the command palette to run `PlanFS: Open Board`, `PlanFS: Open Insights`, `PlanFS: Create Task`, or `PlanFS: Refresh Explorer`.
+6. Use the command palette to run `PlanFS: Initialize Repository`, `PlanFS: Open Board`, `PlanFS: Open Insights`, `PlanFS: Create Task`, or `PlanFS: Refresh Explorer`.
 7. Check the PlanFS activity bar view for tasks, epics, milestones, and decisions.
 
 After changing TypeScript, rebuild before relaunching:

@@ -7,6 +7,7 @@ import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 import type { PullRequestProviderId } from 'planfs-core';
 import { validateCommand } from './commands/validate';
+import { initCommand } from './commands/init';
 import { listCommand } from './commands/list';
 import { showCommand } from './commands/show';
 import { createCommand } from './commands/create';
@@ -18,6 +19,23 @@ import pkg from '../package.json';
 export async function main(): Promise<void> {
   await yargs(hideBin(process.argv))
     .version(pkg.version)
+    .command(
+      'init',
+      'Initialize PlanFS repository structure',
+      (y) =>
+        y.option('format', {
+          type: 'string',
+          choices: ['text', 'json'],
+          default: 'text',
+          description: 'Output format'
+        }),
+      async (args) => {
+        const exitCode = await initCommand(process.cwd(), {
+          format: args.format as 'text' | 'json'
+        });
+        process.exit(exitCode);
+      }
+    )
     .command(
       'validate',
       'Validate the PlanFS repository',

@@ -5,6 +5,7 @@ VS Code extension for PlanFS project management.
 ## Features
 
 - **PlanFS Explorer** - Tree view showing all tasks, epics, milestones, and decisions
+- **Initialize Repository** - Create the standard `.planfs` directory structure
 - **Kanban Board** - Webview board for dragging tasks between statuses
 - **Insights** - Dependency graph, timeline, and reports
 - **Create Tasks** - Quick command to create new tasks
@@ -40,6 +41,8 @@ Click the PlanFS icon in the Activity Bar to see the explorer view showing:
 - **Decisions** - All decisions
 
 Use `PlanFS: Apply Saved Filter` to filter the explorer with a named filter from `.planfs/filters/`. Use `PlanFS: Clear Saved Filter` to return to the full repository view.
+
+Use `PlanFS: Initialize Repository` to create the standard `.planfs` directory structure in the current workspace.
 
 Use `PlanFS: Open Structured Editor` to edit tasks, epics, and milestones through forms. The editor keeps Markdown body content editable, offers assisted inputs for related PlanFS entities, and blocks invalid saves with validation feedback.
 
