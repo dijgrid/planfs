@@ -84,6 +84,33 @@ code --install-extension dist/planfs-vscode-0.1.0.vsix --force
 
 Reload VS Code after reinstalling.
 
+## Marketplace Deployment
+
+Before publishing, confirm the Marketplace publisher account matches the `publisher` value in `src/vscode/package.json`. The extension is currently configured for the `dijgrid` publisher. If the Marketplace publisher uses a different ID, update `publisher` before packaging.
+
+Marketplace readiness checklist:
+
+- `src/vscode/package.json` includes `publisher`, `repository`, `homepage`, `bugs`, `categories`, `keywords`, `galleryBanner`, and a non-SVG `icon`.
+- `src/vscode/resources/icon.png` is the 256px marketplace icon.
+- README links use HTTPS URLs that will work from the Marketplace.
+- `dist/` is ignored and generated VSIX files are not committed.
+- `npm run lint`, `npm run build --workspaces`, and `npm test --workspaces` pass.
+
+Build the same staged package used for local installs:
+
+```sh
+npm run package:vscode
+```
+
+Publish from the staging directory:
+
+```sh
+cd dist/vscode-package
+npx @vscode/vsce publish
+```
+
+Use `npx @vscode/vsce login <publisher>` first if this machine is not authenticated. VS Code's publishing guidance is moving away from long-lived personal access tokens for automated publishing, so prefer the current Microsoft Entra ID or workload identity flow for CI publishing.
+
 ## Troubleshooting
 
 If packaging fails because `@vscode/vsce` is missing, install it through `npx` as shown above or install it globally:

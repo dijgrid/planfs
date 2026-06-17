@@ -5,3 +5,4 @@ jest.config.js
 .vscode-test/**
 node_modules/**/.bin/**
 node_modules/**/*.map
+resources/icon-source.png
