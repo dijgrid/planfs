@@ -4,6 +4,7 @@ import * as path from 'path';
 import { createCommand } from './create';
 import { gitCommand } from './git';
 import { listCommand } from './list';
+import { pullRequestCommand } from './pr';
 import { showCommand } from './show';
 import { validateCommand } from './validate';
 
@@ -161,5 +162,49 @@ describe('CLI commands', () => {
     await expect(
       gitCommand(rootPath, 'validate-message', 'TASK-999: unknown task', {})
     ).resolves.toBe(1);
+  });
+
+  it('lists pull request provider boundaries', async () => {
+    await expect(
+      pullRequestCommand(rootPath, 'providers', { format: 'json' })
+    ).resolves.toBe(0);
+
+    const output = JSON.parse(
+      logSpy.mock.calls[logSpy.mock.calls.length - 1]?.[0] as string
+    );
+    expect(output.map((provider: { id: string }) => provider.id)).toEqual([
+      'github',
+      'gitlab',
+      'azure-devops'
+    ]);
+  });
+
+  it('shows pull request references on task details', async () => {
+    await fs.mkdir(path.join(rootPath, '.planfs', 'tasks'), { recursive: true });
+    await fs.mkdir(path.join(rootPath, '.planfs', 'epics'), { recursive: true });
+    await fs.mkdir(path.join(rootPath, '.planfs', 'milestones'), { recursive: true });
+    await fs.mkdir(path.join(rootPath, '.planfs', 'decisions'), { recursive: true });
+    await fs.writeFile(
+      path.join(rootPath, '.planfs', 'tasks', 'TASK-001.md'),
+      [
+        '---',
+        'id: TASK-001',
+        'title: Linked PR task',
+        'status: todo',
+        'links:',
+        '  pr: https://github.com/dijgrid/planfs/pull/5',
+        '---',
+        '',
+        'Task with a linked PR.',
+        ''
+      ].join('\n'),
+      'utf-8'
+    );
+
+    await expect(showCommand(rootPath, 'TASK-001', {})).resolves.toBe(0);
+    expect(logSpy).toHaveBeenCalledWith('Pull Requests:');
+    expect(logSpy).toHaveBeenCalledWith(
+      '  - github: linked (https://github.com/dijgrid/planfs/pull/5)'
+    );
   });
 });

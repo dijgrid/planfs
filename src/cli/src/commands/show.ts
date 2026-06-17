@@ -3,7 +3,8 @@
  * Display details for a specific entity
  */
 
-import { loadRepository } from 'planfs-core';
+import { getTaskPullRequestRefs, loadRepository } from 'planfs-core';
+import type { Task } from 'planfs-core';
 
 export interface ShowOptions {
   format?: 'pretty' | 'json';
@@ -43,7 +44,7 @@ export async function showCommand(
 
       // Type-specific details
       if (entity.type === 'task') {
-        const task = entity as any;
+        const task = entity as Task;
         if (task.priority) console.log(`Priority: ${task.priority}`);
         if (task.assignee) console.log(`Assignee: ${task.assignee}`);
         if (task.epic) console.log(`Epic: ${task.epic}`);
@@ -51,6 +52,13 @@ export async function showCommand(
         if (task.dueDate) console.log(`Due Date: ${task.dueDate}`);
         if (task.dependsOn && task.dependsOn.length > 0) {
           console.log(`Depends on: ${task.dependsOn.join(', ')}`);
+        }
+        const pullRequests = getTaskPullRequestRefs(task);
+        if (pullRequests.length > 0) {
+          console.log('Pull Requests:');
+          for (const pr of pullRequests) {
+            console.log(`  - ${pr.provider}: ${pr.status} (${pr.url})`);
+          }
         }
       } else if (entity.type === 'milestone') {
         const milestone = entity as any;

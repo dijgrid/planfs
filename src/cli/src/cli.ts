@@ -5,12 +5,14 @@
 
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
+import type { PullRequestProviderId } from 'planfs-core';
 import { validateCommand } from './commands/validate';
 import { listCommand } from './commands/list';
 import { showCommand } from './commands/show';
 import { createCommand } from './commands/create';
 import { branchCommand } from './commands/branch';
 import { gitCommand, GitAction } from './commands/git';
+import { pullRequestCommand, PullRequestAction } from './commands/pr';
 import pkg from '../package.json';
 
 export async function main(): Promise<void> {
@@ -98,6 +100,44 @@ export async function main(): Promise<void> {
           {
             base: args.base as string | undefined,
             format: args.format as 'text' | 'json'
+          }
+        );
+        process.exit(exitCode);
+      }
+    )
+    .command(
+      'pr <action>',
+      'Generate pull request planning context',
+      (y) =>
+        y
+          .positional('action', {
+            describe: 'Pull request helper to run',
+            choices: ['summary', 'providers']
+          })
+          .option('base', {
+            type: 'string',
+            description: 'Base branch or ref to compare against'
+          })
+          .option('provider', {
+            type: 'string',
+            choices: ['github', 'gitlab', 'azure-devops'],
+            default: 'github',
+            description: 'Pull request provider'
+          })
+          .option('format', {
+            type: 'string',
+            choices: ['markdown', 'json'],
+            default: 'markdown',
+            description: 'Output format'
+          }),
+      async (args) => {
+        const exitCode = await pullRequestCommand(
+          process.cwd(),
+          args.action as PullRequestAction,
+          {
+            base: args.base as string | undefined,
+            provider: args.provider as PullRequestProviderId,
+            format: args.format as 'markdown' | 'json'
           }
         );
         process.exit(exitCode);

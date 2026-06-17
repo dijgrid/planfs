@@ -11,3 +11,4 @@ export * from './repository';
 export * from './graph';
 export * from './git';
 export * from './search';
+export * from './pull-request';
