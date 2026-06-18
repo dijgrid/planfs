@@ -132,7 +132,7 @@ For package-specific notes, see [src/vscode/README.md](./src/vscode/README.md).
 - [File Format](./docs/FILE_FORMAT.md)
 - [CI Validation](./docs/CI.md)
 - [VS Code Extension Build and Local Install](./docs/VSCODE_EXTENSION.md)
-- [Implementation Plan](./docs/IMPLEMENTATION_PLAN.md)
+- [Release Process](./docs/RELEASE.md)
 - [Contributing](./docs/CONTRIBUTING.md)
 - [Changelog](./docs/CHANGELOG.md)
 

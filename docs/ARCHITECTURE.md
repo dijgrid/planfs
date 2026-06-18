@@ -1,378 +1,224 @@
 # Architecture
 
-## Overview
+PlanFS is a TypeScript monorepo for Git-native project planning. Planning data lives in Markdown files with YAML frontmatter under `.planfs/`; the library, CLI, and VS Code extension all operate on that same file format.
 
-PlanFS is organized into four main components, each with clear responsibilities. The system follows a layered architecture where core logic is separated from UI concerns, allowing multiple interfaces to share the same data model.
+The main architectural rule is simple: PlanFS features should preserve clean, human-editable files. UI and CLI workflows are conveniences over the repository format, not a separate source of truth.
 
-```
-┌─────────────────────────────────────────────────────┐
-│              VS Code Extension (UI)                  │
-│         planfs-vscode                               │
-└──────────────┬──────────────────────────────────────┘
-                 │
-┌────────────────┴──────────────────────────────────────┐
-│              VS Code API / File System                │
-└──────────────┬──────────────────────────────────────┘
-                 │
-┌────────────────┴──────────────────────────────────────┐
-│          Command-Line Interface                       │
-│         planfs-cli                                   │
-└──────────────┬──────────────────────────────────────┘
-                 │
-┌────────────────┴──────────────────────────────────────┐
-│          Core Library & Domain Model                  │
-│         planfs-core                                  │
-├─────────────────────────────────────────────────────┤
-│  • File Discovery & Loading                          │
-│  • YAML Frontmatter Parsing                          │
-│  • Schema Validation                                 │
-│  • Dependency Resolution                             │
-│  • Entity Model                                      │
-└────────────────┬──────────────────────────────────────┘
-                 │
-┌────────────────┴──────────────────────────────────────┐
-│          Schema Definitions                           │
-│         planfs-schema                                │
-├─────────────────────────────────────────────────────┤
-│  • Task Schema v1.0                                  │
-│  • Epic Schema v1.0                                  │
-│  • Milestone Schema v1.0                             │
-│  • Decision Schema v1.0                              │
-│  • Validation Rules                                  │
-└────────────────────────────────────────────────────────┘
+## System Structure
+
+```text
+┌───────────────────────────┐       ┌───────────────────────────┐
+│ VS Code Extension          │       │ CLI                       │
+│ src/vscode                 │       │ src/cli                   │
+│ Explorer, board, insights, │       │ init, validate, list,     │
+│ editors, commands          │       │ show, create, git, pr     │
+└─────────────┬─────────────┘       └─────────────┬─────────────┘
+              │                                   │
+              └───────────────┬───────────────────┘
+                              │
+                    ┌─────────▼─────────┐
+                    │ Core Library       │
+                    │ src/core           │
+                    │ parsing, loading,  │
+                    │ validation, graph, │
+                    │ repository APIs    │
+                    └─────────┬─────────┘
+                              │
+                    ┌─────────▼─────────┐
+                    │ Schema Package     │
+                    │ src/schema         │
+                    │ JSON schema data   │
+                    └─────────┬─────────┘
+                              │
+                    ┌─────────▼─────────┐
+                    │ .planfs Markdown   │
+                    │ tasks, epics,      │
+                    │ milestones, etc.   │
+                    └───────────────────┘
 ```
 
----
+The VS Code extension and CLI should stay thin. Shared behavior belongs in `planfs-core` so every interface reads, validates, and writes PlanFS data consistently.
 
-## Components
+## Packages
 
-### 1. **planfs-core**
+### `src/schema`
 
-**Language:** TypeScript
+`planfs-schema` owns JSON schema definitions for PlanFS entities. It is intentionally small and has no runtime dependencies on the rest of the system.
 
-**Location:** `src/core/`
+Responsibilities:
 
-**Responsibilities:**
+- Export schema objects for tasks, epics, milestones, decisions, and shared metadata.
+- Keep schema behavior versionable and reusable by `planfs-core`.
+- Avoid UI, CLI, or filesystem concerns.
 
-- File system discovery of `.planfs/` directories
-- Parse YAML frontmatter from markdown files
-- Load and deserialize entity files
-- Validate entities against schemas
-- Resolve references between entities (tasks → epics, dependencies)
-- Build dependency graphs
-- Provide query interfaces for entity collections
+### `src/core`
 
-**Key Exports:**
+`planfs-core` is the domain and repository layer. It parses files, normalizes metadata, validates entities, builds graphs, and exposes repository APIs used by the CLI and extension.
 
-```typescript
-// File loading
-loadRepository(rootPath: string): Promise<Repository>
-discoverEntities(rootPath: string): Promise<Entity[]>
+Key areas:
 
-// Parsing
-parseFrontmatter(content: string): { metadata: Record<string, any>, body: string }
+- `parser.ts`: YAML frontmatter parsing and Markdown body separation.
+- `files.ts`: entity file discovery and repository directory initialization.
+- `loader.ts`: loading `.planfs` files into typed entities.
+- `validator.ts`: schema and cross-reference validation.
+- `repository.ts`: read/write repository operations and entity templates.
+- `graph.ts`: dependency graph and blocked-task analysis.
+- `search.ts`: saved filter loading and entity filtering.
+- `git.ts`: branch and commit-message helpers.
+- `pull-request.ts`: provider-neutral pull request summary support.
 
-// Validation
-validateEntity(entity: Entity, schema: Schema): ValidationResult[]
+Core code should not depend on VS Code APIs or command-line formatting.
 
-// Querying
-findTask(id: string): Task | undefined
-getTasksByStatus(status: string): Task[]
-getDependencies(taskId: string): Task[]
-getBlockedTasks(): Task[]
+### `src/cli`
+
+`planfs-cli` provides command-line access to the core APIs. It is built with `yargs` and should mostly translate command arguments into core operations, then format output.
+
+Current command groups:
+
+```sh
+planfs init
+planfs validate
+planfs list tasks
+planfs list epics
+planfs list milestones
+planfs list decisions
+planfs show TASK-001
+planfs create task --title "Example"
+planfs create epic --title "Example"
+planfs create milestone --title "Example" --target-date 2026-12-31
+planfs branch
+planfs git commit-message
+planfs git validate-message "TASK-001: message"
+planfs pr summary
+planfs pr providers
 ```
 
-**Key Types:**
+The CLI is also the CI integration surface. Automation should prefer JSON-capable commands such as:
 
-```typescript
-interface Entity {
-  id: string
-  type: 'task' | 'epic' | 'milestone' | 'decision'
-  filePath: string
-  metadata: Record<string, any>
-  body: string
-}
-
-interface Task extends Entity {
-  title: string
-  status: 'todo' | 'in-progress' | 'review' | 'done'
-  priority: 'low' | 'medium' | 'high'
-  assignee?: string
-  epic?: string
-  milestone?: string
-  dependencies?: string[]
-  tags?: string[]
-}
-
-interface Repository {
-  root: string
-  tasks: Map<string, Task>
-  epics: Map<string, Epic>
-  milestones: Map<string, Milestone>
-  decisions: Map<string, Decision>
-}
+```sh
+node src/cli/dist/cli.js validate --format json
 ```
 
----
+### `src/vscode`
 
-### 2. **planfs-vscode**
+`planfs-vscode` is the editor UI over PlanFS files. It uses `planfs-core` for repository behavior and VS Code APIs for views, commands, file watching, and webviews.
 
-**Language:** TypeScript/TSX
+Primary surfaces:
 
-**Location:** `src/vscode/`
+- Activity bar container and PlanFS Explorer tree.
+- Repository initialization command.
+- Task, epic, and milestone creation commands.
+- Structured editor for task, epic, and milestone metadata.
+- Kanban board webview.
+- Insights webview for dependency, roadmap, and branch views.
+- Saved filter selection and clearing.
+- File watchers for `.planfs/**/*.md` and `.planfs/**/*.json`.
+- Lightweight Explorer decoration for the `.planfs` directory.
 
-**Responsibilities:**
+The extension should avoid duplicating parser or validation logic. When it needs new repository behavior, add that behavior to `planfs-core` first and consume it from the extension.
 
-- Implement VS Code extension lifecycle
-- Provide Explorer view (tree view of tasks, epics, milestones)
-- Implement Kanban board view
-- Provide command palette commands for creating entities
-- Edit task files and sync changes back to repository
-- Watch file system for external changes
-- Integrate with VS Code's file explorer and editor
+## Data Model
 
-**Key Features:**
+PlanFS stores each planning entity as a Markdown file with YAML frontmatter:
 
-1. **Explorer View**
-   - Tree view: Tasks, Epics, Milestones, Decisions
-   - Filter by status, assignee, priority
-   - Quick actions: Open, Create, Delete
-
-2. **Kanban Board**
-   - Columns: Backlog, Todo, In Progress, Review, Done
-   - Drag-and-drop to change status
-   - Quick task details in hover
-
-3. **Commands**
-   - `planfs.createTask` - Create new task
-   - `planfs.createEpic` - Create new epic
-   - `planfs.createMilestone` - Create new milestone
-   - `planfs.validateRepository` - Run full validation
-   - `planfs.refreshExplorer` - Refresh views
-
-4. **Editor Integration**
-   - Edit task files directly
-   - Syntax highlighting for YAML frontmatter
-   - Validation on save
-   - Quick actions in editor
-
----
-
-### 3. **planfs-cli**
-
-**Language:** TypeScript/Node.js
-
-**Location:** `src/cli/`
-
-**Responsibilities:**
-
-- Command-line interface for validation and querying
-- Batch operations (export, import)
-- CI/CD integration hooks
-- Performance analysis and reporting
-
-**Commands:**
-
-```bash
-planfs validate                  # Validate repository schema
-planfs list tasks               # List all tasks
-planfs list tasks --status todo # Filter by status
-planfs show TASK-001            # Show task details
-planfs create task              # Interactive task creation
-planfs graph                    # Show dependency graph
-planfs export --format json     # Export to JSON
+```text
+.planfs/
+  tasks/
+  epics/
+  milestones/
+  decisions/
+  filters/
 ```
 
----
+Common entity fields include:
 
-### 4. **planfs-schema**
+- `id`
+- `title`
+- `status`
+- `priority`
+- `assignee` or `owner`
+- `epic`
+- `milestone`
+- `dependsOn`
+- `tags`
+- `createdAt`
+- `updatedAt`
 
-**Language:** JSON Schema / TypeScript
+New writer code should serialize metadata as camelCase. The parser accepts selected kebab-case and snake_case aliases for compatibility, but generated output should remain consistent with the documented format.
 
-**Location:** `src/schema/`
+For the complete file format, see [File Format](./FILE_FORMAT.md).
 
-**Responsibilities:**
+## Read Flow
 
-- Define versioned schemas for all entity types
-- Provide validation rules and constraints
-- Support schema evolution/versioning
-- Generate TypeScript types from schemas
-
-**Supported Schemas:**
-
-- `task@1.0.json` - Task entity schema
-- `epic@1.0.json` - Epic entity schema
-- `milestone@1.0.json` - Milestone entity schema
-- `decision@1.0.json` - Decision entity schema
-
----
-
-## Data Flow
-
-### Reading Tasks
-
-```
-File System (.planfs/tasks/*.md)
-    ↓
-planfs-core: discoverEntities()
-    ↓
-planfs-core: parseFrontmatter()
-    ↓
-planfs-core: validateEntity()
-    ↓
-Task Objects (in-memory)
-    ↓
-VS Code Extension / CLI
-    ↓
-User UI
+```text
+CLI or VS Code command
+  -> planfs-core loads .planfs directories
+  -> Markdown frontmatter is parsed
+  -> metadata is normalized into typed entities
+  -> schemas and cross-references are validated
+  -> callers render tables, trees, boards, insights, or JSON
 ```
 
-### Creating Tasks
+All read paths should tolerate direct human edits to Markdown files and report useful validation errors when files are malformed.
 
-```
-User Input (Form / Command Palette)
-    ↓
-planfs-vscode: Command Handler
-    ↓
-planfs-core: generateTaskFile()
-    ↓
-File System: Write to .planfs/tasks/TASK-XXX.md
-    ↓
-File Watcher: Detect change
-    ↓
-Refresh UI
+## Write Flow
+
+```text
+User action
+  -> CLI or VS Code command gathers input
+  -> planfs-core creates or updates entity content
+  -> Markdown file is written under .planfs
+  -> file watchers refresh VS Code views
+  -> validation can be run locally or in CI
 ```
 
-### Editing Tasks
+Writers should preserve the human-readable nature of the files:
 
-```
-User Edit (VS Code Editor)
-    ↓
-File Save Event
-    ↓
-File Watcher Detection
-    ↓
-planfs-core: Reload Entity
-    ↓
-planfs-core: validateEntity()
-    ↓
-UI Update
-```
+- Keep frontmatter compact and deterministic.
+- Avoid generated noise and hidden state.
+- Preserve Markdown body content where possible.
+- Prefer core serializers and templates over ad hoc string formatting.
 
----
+## Validation
 
-## Dependency Resolution
+Validation has two layers:
 
-### Task Dependencies
+- Schema validation confirms entity fields, structure, and values.
+- Repository validation checks references across files, such as task dependencies, epic links, and milestone links.
 
-Tasks declare dependencies via `dependsOn` field:
+Use these commands during development:
 
-```yaml
-dependsOn:
-  - TASK-001
-  - TASK-002
+```sh
+npm run build --workspaces
+node src/cli/dist/cli.js validate
+node src/cli/dist/cli.js validate --format json
 ```
 
-The core library can compute:
+See [CI Validation](./CI.md) for automation examples.
 
-- **Direct dependencies** - Immediate parent tasks
-- **Transitive dependencies** - All ancestors
-- **Dependents** - Tasks that depend on this one
-- **Blocked tasks** - Tasks with unresolved dependencies
-- **Critical path** - Longest dependency chain
-- **Circular dependencies** - Validation errors
+## Extension Packaging
 
-### Epic Dependencies
+The VS Code extension depends on local workspace packages, so it is packaged from a clean staging directory rather than directly from `src/vscode`.
 
-Epics contain multiple tasks. The system can compute:
-
-- **Epic completion** - % of child tasks complete
-- **Epic timeline** - Derived from child task milestones
-- **Epic dependencies** - Inferred from child task dependencies
-
----
-
-## File System Layout
-
-```
-repo/
-├── .planfs/
-│   ├── tasks/
-│   │   ├── TASK-001.md
-│   │   ├── TASK-002.md
-│   │   └── TASK-003.md
-│   │
-│   ├── epics/
-│   │   └── EPIC-auth-system.md
-│   │
-│   ├── milestones/
-│   │   └── MILESTONE-v1-beta.md
-│   │
-│   ├── decisions/
-│   │   └── DECISION-001.md
-│   │
-│   └── .planfs-config.yaml  # Optional: Repository-level config
-│
-└── src/
+```sh
+npm run package:vscode
 ```
 
----
+The packaging script builds all workspaces, packs local runtime dependencies, stages the extension under `dist/vscode-package`, and creates a `.vsix` under `dist/`.
 
-## Validation Pipeline
+See [VS Code Extension Build and Local Install](./VSCODE_EXTENSION.md) and [Release Process](./RELEASE.md) for deployment details.
 
-```
-Entity File
-    ↓
-Parse YAML Frontmatter
-    ↓
-Check Required Fields
-    ↓
-Validate Against Schema
-    ↓
-Check Reference Integrity
-    ├─ Epic exists?
-    ├─ Milestone exists?
-    ├─ Dependencies exist?
-    └─ Assignee valid?
-    ↓
-Check Global Constraints
-    ├─ Duplicate IDs?
-    ├─ Circular dependencies?
-    └─ Orphaned tasks?
-    ↓
-Validation Result
-    ├─ ✅ Valid
-    └─ ❌ Errors + Warnings
+## Roadmap
+
+The roadmap is tracked in PlanFS itself. The `.planfs/` directory is the source of truth for phases, milestones, tasks, dependencies, and status.
+
+Useful commands:
+
+```sh
+node src/cli/dist/cli.js list epics
+node src/cli/dist/cli.js list milestones
+node src/cli/dist/cli.js list tasks
+node src/cli/dist/cli.js show TASK-029
 ```
 
----
-
-## Extension Points
-
-### Future Integrations
-
-1. **Git Integration** - Auto-link commits to tasks
-2. **PR Integration** - Link pull requests to tasks (GitHub, GitLab, Azure DevOps)
-3. **CI/CD Validation** - Run schema validation on commits
-4. **Time Tracking** - Optional time estimation fields
-5. **Risk Management** - Risk tracking entities
-6. **Roadmap Visualization** - Timeline view for milestones
-
----
-
-## Performance Considerations
-
-- **Lazy loading** - Load only active repository on demand
-- **Caching** - Cache parsed entities in memory with file watch invalidation
-- **Incremental updates** - Watch file system for changes, update incrementally
-- **Virtual scrolling** - For large task lists in UI
-- **Indexed queries** - Build indexes by status, assignee, epic for fast filtering
-
----
-
-## Error Handling
-
-- **Graceful degradation** - Show errors but don't crash
-- **Validation messages** - Clear, actionable error messages
-- **Recovery** - Suggest fixes for common issues
-- **Logging** - Optional verbose logging for debugging
+Do not maintain a second implementation roadmap document. Add or update `.planfs` artifacts instead.
