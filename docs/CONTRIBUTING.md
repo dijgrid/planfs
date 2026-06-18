@@ -195,12 +195,7 @@ Include:
 
 ## Release Process
 
-1. Update version in `package.json`
-2. Update [CHANGELOG.md](./CHANGELOG.md)
-3. Create git tag: `git tag v1.0.0`
-4. Push tag: `git push origin v1.0.0`
-5. Build and publish to VS Code marketplace
-6. Create GitHub release
+See [Release Process](./RELEASE.md) for release checks, VS Code extension packaging, Marketplace publishing, and tagging steps.
 
 ## Getting Help
 

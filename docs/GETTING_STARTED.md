@@ -413,9 +413,9 @@ git check-ignore .planfs/
 
 1. Read [Architecture](./ARCHITECTURE.md) to understand system design
 2. Check [File Format](./FILE_FORMAT.md) for detailed specifications
-3. Review [Implementation Plan](./IMPLEMENTATION_PLAN.md) for development roadmap
-4. Explore examples in `examples/` directory
-5. Join the community for questions and discussions
+3. Use `node src/cli/dist/cli.js list tasks` to inspect the PlanFS roadmap
+4. Review [Release Process](./RELEASE.md) before packaging or publishing
+5. Explore examples in `examples/` directory
 
 ## Additional Resources
 
