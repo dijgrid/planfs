@@ -4,6 +4,7 @@
 
 import * as vscode from 'vscode';
 import { BoardProvider } from './board';
+import { PlanFSDecorationProvider } from './decorations';
 import { EntityEditorProvider } from './editor';
 import { ExplorerProvider } from './explorer';
 import { InsightsProvider } from './insights';
@@ -25,6 +26,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   insightsProvider = new InsightsProvider(context.extensionUri);
   editorProvider = new EntityEditorProvider(context.extensionUri);
   vscode.window.registerTreeDataProvider('planfs-explorer', explorerProvider);
+  context.subscriptions.push(vscode.window.registerFileDecorationProvider(new PlanFSDecorationProvider()));
 
   // Register commands
   context.subscriptions.push(
