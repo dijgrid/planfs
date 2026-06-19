@@ -35,10 +35,16 @@ git switch -c release/v0.1.0
 PlanFS currently uses workspace package versions. Update all package versions that are part of the release:
 
 ```sh
-npm version 0.1.0 --workspaces --include-workspace-root --no-git-tag-version
+npm version 0.1.0 --workspaces --include-workspace-root --no-git-tag-version --workspaces-update=false
+npm pkg set dependencies.planfs-schema=0.1.0 --workspace src/core
+npm pkg set dependencies.planfs-core=0.1.0 --workspace src/cli
+npm pkg set dependencies.planfs-core=0.1.0 --workspace src/vscode
+npm install --package-lock-only --ignore-scripts
 ```
 
-If the CLI, core, schema, and VS Code extension are not being released together, update only the relevant package manifests and verify local workspace dependency ranges still match.
+Keep local workspace dependency ranges aligned with the release version. Without `--workspaces-update=false`, npm may try to update the workspace install before those ranges have been changed and look for stale internal packages such as `planfs-core@0.1.0` in the public registry.
+
+If the CLI, core, schema, and VS Code extension are not being released together, update only the relevant package manifests and verify local workspace dependency ranges point at versions that will be available to consumers.
 
 Review:
 
