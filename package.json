@@ -1,6 +1,6 @@
 {
   "name": "planfs",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "Planning as Code - Git-native project management system",
   "private": true,
   "repository": {
