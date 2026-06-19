@@ -61,7 +61,7 @@ Click a planning item in the explorer to open the Markdown file directly, or run
 
 ### Refreshing
 
-PlanFS refreshes automatically when files under `.planfs/` change. Use `PlanFS: Refresh Explorer` if you want to force a manual refresh.
+PlanFS refreshes automatically when files under `.planfs/` change. Use `PlanFS: Refresh Views` if you want to force a manual refresh.
 
 ## Development
 

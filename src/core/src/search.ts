@@ -9,7 +9,7 @@ import { getAllEntities } from './repository';
 
 export interface EntityFilterCriteria {
   query?: string;
-  status?: string;
+  status?: string | string[];
   assignee?: string;
   epic?: string;
   priority?: string;
@@ -47,7 +47,7 @@ export function matchesCriteria(
     return false;
   }
 
-  if (criteria.status && entity.status !== criteria.status) {
+  if (criteria.status && !matchesValue(entity.status, criteria.status)) {
     return false;
   }
 
@@ -124,6 +124,10 @@ function normalizeSavedFilter(filter: SavedFilter, filename: string): SavedFilte
   }
 
   return filter;
+}
+
+function matchesValue(value: string, expected: string | string[]): boolean {
+  return Array.isArray(expected) ? expected.includes(value) : value === expected;
 }
 
 function matchesFullText(entity: Entity, query: string): boolean {

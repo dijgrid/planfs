@@ -24,7 +24,7 @@ In VS Code:
    - `PlanFS: Open Structured Editor`
    - `PlanFS: Initialize Repository`
    - `PlanFS: Create Task`
-   - `PlanFS: Refresh Explorer`
+   - `PlanFS: Refresh Views`
 
 ## Build a Local VSIX
 
@@ -71,7 +71,7 @@ After installation, open a repository containing `.planfs/`. The PlanFS activity
 - `PlanFS: Open Structured Editor`
 - `PlanFS: Initialize Repository`
 - `PlanFS: Create Task`
-- `PlanFS: Refresh Explorer`
+- `PlanFS: Refresh Views`
 
 ## Reinstall After Changes
 

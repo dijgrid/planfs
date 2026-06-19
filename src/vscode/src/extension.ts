@@ -16,6 +16,7 @@ let explorerProvider: ExplorerProvider;
 let boardProvider: BoardProvider;
 let insightsProvider: InsightsProvider;
 let editorProvider: EntityEditorProvider;
+let refreshQueue = Promise.resolve();
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   console.log('PlanFS extension activated');
@@ -40,18 +41,18 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand('planfs.openEditor', (item) => editorProvider.open(item?.entity?.id)),
     vscode.commands.registerCommand('planfs.applySavedFilter', () => explorerProvider.applySavedFilter()),
     vscode.commands.registerCommand('planfs.clearSavedFilter', () => explorerProvider.clearSavedFilter()),
-    vscode.commands.registerCommand('planfs.refreshExplorer', () => explorerProvider.refresh())
+    vscode.commands.registerCommand('planfs.refreshExplorer', () => refreshViews())
   );
 
   // Watch for file changes
   const watcher = vscode.workspace.createFileSystemWatcher('**/.planfs/**/*.md');
   const savedFilterWatcher = vscode.workspace.createFileSystemWatcher('**/.planfs/**/*.json');
-  watcher.onDidCreate(() => refreshViews());
-  watcher.onDidChange(() => refreshViews());
-  watcher.onDidDelete(() => refreshViews());
-  savedFilterWatcher.onDidCreate(() => refreshViews());
-  savedFilterWatcher.onDidChange(() => refreshViews());
-  savedFilterWatcher.onDidDelete(() => refreshViews());
+  watcher.onDidCreate(() => queueRefreshViews());
+  watcher.onDidChange(() => queueRefreshViews());
+  watcher.onDidDelete(() => queueRefreshViews());
+  savedFilterWatcher.onDidCreate(() => queueRefreshViews());
+  savedFilterWatcher.onDidChange(() => queueRefreshViews());
+  savedFilterWatcher.onDidDelete(() => queueRefreshViews());
 
   context.subscriptions.push(watcher, savedFilterWatcher);
 
@@ -63,6 +64,14 @@ async function refreshViews(): Promise<void> {
   await explorerProvider.refresh();
   await boardProvider.refresh();
   await insightsProvider.refresh();
+}
+
+function queueRefreshViews(): void {
+  refreshQueue = refreshQueue
+    .then(refreshViews)
+    .catch(error => {
+      console.error('Failed to refresh PlanFS views:', error);
+    });
 }
 
 export function deactivate(): void {

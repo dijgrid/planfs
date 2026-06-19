@@ -68,6 +68,10 @@ describe('search helpers', () => {
 
   it('filters tasks by status, assignee, epic, priority, and tags', () => {
     expect(searchTasks(repository, { status: 'todo' }).map(task => task.id)).toEqual(['TASK-001']);
+    expect(searchTasks(repository, { status: ['todo', 'done'] }).map(task => task.id)).toEqual([
+      'TASK-001',
+      'TASK-002'
+    ]);
     expect(searchTasks(repository, { assignee: 'justin' }).map(task => task.id)).toEqual(['TASK-001']);
     expect(searchTasks(repository, { epic: 'EPIC-phase-2-enhanced' }).map(task => task.id)).toEqual(['TASK-001']);
     expect(searchTasks(repository, { priority: 'high' }).map(task => task.id)).toEqual(['TASK-001']);

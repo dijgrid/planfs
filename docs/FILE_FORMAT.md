@@ -335,7 +335,7 @@ Saved filters are named reusable query definitions stored as JSON under `.planfs
   "description": "Open tasks in the Phase 2 enhanced editing epic.",
   "criteria": {
     "query": "editor",
-    "status": "todo",
+    "status": ["todo", "in-progress", "review"],
     "assignee": "justin",
     "epic": "EPIC-phase-2-enhanced",
     "priority": "high",
@@ -344,7 +344,7 @@ Saved filters are named reusable query definitions stored as JSON under `.planfs
 }
 ```
 
-All criteria fields are optional. `query` searches IDs, titles, metadata, and Markdown body content. Structured task filters can target `status`, `assignee`, `epic`, `priority`, and `tags`.
+All criteria fields are optional. `query` searches IDs, titles, metadata, and Markdown body content. Structured task filters can target `status`, `assignee`, `epic`, `priority`, and `tags`. `status` accepts either a single status string or an array of statuses.
 
 Saved filters are stored in `.planfs/filters/`:
 

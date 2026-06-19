@@ -98,7 +98,7 @@
       },
       {
         "command": "planfs.refreshExplorer",
-        "title": "PlanFS: Refresh Explorer"
+        "title": "PlanFS: Refresh Views"
       }
     ],
     "views": {
