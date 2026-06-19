@@ -19,6 +19,7 @@ import {
   Task,
   TaskStatus
 } from 'planfs-core';
+import { getPlanFSWorkspaceFolder } from './workspace';
 
 export class ExplorerProvider implements vscode.TreeDataProvider<TreeItem> {
   private _onDidChangeTreeData: vscode.EventEmitter<TreeItem | undefined | null | void> =
@@ -33,7 +34,7 @@ export class ExplorerProvider implements vscode.TreeDataProvider<TreeItem> {
 
   async refresh(): Promise<void> {
     try {
-      const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+      const workspaceFolder = getPlanFSWorkspaceFolder();
       if (!workspaceFolder) {
         this.repository = null;
         this.entities = [];

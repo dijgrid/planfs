@@ -13,6 +13,7 @@ import {
   Task,
   validateEntity
 } from 'planfs-core';
+import { getPlanFSWorkspaceFolder } from './workspace';
 
 interface EditorPayload {
   entity: EditableEntity;
@@ -32,7 +33,7 @@ export class EntityEditorProvider {
   constructor(private readonly extensionUri: vscode.Uri) {}
 
   async open(entityId?: string): Promise<void> {
-    const workspaceFolder = getWorkspaceFolder();
+    const workspaceFolder = getPlanFSWorkspaceFolder();
     if (!workspaceFolder) {
       vscode.window.showErrorMessage('No workspace folder open');
       return;
@@ -92,7 +93,7 @@ export class EntityEditorProvider {
     edited: EditableEntity,
     panel: vscode.WebviewPanel
   ): Promise<void> {
-    const workspaceFolder = getWorkspaceFolder();
+    const workspaceFolder = getPlanFSWorkspaceFolder();
     if (!workspaceFolder) {
       vscode.window.showErrorMessage('No workspace folder open');
       return;
@@ -138,12 +139,8 @@ export class EntityEditorProvider {
   }
 }
 
-function getWorkspaceFolder(): vscode.WorkspaceFolder | undefined {
-  return vscode.workspace.workspaceFolders?.[0];
-}
-
 async function openRawFile(entityId: string): Promise<void> {
-  const workspaceFolder = getWorkspaceFolder();
+  const workspaceFolder = getPlanFSWorkspaceFolder();
   if (!workspaceFolder) {
     return;
   }

@@ -12,6 +12,7 @@ import {
   saveEntity,
   validateRepositoryState
 } from 'planfs-core';
+import { getPlanFSWorkspaceFolder } from './workspace';
 
 interface InsightsPayload {
   graph: {
@@ -102,7 +103,7 @@ export class InsightsProvider {
   constructor(private readonly extensionUri: vscode.Uri) {}
 
   async open(): Promise<void> {
-    const workspaceFolder = getWorkspaceFolder();
+    const workspaceFolder = getPlanFSWorkspaceFolder();
     if (!workspaceFolder) {
       vscode.window.showErrorMessage('No workspace folder open');
       return;
@@ -155,7 +156,7 @@ export class InsightsProvider {
       return;
     }
 
-    const workspaceFolder = getWorkspaceFolder();
+    const workspaceFolder = getPlanFSWorkspaceFolder();
     if (!workspaceFolder) {
       this.panel.webview.html = renderMessage('No workspace folder open');
       return;
@@ -176,7 +177,7 @@ export class InsightsProvider {
     milestoneId: string,
     targetDate: string
   ): Promise<void> {
-    const workspaceFolder = getWorkspaceFolder();
+    const workspaceFolder = getPlanFSWorkspaceFolder();
     if (!workspaceFolder) {
       vscode.window.showErrorMessage('No workspace folder open');
       return;
@@ -202,10 +203,6 @@ export class InsightsProvider {
       await this.render();
     }
   }
-}
-
-function getWorkspaceFolder(): vscode.WorkspaceFolder | undefined {
-  return vscode.workspace.workspaceFolders?.[0];
 }
 
 async function createPayload(repository: Repository): Promise<InsightsPayload> {
