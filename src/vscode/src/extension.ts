@@ -11,6 +11,7 @@ import { InsightsProvider } from './insights';
 import { createTaskCommand, createEpicCommand, createMilestoneCommand } from './commands/create';
 import { initializeRepositoryCommand } from './commands/init';
 import { openTaskCommand } from './commands/open';
+import { selectPlanFSWorkspaceFolderForUri } from './workspace';
 
 let explorerProvider: ExplorerProvider;
 let boardProvider: BoardProvider;
@@ -47,12 +48,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // Watch for file changes
   const watcher = vscode.workspace.createFileSystemWatcher('**/.planfs/**/*.md');
   const savedFilterWatcher = vscode.workspace.createFileSystemWatcher('**/.planfs/**/*.json');
-  watcher.onDidCreate(() => queueRefreshViews());
-  watcher.onDidChange(() => queueRefreshViews());
-  watcher.onDidDelete(() => queueRefreshViews());
-  savedFilterWatcher.onDidCreate(() => queueRefreshViews());
-  savedFilterWatcher.onDidChange(() => queueRefreshViews());
-  savedFilterWatcher.onDidDelete(() => queueRefreshViews());
+  watcher.onDidCreate(uri => queueRefreshViews(uri));
+  watcher.onDidChange(uri => queueRefreshViews(uri));
+  watcher.onDidDelete(uri => queueRefreshViews(uri));
+  savedFilterWatcher.onDidCreate(uri => queueRefreshViews(uri));
+  savedFilterWatcher.onDidChange(uri => queueRefreshViews(uri));
+  savedFilterWatcher.onDidDelete(uri => queueRefreshViews(uri));
 
   context.subscriptions.push(watcher, savedFilterWatcher);
 
@@ -66,7 +67,11 @@ async function refreshViews(): Promise<void> {
   await insightsProvider.refresh();
 }
 
-function queueRefreshViews(): void {
+function queueRefreshViews(changedUri?: vscode.Uri): void {
+  if (changedUri) {
+    selectPlanFSWorkspaceFolderForUri(changedUri);
+  }
+
   refreshQueue = refreshQueue
     .then(refreshViews)
     .catch(error => {

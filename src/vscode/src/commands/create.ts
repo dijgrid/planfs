@@ -5,9 +5,10 @@
 import * as vscode from 'vscode';
 import { ExplorerProvider } from '../explorer';
 import { loadRepository, saveEntity, createTaskTemplate, getNextTaskId } from 'planfs-core';
+import { getPlanFSWorkspaceFolder } from '../workspace';
 
 export async function createTaskCommand(explorer: ExplorerProvider): Promise<void> {
-  const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+  const workspaceFolder = getPlanFSWorkspaceFolder();
   if (!workspaceFolder) {
     vscode.window.showErrorMessage('No workspace folder open');
     return;

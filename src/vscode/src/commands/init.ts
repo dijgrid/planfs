@@ -5,11 +5,12 @@
 import * as vscode from 'vscode';
 import { initializeRepository } from 'planfs-core';
 import { ExplorerProvider } from '../explorer';
+import { getPlanFSWorkspaceFolder } from '../workspace';
 
 export async function initializeRepositoryCommand(
   explorer: ExplorerProvider
 ): Promise<void> {
-  const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+  const workspaceFolder = getPlanFSWorkspaceFolder();
   if (!workspaceFolder) {
     vscode.window.showErrorMessage('No workspace folder open');
     return;
