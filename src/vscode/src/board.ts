@@ -27,8 +27,15 @@ interface BoardTask {
   body: string;
 }
 
+interface BoardPayload {
+  tasks: BoardTask[];
+  statuses: TaskStatus[];
+  savedFilters: SavedFilter[];
+}
+
 export class BoardProvider {
   private panel: vscode.WebviewPanel | undefined;
+  private hasRenderedBoard = false;
 
   constructor(private readonly extensionUri: vscode.Uri) {}
 
@@ -57,6 +64,7 @@ export class BoardProvider {
 
     this.panel.onDidDispose(() => {
       this.panel = undefined;
+      this.hasRenderedBoard = false;
     });
 
     this.panel.webview.onDidReceiveMessage(async message => {
@@ -68,7 +76,7 @@ export class BoardProvider {
       }
     });
 
-    await this.render();
+    await this.render({ replaceHtml: true });
   }
 
   async refresh(): Promise<void> {
@@ -77,7 +85,7 @@ export class BoardProvider {
     }
   }
 
-  private async render(): Promise<void> {
+  private async render(options: { replaceHtml?: boolean } = {}): Promise<void> {
     if (!this.panel) {
       return;
     }
@@ -85,19 +93,31 @@ export class BoardProvider {
     const workspaceFolder = getWorkspaceFolder();
     if (!workspaceFolder) {
       this.panel.webview.html = renderMessage('No workspace folder open');
+      this.hasRenderedBoard = false;
       return;
     }
 
     try {
-      const repository = await loadRepository(workspaceFolder.uri.fsPath);
-      const tasks = Array.from(repository.tasks.values()).map(toBoardTask);
-      const savedFilters = await loadSavedFilters(workspaceFolder.uri.fsPath);
+      const payload = await loadBoardPayload(workspaceFolder.uri.fsPath);
 
-      this.panel.webview.html = renderBoard(this.panel.webview, tasks, savedFilters);
+      if (!options.replaceHtml && this.hasRenderedBoard) {
+        const didPost = await this.panel.webview.postMessage({
+          type: 'updateBoard',
+          payload
+        });
+
+        if (didPost) {
+          return;
+        }
+      }
+
+      this.panel.webview.html = renderBoard(this.panel.webview, payload);
+      this.hasRenderedBoard = true;
     } catch (error) {
       this.panel.webview.html = renderMessage(
         `Failed to load PlanFS board: ${error instanceof Error ? error.message : String(error)}`
       );
+      this.hasRenderedBoard = false;
     }
   }
 
@@ -139,6 +159,18 @@ export class BoardProvider {
       await this.render();
     }
   }
+}
+
+async function loadBoardPayload(rootPath: string): Promise<BoardPayload> {
+  const repository = await loadRepository(rootPath);
+  const tasks = Array.from(repository.tasks.values()).map(toBoardTask);
+  const savedFilters = await loadSavedFilters(rootPath);
+
+  return {
+    tasks,
+    statuses: TASK_STATUSES,
+    savedFilters: savedFilters.map(toBoardSavedFilter)
+  };
 }
 
 function getWorkspaceFolder(): vscode.WorkspaceFolder | undefined {
@@ -185,15 +217,10 @@ function toBoardSavedFilter(filter: SavedFilter): SavedFilter {
 
 function renderBoard(
   webview: vscode.Webview,
-  tasks: BoardTask[],
-  savedFilters: SavedFilter[]
+  payload: BoardPayload
 ): string {
   const nonce = getNonce();
-  const payload = JSON.stringify({
-    tasks,
-    statuses: TASK_STATUSES,
-    savedFilters: savedFilters.map(toBoardSavedFilter)
-  });
+  const serializedPayload = JSON.stringify(payload);
 
   return `<!doctype html>
 <html lang="en">
@@ -413,7 +440,7 @@ function renderBoard(
   </div>
   <script nonce="${nonce}">
     const vscode = acquireVsCodeApi();
-    const state = ${payload};
+    let state = ${serializedPayload};
     const priorityRank = { critical: 0, high: 1, medium: 2, low: 3 };
     const labels = {
       todo: 'Todo',
@@ -427,18 +454,40 @@ function renderBoard(
     const sortInput = document.getElementById('sort');
     const board = document.getElementById('board');
 
-    savedFilterInput.append(...state.savedFilters.map(filter => {
-      const option = document.createElement('option');
-      option.value = filter.id;
-      option.textContent = filter.name;
-      return option;
-    }));
+    renderSavedFilterOptions();
 
-    filterInput.addEventListener('input', render);
-    savedFilterInput.addEventListener('change', render);
-    sortInput.addEventListener('change', render);
+    filterInput.addEventListener('input', () => render());
+    savedFilterInput.addEventListener('change', () => render());
+    sortInput.addEventListener('change', () => render());
+    window.addEventListener('message', event => {
+      if (event.data?.type !== 'updateBoard') {
+        return;
+      }
 
-    function render() {
+      const selectedFilter = savedFilterInput.value;
+      state = event.data.payload;
+      renderSavedFilterOptions(selectedFilter);
+      render({ animate: true });
+    });
+
+    function renderSavedFilterOptions(selectedFilter = savedFilterInput.value) {
+      const allTasks = document.createElement('option');
+      allTasks.value = '';
+      allTasks.textContent = 'All tasks';
+      const options = state.savedFilters.map(filter => {
+        const option = document.createElement('option');
+        option.value = filter.id;
+        option.textContent = filter.name;
+        return option;
+      });
+      savedFilterInput.replaceChildren(allTasks, ...options);
+      savedFilterInput.value = state.savedFilters.some(filter => filter.id === selectedFilter)
+        ? selectedFilter
+        : '';
+    }
+
+    function render(options = {}) {
+      const previousRects = options.animate ? measureCards() : new Map();
       const filterText = filterInput.value.trim().toLowerCase();
       const savedFilter = state.savedFilters.find(filter => filter.id === savedFilterInput.value);
       const sortKey = sortInput.value;
@@ -448,6 +497,10 @@ function renderBoard(
         .sort((a, b) => compareTasks(a, b, sortKey));
 
       board.replaceChildren(...state.statuses.map(status => renderColumn(status, filtered)));
+
+      if (options.animate) {
+        animateMovedCards(previousRects);
+      }
     }
 
     function matchesFilter(task, filterText) {
@@ -479,7 +532,7 @@ function renderBoard(
         return false;
       }
 
-      if (criteria.status && task.status !== criteria.status) {
+      if (criteria.status && !matchesValue(task.status, criteria.status)) {
         return false;
       }
 
@@ -509,6 +562,10 @@ function renderBoard(
       }
 
       return String(a[sortKey] || '').localeCompare(String(b[sortKey] || '')) || a.id.localeCompare(b.id);
+    }
+
+    function matchesValue(value, expected) {
+      return Array.isArray(expected) ? expected.includes(value) : value === expected;
     }
 
     function renderColumn(status, tasks) {
@@ -551,6 +608,7 @@ function renderBoard(
     function renderCard(task) {
       const card = document.createElement('article');
       card.className = 'card ' + task.status;
+      card.dataset.taskId = task.id;
       card.draggable = true;
       card.addEventListener('dragstart', event => {
         event.dataTransfer.setData('text/plain', task.id);
@@ -565,6 +623,49 @@ function renderBoard(
       ].join('');
 
       return card;
+    }
+
+    function measureCards() {
+      return new Map(
+        Array.from(board.querySelectorAll('.card[data-task-id]')).map(card => [
+          card.dataset.taskId,
+          card.getBoundingClientRect()
+        ])
+      );
+    }
+
+    function animateMovedCards(previousRects) {
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        return;
+      }
+
+      requestAnimationFrame(() => {
+        board.querySelectorAll('.card[data-task-id]').forEach(card => {
+          const previousRect = previousRects.get(card.dataset.taskId);
+          if (!previousRect) {
+            return;
+          }
+
+          const nextRect = card.getBoundingClientRect();
+          const deltaX = previousRect.left - nextRect.left;
+          const deltaY = previousRect.top - nextRect.top;
+
+          if (Math.abs(deltaX) < 1 && Math.abs(deltaY) < 1) {
+            return;
+          }
+
+          card.animate(
+            [
+              { transform: 'translate(' + deltaX + 'px, ' + deltaY + 'px)' },
+              { transform: 'translate(0, 0)' }
+            ],
+            {
+              duration: 220,
+              easing: 'cubic-bezier(0.2, 0, 0, 1)'
+            }
+          );
+        });
+      });
     }
 
     function escapeHtml(value) {
