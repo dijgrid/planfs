@@ -65,6 +65,7 @@ async function refreshViews(): Promise<void> {
   await explorerProvider.refresh();
   await boardProvider.refresh();
   await insightsProvider.refresh();
+  await editorProvider.refresh();
 }
 
 function queueRefreshViews(changedUri?: vscode.Uri): void {

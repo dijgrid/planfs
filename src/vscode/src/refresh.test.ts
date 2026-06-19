@@ -3,11 +3,13 @@ import * as os from 'os';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import {
+  createEpicTemplate,
   createTaskTemplate,
   ensurePlanfsStructure,
   saveEntity
 } from 'planfs-core';
 import { BoardProvider } from './board';
+import { EntityEditorProvider } from './editor';
 import { ExplorerProvider } from './explorer';
 import { InsightsProvider } from './insights';
 import {
@@ -106,5 +108,65 @@ describe('VS Code view refresh workspace selection', () => {
     const insightsPanel = jest.mocked(vscode.window.createWebviewPanel).mock.results[1].value;
     expect(insightsPanel.webview.html).toContain('TASK-002');
     expect(insightsPanel.webview.html).not.toContain('TASK-001');
+  });
+
+  it('renders visual planning controls for graph and timeline insights', async () => {
+    selectPlanFSWorkspaceFolder(firstFolder);
+
+    const insights = new InsightsProvider(vscode.Uri.file('/extension'));
+    await insights.open();
+
+    const insightsPanel = jest.mocked(vscode.window.createWebviewPanel).mock.results[0].value;
+    expect(insightsPanel.webview.html).toContain('graphHealth');
+    expect(insightsPanel.webview.html).toContain('graphMilestone');
+    expect(insightsPanel.webview.html).toContain('zoomInGraph');
+    expect(insightsPanel.webview.html).toContain('renderGraphLegend');
+    expect(insightsPanel.webview.html).toContain('timelineWindow');
+    expect(insightsPanel.webview.html).toContain('timelineGroup');
+    expect(insightsPanel.webview.html).toContain('renderTimelineDetails');
+  });
+
+  it('renders an epic-scoped task board in the structured editor', async () => {
+    selectPlanFSWorkspaceFolder(firstFolder);
+
+    const epic = createEpicTemplate('EPIC-refresh', 'Refresh Epic');
+    const todoTask = {
+      ...createTaskTemplate('TASK-010', 'Todo task'),
+      epic: epic.id,
+      priority: 'high' as const,
+      assignee: 'PlanFS Test',
+      dueDate: '2026-07-01'
+    };
+    const reviewTask = {
+      ...createTaskTemplate('TASK-011', 'Review task'),
+      epic: epic.id,
+      status: 'review' as const,
+      milestone: 'MILESTONE-refresh'
+    };
+    await saveEntity(firstRoot, epic);
+    await saveEntity(firstRoot, todoTask);
+    await saveEntity(firstRoot, reviewTask);
+
+    const editor = new EntityEditorProvider(vscode.Uri.file('/extension'));
+    await editor.open(epic.id);
+
+    const editorPanel = jest.mocked(vscode.window.createWebviewPanel).mock.results[0].value;
+    expect(editorPanel.webview.html).toContain('Epic Task Board');
+    expect(editorPanel.webview.html).toContain('todo');
+    expect(editorPanel.webview.html).toContain('in-progress');
+    expect(editorPanel.webview.html).toContain('review');
+    expect(editorPanel.webview.html).toContain('done');
+    expect(editorPanel.webview.html).toContain('Todo task');
+    expect(editorPanel.webview.html).toContain('Review task');
+    expect(editorPanel.webview.html).toContain('developer-options');
+    expect(editorPanel.webview.html).toContain('data-open-entity="TASK-010"');
+
+    await saveEntity(firstRoot, {
+      ...createTaskTemplate('TASK-012', 'Newly refreshed task'),
+      epic: epic.id,
+      status: 'in-progress'
+    });
+    await editor.refresh();
+    expect(editorPanel.webview.html).toContain('Newly refreshed task');
   });
 });

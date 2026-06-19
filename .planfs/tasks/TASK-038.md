@@ -1,7 +1,7 @@
 ---
 id: TASK-038
 title: Add visual planning tests and documentation
-status: todo
+status: done
 priority: medium
 assignee: justin
 epic: EPIC-visual-planning-experience
@@ -15,16 +15,15 @@ tags:
   - docs
   - vscode
 createdAt: 2026-06-19T00:00:00Z
-updatedAt: 2026-06-19T00:00:00Z
+updatedAt: 2026-06-19T20:08:35Z
 ---
 
 Back the visual planning release work with focused tests and documentation grounded in the implemented behavior.
 
 ## Acceptance Criteria
 
-- [ ] Graph interactions have tests for selection, highlighting, filtering, and warning states
-- [ ] Timeline rendering has tests for date placement, now marker behavior, undated items, and grouping
-- [ ] Epic editor tests cover epic-scoped board rendering and task navigation
-- [ ] Documentation describes the visual planning workflows without promising unsupported behavior
-- [ ] Release notes call out graph, timeline, and epic editor improvements
-
+- [x] Graph interactions have tests for selection, highlighting, filtering, and warning states
+- [x] Timeline rendering has tests for date placement, now marker behavior, undated items, and grouping
+- [x] Epic editor tests cover epic-scoped board rendering and task navigation
+- [x] Documentation describes the visual planning workflows without promising unsupported behavior
+- [x] Release notes call out graph, timeline, and epic editor improvements
