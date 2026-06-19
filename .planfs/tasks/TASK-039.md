@@ -1,7 +1,7 @@
 ---
 id: TASK-039
 title: Suggest developers from repository history in UI inputs
-status: todo
+status: done
 priority: medium
 assignee: justin
 epic: EPIC-visual-planning-experience
@@ -13,18 +13,17 @@ tags:
   - git
   - editor
 createdAt: 2026-06-19T00:00:00Z
-updatedAt: 2026-06-19T00:00:00Z
+updatedAt: 2026-06-19T20:08:35Z
 ---
 
 Collect developer identities from the Git repository and use them as suggestions in PlanFS UI inputs for task assignees, epic owners, and similar people fields.
 
 ## Acceptance Criteria
 
-- [ ] Developer suggestions are derived from Git history, such as author and committer names or emails
-- [ ] Suggestions appear in relevant VS Code dropdowns or comboboxes for assignee and owner fields
-- [ ] People fields remain editable string inputs and do not become enums or hard-coded lists
-- [ ] Users can still enter arbitrary names, handles, or emails that are not present in Git history
-- [ ] Duplicate identities are normalized enough to avoid noisy repeated suggestions
-- [ ] Repository scanning avoids blocking the UI and handles repositories with little or no history
-- [ ] Tests cover suggestion collection, normalization, empty repositories, and arbitrary manual input
-
+- [x] Developer suggestions are derived from Git history, such as author and committer names or emails
+- [x] Suggestions appear in relevant VS Code dropdowns or comboboxes for assignee and owner fields
+- [x] People fields remain editable string inputs and do not become enums or hard-coded lists
+- [x] Users can still enter arbitrary names, handles, or emails that are not present in Git history
+- [x] Duplicate identities are normalized enough to avoid noisy repeated suggestions
+- [x] Repository scanning avoids blocking the UI and handles repositories with little or no history
+- [x] Tests cover suggestion collection, normalization, empty repositories, and arbitrary manual input

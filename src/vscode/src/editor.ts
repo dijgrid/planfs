@@ -6,6 +6,7 @@ import * as vscode from 'vscode';
 import {
   Entity,
   Epic,
+  getRepositoryDevelopers,
   loadRepository,
   Milestone,
   Repository,
@@ -22,10 +23,27 @@ interface EditorPayload {
     milestones: Array<{ id: string; title: string }>;
     tasks: Array<{ id: string; title: string }>;
     tags: string[];
+    developers: string[];
   };
+  epicBoard?: EpicBoardColumn[];
 }
 
 type EditableEntity = Task | Epic | Milestone;
+
+interface EpicBoardTask {
+  id: string;
+  title: string;
+  status: Task['status'];
+  priority?: string;
+  assignee?: string;
+  milestone?: string;
+  dueDate?: string;
+}
+
+interface EpicBoardColumn {
+  status: Task['status'];
+  tasks: EpicBoardTask[];
+}
 
 export class EntityEditorProvider {
   private panels = new Map<string, vscode.WebviewPanel>();
@@ -54,7 +72,7 @@ export class EntityEditorProvider {
         existingPanel.reveal(vscode.ViewColumn.One);
         existingPanel.webview.html = renderEditor(
           existingPanel.webview,
-          createPayload(repository, entity)
+          await createPayload(repository, entity)
         );
         return;
       }
@@ -79,12 +97,45 @@ export class EntityEditorProvider {
         if (message?.type === 'openRaw') {
           await openRawFile(String(entity.id));
         }
+
+        if (message?.type === 'openEntity') {
+          await this.open(String(message.entityId));
+        }
       });
-      panel.webview.html = renderEditor(panel.webview, createPayload(repository, entity));
+      panel.webview.html = renderEditor(panel.webview, await createPayload(repository, entity));
     } catch (error) {
       vscode.window.showErrorMessage(
         `Failed to open PlanFS editor: ${error instanceof Error ? error.message : String(error)}`
       );
+    }
+  }
+
+  async refresh(): Promise<void> {
+    if (this.panels.size === 0) {
+      return;
+    }
+
+    const workspaceFolder = getPlanFSWorkspaceFolder();
+    if (!workspaceFolder) {
+      for (const panel of this.panels.values()) {
+        panel.webview.html = renderMessage('No workspace folder open');
+      }
+      return;
+    }
+
+    try {
+      const repository = await loadRepository(workspaceFolder.uri.fsPath);
+      for (const [entityId, panel] of this.panels.entries()) {
+        const entity = findEditableEntity(repository, entityId);
+        panel.webview.html = entity
+          ? renderEditor(panel.webview, await createPayload(repository, entity))
+          : renderMessage(`Entity not found: ${entityId}`);
+      }
+    } catch (error) {
+      const message = `Failed to refresh PlanFS editor: ${error instanceof Error ? error.message : String(error)}`;
+      for (const panel of this.panels.values()) {
+        panel.webview.html = renderMessage(message);
+      }
     }
   }
 
@@ -128,7 +179,7 @@ export class EntityEditorProvider {
       const refreshed = await loadRepository(workspaceFolder.uri.fsPath);
       panel.webview.html = renderEditor(
         panel.webview,
-        createPayload(refreshed, findEditableEntity(refreshed, originalEntityId) ?? entity)
+        await createPayload(refreshed, findEditableEntity(refreshed, originalEntityId) ?? entity)
       );
       vscode.window.showInformationMessage(`Saved ${entity.id}`);
     } catch (error) {
@@ -137,6 +188,20 @@ export class EntityEditorProvider {
       vscode.window.showErrorMessage(`Failed to save entity: ${message}`);
     }
   }
+}
+
+function renderMessage(message: string): string {
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PlanFS Entity Editor</title>
+</head>
+<body>
+  <p>${escapeHtml(message)}</p>
+</body>
+</html>`;
 }
 
 async function openRawFile(entityId: string): Promise<void> {
@@ -193,7 +258,7 @@ function findEditableEntity(
     ?? repository.milestones.get(entityId);
 }
 
-function createPayload(repository: Repository, entity: EditableEntity): EditorPayload {
+async function createPayload(repository: Repository, entity: EditableEntity): Promise<EditorPayload> {
   const tags = new Set<string>();
   for (const task of repository.tasks.values()) {
     for (const tag of task.tags ?? []) {
@@ -206,7 +271,8 @@ function createPayload(repository: Repository, entity: EditableEntity): EditorPa
     }
   }
 
-  return {
+  const developers = await getRepositoryDevelopers(repository.root);
+  const payload: EditorPayload = {
     entity,
     options: {
       epics: Array.from(repository.epics.values()).map(epic => ({
@@ -221,9 +287,42 @@ function createPayload(repository: Repository, entity: EditableEntity): EditorPa
         id: task.id,
         title: task.title
       })),
-      tags: Array.from(tags).sort()
+      tags: Array.from(tags).sort(),
+      developers: developers.map(developer => developer.label)
     }
   };
+
+  if (entity.type === 'epic') {
+    payload.epicBoard = createEpicBoard(repository, entity.id);
+  }
+
+  return payload;
+}
+
+function createEpicBoard(repository: Repository, epicId: string): EpicBoardColumn[] {
+  const statuses: Array<Task['status']> = ['todo', 'in-progress', 'review', 'done'];
+  const tasks = Array.from(repository.tasks.values())
+    .filter(task => task.epic === epicId)
+    .sort((a, b) => statusIndex(a.status) - statusIndex(b.status) || a.id.localeCompare(b.id));
+
+  return statuses.map(status => ({
+    status,
+    tasks: tasks
+      .filter(task => task.status === status)
+      .map(task => ({
+        id: task.id,
+        title: task.title,
+        status: task.status,
+        priority: task.priority,
+        assignee: task.assignee,
+        milestone: task.milestone,
+        dueDate: task.dueDate
+      }))
+  }));
+}
+
+function statusIndex(status: Task['status']): number {
+  return ['todo', 'in-progress', 'review', 'done'].indexOf(status);
 }
 
 function mergeEditableEntity(
@@ -392,6 +491,73 @@ function renderEditor(webview: vscode.Webview, payload: EditorPayload): string {
     }
 
     .check input { width: auto; }
+
+    .epicBoard {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(150px, 1fr));
+      gap: 10px;
+    }
+
+    .boardColumn {
+      min-width: 0;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: color-mix(in srgb, var(--panel) 82%, var(--bg));
+      padding: 8px;
+    }
+
+    .columnHead {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 8px;
+      color: var(--muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: 11px;
+    }
+
+    .taskMini {
+      display: grid;
+      gap: 5px;
+      width: 100%;
+      margin: 0 0 8px;
+      padding: 8px;
+      color: var(--text);
+      text-align: left;
+      background: var(--vscode-input-background);
+      border: 1px solid var(--border);
+      border-radius: 5px;
+    }
+
+    .taskMini:hover {
+      border-color: var(--vscode-focusBorder);
+    }
+
+    .taskTitle {
+      overflow-wrap: anywhere;
+      line-height: 1.3;
+    }
+
+    .taskMeta {
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.35;
+    }
+
+    .emptyColumn {
+      padding: 8px;
+      color: var(--muted);
+      border: 1px dashed var(--border);
+      border-radius: 5px;
+    }
+
+    @media (max-width: 760px) {
+      .grid,
+      .epicBoard {
+        grid-template-columns: 1fr;
+      }
+    }
   </style>
 </head>
 <body>
@@ -425,6 +591,11 @@ function renderEditor(webview: vscode.Webview, payload: EditorPayload): string {
     });
     document.getElementById('openRaw').addEventListener('click', () => {
       vscode.postMessage({ type: 'openRaw' });
+    });
+    document.querySelectorAll('[data-open-entity]').forEach(button => {
+      button.addEventListener('click', () => {
+        vscode.postMessage({ type: 'openEntity', entityId: button.dataset.openEntity });
+      });
     });
     window.addEventListener('message', event => {
       if (event.data?.type === 'validation') {
@@ -522,7 +693,8 @@ function renderEntityFields(payload: EditorPayload): string {
       input('Title', 'title', task.title),
       select('Status', 'status', task.status, ['todo', 'in-progress', 'review', 'done']),
       select('Priority', 'priority', task.priority ?? '', ['', 'low', 'medium', 'high', 'critical']),
-      input('Assignee', 'assignee', task.assignee ?? ''),
+      input('Assignee', 'assignee', task.assignee ?? '', 'text', false, 'developer-options'),
+      datalist('developer-options', payload.options.developers),
       selectWithOptions('Epic', 'epic', task.epic ?? '', payload.options.epics),
       selectWithOptions('Milestone', 'milestone', task.milestone ?? '', payload.options.milestones),
       input('Due Date', 'dueDate', toDateInput(task.dueDate), 'date'),
@@ -541,12 +713,14 @@ function renderEntityFields(payload: EditorPayload): string {
       common[0],
       common[1],
       select('Status', 'status', epic.status, ['active', 'completed', 'on-hold', 'archived']),
-      input('Owner', 'owner', epic.owner ?? ''),
+      input('Owner', 'owner', epic.owner ?? '', 'text', false, 'developer-options'),
+      datalist('developer-options', payload.options.developers),
       input('Target Date', 'targetDate', toDateInput(epic.targetDate), 'date'),
       input('Tags', 'tags', (epic.tags ?? []).join(', '), 'text', false, 'tag-options'),
       datalist('tag-options', payload.options.tags),
       textarea('Description', 'description', epic.description ?? '', 'full'),
       textarea('Links JSON', 'links', formatJson(epic.links), 'full'),
+      renderEpicBoard(payload),
       common[2]
     ].join('');
   }
@@ -557,10 +731,59 @@ function renderEntityFields(payload: EditorPayload): string {
     common[1],
     select('Status', 'status', milestone.status, ['active', 'completed', 'delayed']),
     input('Target Date', 'targetDate', toDateInput(milestone.targetDate), 'date'),
-    input('Owner', 'owner', milestone.owner ?? ''),
+    input('Owner', 'owner', milestone.owner ?? '', 'text', false, 'developer-options'),
+    datalist('developer-options', payload.options.developers),
     textarea('Description', 'description', milestone.description ?? '', 'full'),
     textarea('Links JSON', 'links', formatJson(milestone.links), 'full'),
     common[2]
+  ].join('');
+}
+
+function renderEpicBoard(payload: EditorPayload): string {
+  const columns = payload.epicBoard ?? [];
+  const totalTasks = columns.reduce((total, column) => total + column.tasks.length, 0);
+
+  if (columns.length === 0) {
+    return '';
+  }
+
+  return [
+    '<section class="card full">',
+    '<h2>Epic Task Board</h2>',
+    totalTasks === 0
+      ? '<p class="subtle">No tasks currently reference this epic.</p>'
+      : '<div class="epicBoard">' + columns.map(renderEpicBoardColumn).join('') + '</div>',
+    '</section>'
+  ].join('');
+}
+
+function renderEpicBoardColumn(column: EpicBoardColumn): string {
+  const tasks = column.tasks.length === 0
+    ? '<div class="emptyColumn">No tasks</div>'
+    : column.tasks.map(renderEpicBoardTask).join('');
+
+  return [
+    '<section class="boardColumn">',
+    '<div class="columnHead"><span>' + escapeHtml(column.status) + '</span><span>' + column.tasks.length + '</span></div>',
+    tasks,
+    '</section>'
+  ].join('');
+}
+
+function renderEpicBoardTask(task: EpicBoardTask): string {
+  const meta = [
+    task.priority,
+    task.assignee,
+    task.milestone,
+    toDateInput(task.dueDate)
+  ].filter(Boolean).join(' · ');
+
+  return [
+    '<button type="button" class="taskMini" data-open-entity="' + escapeHtml(task.id) + '">',
+    '<strong>' + escapeHtml(task.id) + '</strong>',
+    '<span class="taskTitle">' + escapeHtml(task.title) + '</span>',
+    meta ? '<span class="taskMeta">' + escapeHtml(meta) + '</span>' : '',
+    '</button>'
   ].join('');
 }
 

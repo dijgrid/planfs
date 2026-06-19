@@ -22,6 +22,14 @@ interface InsightsPayload {
       status: string;
       level: number;
       critical: boolean;
+      priority?: string;
+      assignee?: string;
+      epic?: string;
+      epicTitle?: string;
+      milestone?: string;
+      dueDate?: string;
+      dependsOn: string[];
+      dependents: string[];
       missingDependencies: string[];
     }>;
     edges: Array<{ from: string; to: string }>;
@@ -29,6 +37,20 @@ interface InsightsPayload {
     missingDependencies: Array<{ taskId: string; dependencyId: string }>;
     validationWarnings: string[];
   };
+  timeline: Array<{
+    id: string;
+    title: string;
+    kind: 'task' | 'epic' | 'milestone';
+    status: string;
+    date?: string;
+    assignee?: string;
+    epic?: string;
+    milestone?: string;
+    total?: number;
+    done?: number;
+    percentDone?: number;
+    health: 'complete' | 'active' | 'empty' | 'overdue' | 'undated';
+  }>;
   milestones: Array<{
     id: string;
     title: string;
@@ -140,6 +162,10 @@ export class InsightsProvider {
       if (message?.type === 'exportReport') {
         await exportReport(String(message.format), String(message.content));
       }
+
+      if (message?.type === 'openEntity') {
+        await openEntityFile(String(message.entityId));
+      }
     });
 
     await this.render();
@@ -242,6 +268,14 @@ async function createPayload(repository: Repository): Promise<InsightsPayload> {
         status: node.task.status,
         level: node.level,
         critical: node.critical,
+        priority: node.task.priority,
+        assignee: node.task.assignee,
+        epic: node.task.epic,
+        epicTitle: node.task.epic ? repository.epics.get(node.task.epic)?.title : undefined,
+        milestone: node.task.milestone,
+        dueDate: node.task.dueDate,
+        dependsOn: node.dependsOn.filter(dependencyId => graph.nodes.has(dependencyId)),
+        dependents: node.dependents,
         missingDependencies: node.missingDependencies
       })),
       edges: graph.edges,
@@ -251,6 +285,7 @@ async function createPayload(repository: Repository): Promise<InsightsPayload> {
         .filter(error => error.message.toLowerCase().includes('circular'))
         .map(error => error.message)
     },
+    timeline: createTimelineItems(repository, milestones, epics),
     milestones,
     epics,
     reports,
@@ -269,6 +304,68 @@ async function createPayload(repository: Repository): Promise<InsightsPayload> {
   };
 
   return payload;
+}
+
+function createTimelineItems(
+  repository: Repository,
+  milestones: InsightsPayload['milestones'],
+  epics: InsightsPayload['epics']
+): InsightsPayload['timeline'] {
+  const milestoneItems = milestones.map(milestone => ({
+    id: milestone.id,
+    title: milestone.title,
+    kind: 'milestone' as const,
+    status: milestone.status,
+    date: milestone.targetDate,
+    total: milestone.total,
+    done: milestone.done,
+    percentDone: milestone.percentDone,
+    health: timelineHealth(milestone.targetDate, milestone.percentDone, milestone.total)
+  }));
+
+  const epicItems = epics.map(epic => ({
+    id: epic.id,
+    title: epic.title,
+    kind: 'epic' as const,
+    status: epic.status,
+    date: epic.targetDate,
+    epic: epic.id,
+    total: epic.total,
+    done: epic.done,
+    percentDone: epic.percentDone,
+    health: timelineHealth(epic.targetDate, epic.percentDone, epic.total)
+  }));
+
+  const taskItems = Array.from(repository.tasks.values()).map(task => ({
+    id: task.id,
+    title: task.title,
+    kind: 'task' as const,
+    status: task.status,
+    date: task.dueDate,
+    assignee: task.assignee,
+    epic: task.epic,
+    milestone: task.milestone,
+    health: timelineHealth(task.dueDate, task.status === 'done' ? 100 : 0, 1)
+  }));
+
+  return [...milestoneItems, ...epicItems, ...taskItems];
+}
+
+function timelineHealth(
+  date: string | undefined,
+  percentDone: number,
+  total: number
+): 'complete' | 'active' | 'empty' | 'overdue' | 'undated' {
+  if (!date) {
+    return 'undated';
+  }
+  if (total === 0) {
+    return 'empty';
+  }
+  if (percentDone >= 100) {
+    return 'complete';
+  }
+  return new Date(date).getTime() < Date.now() ? 'overdue' : 'active';
 }
 
 async function createBranchPayload(rootPath: string): Promise<InsightsPayload['branch']> {
@@ -313,6 +410,27 @@ async function exportReport(format: string, content: string): Promise<void> {
   vscode.window.showInformationMessage(
     `Opened ${extension.toUpperCase()} report in a new editor`
   );
+}
+
+async function openEntityFile(entityId: string): Promise<void> {
+  const workspaceFolder = getPlanFSWorkspaceFolder();
+  if (!workspaceFolder) {
+    return;
+  }
+
+  const repository = await loadRepository(workspaceFolder.uri.fsPath);
+  const entity = repository.tasks.get(entityId)
+    ?? repository.epics.get(entityId)
+    ?? repository.milestones.get(entityId)
+    ?? repository.decisions.get(entityId);
+
+  if (!entity) {
+    vscode.window.showErrorMessage(`PlanFS entity not found: ${entityId}`);
+    return;
+  }
+
+  const document = await vscode.workspace.openTextDocument(entity.filePath);
+  await vscode.window.showTextDocument(document, { preview: false });
 }
 
 function reportsToCsv(reports: InsightsPayload['reports']): string {
@@ -541,33 +659,133 @@ function renderInsights(webview: vscode.Webview, payload: InsightsPayload): stri
       margin-bottom: 4px;
     }
 
-    .graph {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
-      gap: 12px;
-      align-items: start;
+    .graphTools,
+    .timelineTools {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
     }
 
-    .node {
-      padding: 10px;
-      border-left: 4px solid var(--todo);
+    .graphTools input,
+    .timelineTools input {
+      min-width: 220px;
+      flex: 1 1 260px;
     }
 
-    .node.in-progress {
-      border-left-color: var(--progress);
+    .graphStage {
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--panel);
+      overflow: auto;
+      margin-bottom: 12px;
     }
 
-    .node.review {
-      border-left-color: var(--review);
+    .graphSvg {
+      display: block;
+      min-width: 920px;
+      width: 100%;
+      height: auto;
+      transform-origin: top left;
     }
 
-    .node.done {
-      border-left-color: var(--done);
+    .graphEdge {
+      stroke: color-mix(in srgb, var(--muted) 70%, transparent);
+      stroke-width: 1.5;
+      fill: none;
     }
 
-    .node.critical {
-      box-shadow: inset 0 0 0 1px var(--critical);
+    .graphEdge.related {
+      stroke: var(--accent);
+      stroke-width: 2.6;
     }
+
+    .graphEdge.downstream {
+      stroke: var(--done);
+    }
+
+    .graphNode rect {
+      fill: var(--vscode-input-background);
+      stroke: var(--border);
+      stroke-width: 1;
+      rx: 6;
+    }
+
+    .graphNode.in-progress rect {
+      stroke: var(--progress);
+    }
+
+    .graphNode.review rect {
+      stroke: var(--review);
+    }
+
+    .graphNode.done rect {
+      stroke: var(--done);
+    }
+
+    .graphNode.selected rect {
+      stroke: var(--accent);
+      stroke-width: 2.5;
+    }
+
+    .graphNode.dim {
+      opacity: 0.3;
+    }
+
+    .graphNode text {
+      fill: var(--text);
+      font-size: 12px;
+      pointer-events: none;
+    }
+
+    .graphNode .metaText {
+      fill: var(--muted);
+      font-size: 10px;
+    }
+
+    .epicLaneLabel {
+      fill: var(--muted);
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .selectedDetails {
+      margin-top: 12px;
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--panel);
+    }
+
+    .legend {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin: 0 0 12px;
+      color: var(--muted);
+    }
+
+    .legendItem {
+      display: inline-flex;
+      gap: 6px;
+      align-items: center;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 3px 8px;
+      background: color-mix(in srgb, var(--panel-strong) 40%, transparent);
+    }
+
+    .swatch {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: var(--todo);
+    }
+
+    .swatch.progress { background: var(--progress); }
+    .swatch.review { background: var(--review); }
+    .swatch.done { background: var(--done); }
+    .swatch.warning { background: var(--critical); }
 
     .nodeHead {
       display: flex;
@@ -587,7 +805,6 @@ function renderInsights(webview: vscode.Webview, payload: InsightsPayload): stri
       font-size: 11px;
     }
 
-    .edgeList,
     .warningList {
       margin-top: 16px;
       padding: 12px;
@@ -596,20 +813,133 @@ function renderInsights(webview: vscode.Webview, payload: InsightsPayload): stri
       background: var(--panel);
     }
 
-    .timeline {
-      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    .timelineAxis {
+      position: relative;
+      min-height: 420px;
+      overflow-x: auto;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--panel);
+      padding: 18px 24px 54px;
     }
 
-    .timelineTools {
-      display: flex;
+    .timelineCanvas {
+      position: relative;
+      min-width: 980px;
+      height: 340px;
+    }
+
+    .axisLine,
+    .nowLine {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 168px;
+      height: 1px;
+      background: var(--border);
+    }
+
+    .nowLine {
+      width: 2px;
+      right: auto;
+      top: 0;
+      height: 318px;
+      background: var(--accent);
+    }
+
+    .nowLabel {
+      position: absolute;
+      top: 322px;
+      transform: translateX(-50%);
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .tick {
+      position: absolute;
+      top: 152px;
+      width: 1px;
+      height: 32px;
+      background: var(--border);
+    }
+
+    .tick span {
+      position: absolute;
+      top: 36px;
+      transform: translateX(-50%);
+      color: var(--muted);
+      font-size: 10px;
+      white-space: nowrap;
+    }
+
+    .timelineItem {
+      position: absolute;
+      width: 172px;
+      min-height: 58px;
+      transform: translateX(-50%);
+      padding: 8px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--vscode-input-background);
+      box-shadow: 0 2px 8px color-mix(in srgb, black 14%, transparent);
+      color: var(--text);
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .timelineItem.task {
+      border-left: 4px solid var(--progress);
+    }
+
+    .timelineItem.epic {
+      border-left: 4px solid var(--review);
+    }
+
+    .timelineItem.milestone {
+      border-left: 4px solid var(--done);
+    }
+
+    .timelineItem.overdue {
+      border-color: var(--critical);
+    }
+
+    .timelineItem.selected {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 30%, transparent);
+    }
+
+    .timelineItem.undated {
+      border-style: dashed;
+    }
+
+    .timelineItemStatic {
+      width: 100%;
+      color: var(--text);
+      text-align: left;
+      background: var(--panel);
+      border-color: var(--border);
+    }
+
+    .timelineTitle {
+      overflow-wrap: anywhere;
+      line-height: 1.25;
+      margin-top: 3px;
+    }
+
+    .undatedRail {
+      display: grid;
       gap: 8px;
-      flex-wrap: wrap;
-      margin-bottom: 12px;
+      margin-top: 12px;
     }
 
-    .timelineTools input {
-      min-width: 220px;
-      flex: 1 1 260px;
+    .timelineGroup {
+      margin-bottom: 14px;
+    }
+
+    .timelineGroup h2 {
+      margin: 0 0 8px;
+      font-size: 14px;
     }
 
     .milestone,
@@ -749,6 +1079,9 @@ function renderInsights(webview: vscode.Webview, payload: InsightsPayload): stri
     const state = ${JSON.stringify(payload)};
     const tabs = document.querySelectorAll('.tab');
     const panels = document.querySelectorAll('.panel');
+    let selectedGraphNode;
+    let graphZoom = 1;
+    let selectedTimelineItem;
 
     tabs.forEach(tab => tab.addEventListener('click', () => {
       tabs.forEach(item => item.classList.remove('active'));
@@ -762,8 +1095,18 @@ function renderInsights(webview: vscode.Webview, payload: InsightsPayload): stri
     renderReports();
     renderBranch();
 
+    document.addEventListener('click', event => {
+      const button = event.target.closest('[data-open-entity]');
+      if (button) {
+        vscode.postMessage({ type: 'openEntity', entityId: button.dataset.openEntity });
+      }
+    });
+
     function renderGraph() {
       const root = document.getElementById('graph');
+      const epicOptions = unique(state.graph.nodes.map(node => node.epic || 'No epic')).sort();
+      const milestoneOptions = unique(state.graph.nodes.map(node => node.milestone || 'No milestone')).sort();
+      const assigneeOptions = unique(state.graph.nodes.map(node => node.assignee || 'Unassigned')).sort();
       root.innerHTML = [
         renderMetrics([
           ['Tasks', state.graph.nodes.length],
@@ -771,32 +1114,274 @@ function renderInsights(webview: vscode.Webview, payload: InsightsPayload): stri
           ['Critical Path', state.graph.criticalPath.length],
           ['Missing Deps', state.graph.missingDependencies.length]
         ]),
-        '<div class="graph">' + state.graph.nodes.map(renderNode).join('') + '</div>',
-        renderEdges(),
+        '<div class="graphTools">',
+        '<input id="graphFilter" type="search" placeholder="Filter task, assignee, epic, or milestone" aria-label="Filter graph">',
+        '<select id="graphEpic" aria-label="Filter graph by epic"><option value="all">All epics</option>' + epicOptions.map(epic => '<option value="' + escapeHtml(epic) + '">' + escapeHtml(epic) + '</option>').join('') + '</select>',
+        '<select id="graphMilestone" aria-label="Filter graph by milestone"><option value="all">All milestones</option>' + milestoneOptions.map(milestone => '<option value="' + escapeHtml(milestone) + '">' + escapeHtml(milestone) + '</option>').join('') + '</select>',
+        '<select id="graphAssignee" aria-label="Filter graph by assignee"><option value="all">All assignees</option>' + assigneeOptions.map(assignee => '<option value="' + escapeHtml(assignee) + '">' + escapeHtml(assignee) + '</option>').join('') + '</select>',
+        '<select id="graphStatus" aria-label="Filter graph by status"><option value="all">All statuses</option><option value="todo">Todo</option><option value="in-progress">In progress</option><option value="review">Review</option><option value="done">Done</option></select>',
+        '<select id="graphHealth" aria-label="Filter graph by dependency health"><option value="all">All dependency health</option><option value="connected">Has dependencies</option><option value="isolated">No dependencies</option><option value="missing">Missing dependencies</option><option value="critical">Critical path</option></select>',
+        '<button id="zoomOutGraph" type="button">Zoom out</button>',
+        '<button id="zoomInGraph" type="button">Zoom in</button>',
+        '<button id="fitGraph" type="button">Fit</button>',
+        '<button id="clearGraphSelection" type="button">Clear selection</button>',
+        '</div>',
+        renderGraphLegend(),
+        '<div id="graphStage" class="graphStage"></div>',
+        '<div id="selectedDetails" class="selectedDetails subtle">Select a task node to highlight prerequisites and downstream work.</div>',
+        state.graph.edges.length === 0
+          ? '<div class="warningList subtle">No task dependencies yet. Add dependsOn values to task frontmatter to show flow between tasks.</div>'
+          : '',
         renderWarnings()
       ].join('');
+
+      root.querySelector('#graphFilter').addEventListener('input', renderGraphStage);
+      root.querySelector('#graphEpic').addEventListener('change', renderGraphStage);
+      root.querySelector('#graphMilestone').addEventListener('change', renderGraphStage);
+      root.querySelector('#graphAssignee').addEventListener('change', renderGraphStage);
+      root.querySelector('#graphStatus').addEventListener('change', renderGraphStage);
+      root.querySelector('#graphHealth').addEventListener('change', renderGraphStage);
+      root.querySelector('#zoomOutGraph').addEventListener('click', () => {
+        graphZoom = Math.max(0.6, graphZoom - 0.15);
+        renderGraphStage();
+      });
+      root.querySelector('#zoomInGraph').addEventListener('click', () => {
+        graphZoom = Math.min(1.8, graphZoom + 0.15);
+        renderGraphStage();
+      });
+      root.querySelector('#fitGraph').addEventListener('click', () => {
+        graphZoom = 1;
+        renderGraphStage();
+      });
+      root.querySelector('#clearGraphSelection').addEventListener('click', () => {
+        selectedGraphNode = undefined;
+        renderGraphStage();
+      });
+      renderGraphStage();
     }
 
-    function renderNode(node) {
-      return '<article class="node ' + node.status + (node.critical ? ' critical' : '') + '">' +
-        '<div class="nodeHead"><span>' + escapeHtml(node.id) + '</span><span class="lane">Level ' + node.level + '</span></div>' +
-        '<div class="nodeTitle">' + escapeHtml(node.title) + '</div>' +
-        '<div class="subtle">' + escapeHtml(node.status) + (node.critical ? ' · critical path' : '') + '</div>' +
-      '</article>';
-    }
+    function renderGraphStage() {
+      const root = document.getElementById('graph');
+      const stage = root.querySelector('#graphStage');
+      const details = root.querySelector('#selectedDetails');
+      const filterText = root.querySelector('#graphFilter').value.trim().toLowerCase();
+      const epicFilter = root.querySelector('#graphEpic').value;
+      const milestoneFilter = root.querySelector('#graphMilestone').value;
+      const assigneeFilter = root.querySelector('#graphAssignee').value;
+      const statusFilter = root.querySelector('#graphStatus').value;
+      const healthFilter = root.querySelector('#graphHealth').value;
+      const nodes = state.graph.nodes.filter(node => {
+        const epic = node.epic || 'No epic';
+        const milestone = node.milestone || 'No milestone';
+        const assignee = node.assignee || 'Unassigned';
+        const searchable = [
+          node.id,
+          node.title,
+          node.status,
+          node.assignee,
+          node.epic,
+          node.epicTitle,
+          node.milestone
+        ].filter(Boolean).join(' ').toLowerCase();
+        return searchable.includes(filterText)
+          && (epicFilter === 'all' || epic === epicFilter)
+          && (milestoneFilter === 'all' || milestone === milestoneFilter)
+          && (assigneeFilter === 'all' || assignee === assigneeFilter)
+          && (statusFilter === 'all' || node.status === statusFilter)
+          && graphHealthMatches(node, healthFilter);
+      });
+      const nodeIds = new Set(nodes.map(node => node.id));
+      const edges = state.graph.edges.filter(edge => nodeIds.has(edge.from) && nodeIds.has(edge.to));
 
-    function renderEdges() {
-      if (state.graph.edges.length === 0) {
-        return '<div class="edgeList subtle">No task dependencies yet.</div>';
+      if (nodes.length === 0) {
+        stage.innerHTML = '<div class="warningList subtle">No tasks match the current graph filters.</div>';
+        details.className = 'selectedDetails subtle';
+        details.textContent = 'Adjust filters to bring tasks back into view.';
+        return;
       }
 
-      return '<div class="edgeList"><strong>Edges</strong><ul>' +
-        state.graph.edges.map(edge => '<li>' + escapeHtml(edge.from) + ' → ' + escapeHtml(edge.to) + '</li>').join('') +
-        '</ul></div>';
+      const layout = layoutGraph(nodes);
+      const related = selectedGraphNode ? relatedGraphNodes(selectedGraphNode) : { prerequisites: new Set(), downstream: new Set() };
+      const selectedVisible = selectedGraphNode && nodeIds.has(selectedGraphNode);
+      const width = Math.max(920, layout.width);
+      const height = Math.max(360, layout.height);
+
+      stage.innerHTML = '<svg class="graphSvg" viewBox="0 0 ' + width + ' ' + height + '" role="img" aria-label="Task dependency graph">' +
+        '<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="currentColor"></path></marker></defs>' +
+        layout.lanes.map(lane => '<text class="epicLaneLabel" x="24" y="' + lane.y + '">' + escapeHtml(lane.label) + '</text>').join('') +
+        edges.map(edge => renderGraphEdge(edge, layout.positions, related)).join('') +
+        nodes.map(node => renderGraphNode(node, layout.positions.get(node.id), related, selectedVisible)).join('') +
+        '</svg>';
+      const svg = stage.querySelector('.graphSvg');
+      svg.style.width = Math.round(width * graphZoom) + 'px';
+
+      stage.querySelectorAll('[data-graph-node]').forEach(nodeElement => {
+        nodeElement.addEventListener('click', () => {
+          selectedGraphNode = nodeElement.dataset.graphNode;
+          renderGraphStage();
+        });
+        nodeElement.addEventListener('keydown', event => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            selectedGraphNode = nodeElement.dataset.graphNode;
+            renderGraphStage();
+          }
+        });
+      });
+
+      details.innerHTML = selectedVisible
+        ? renderSelectedGraphDetails(state.graph.nodes.find(node => node.id === selectedGraphNode), related)
+        : 'Select a task node to highlight prerequisites and downstream work.';
+      details.className = selectedVisible ? 'selectedDetails' : 'selectedDetails subtle';
+    }
+
+    function graphHealthMatches(node, health) {
+      if (health === 'all') return true;
+      if (health === 'connected') return node.dependsOn.length > 0 || node.dependents.length > 0;
+      if (health === 'isolated') return node.dependsOn.length === 0 && node.dependents.length === 0;
+      if (health === 'missing') return node.missingDependencies.length > 0;
+      if (health === 'critical') return node.critical;
+      return true;
+    }
+
+    function renderGraphLegend() {
+      return '<div class="legend" aria-label="Graph legend">' +
+        '<span class="legendItem"><span class="swatch"></span>Todo</span>' +
+        '<span class="legendItem"><span class="swatch progress"></span>In progress</span>' +
+        '<span class="legendItem"><span class="swatch review"></span>Review</span>' +
+        '<span class="legendItem"><span class="swatch done"></span>Done</span>' +
+        '<span class="legendItem"><span class="swatch warning"></span>Warning</span>' +
+        '<span class="legendItem">Arrows flow from prerequisite to dependent task</span>' +
+      '</div>';
+    }
+
+    function layoutGraph(nodes) {
+      const byEpic = new Map();
+      nodes.forEach(node => {
+        const epic = node.epic || 'No epic';
+        if (!byEpic.has(epic)) {
+          byEpic.set(epic, []);
+        }
+        byEpic.get(epic).push(node);
+      });
+
+      const positions = new Map();
+      const lanes = [];
+      let y = 36;
+      const nodeWidth = 190;
+      const nodeHeight = 70;
+      const columnWidth = 230;
+      const rowGap = 18;
+      const laneGap = 54;
+
+      Array.from(byEpic.entries()).sort((a, b) => a[0].localeCompare(b[0])).forEach(([epic, epicNodes]) => {
+        lanes.push({ label: epic, y });
+        const byLevel = new Map();
+        epicNodes
+          .sort((a, b) => a.level - b.level || a.id.localeCompare(b.id))
+          .forEach(node => {
+            if (!byLevel.has(node.level)) {
+              byLevel.set(node.level, []);
+            }
+            byLevel.get(node.level).push(node);
+          });
+        const laneTop = y + 16;
+        let laneHeight = nodeHeight;
+        byLevel.forEach((levelNodes, level) => {
+          levelNodes.forEach((node, index) => {
+            const x = 36 + level * columnWidth;
+            const nodeY = laneTop + index * (nodeHeight + rowGap);
+            positions.set(node.id, { x, y: nodeY, width: nodeWidth, height: nodeHeight });
+            laneHeight = Math.max(laneHeight, nodeY - laneTop + nodeHeight);
+          });
+        });
+        y += laneHeight + laneGap;
+      });
+
+      const maxLevel = Math.max(0, ...nodes.map(node => node.level));
+      return {
+        positions,
+        lanes,
+        width: 72 + (maxLevel + 1) * columnWidth,
+        height: y + 20
+      };
+    }
+
+    function renderGraphEdge(edge, positions, related) {
+      const from = positions.get(edge.from);
+      const to = positions.get(edge.to);
+      if (!from || !to) {
+        return '';
+      }
+      const x1 = from.x + from.width;
+      const y1 = from.y + from.height / 2;
+      const x2 = to.x;
+      const y2 = to.y + to.height / 2;
+      const mid = Math.max(x1 + 34, (x1 + x2) / 2);
+      const isPrereq = selectedGraphNode === edge.to || related.prerequisites.has(edge.from) && related.prerequisites.has(edge.to);
+      const isDownstream = selectedGraphNode === edge.from || related.downstream.has(edge.from) && related.downstream.has(edge.to);
+      const className = 'graphEdge' + (isPrereq || isDownstream ? ' related' : '') + (isDownstream ? ' downstream' : '');
+      return '<path class="' + className + '" d="M' + x1 + ',' + y1 + ' C' + mid + ',' + y1 + ' ' + mid + ',' + y2 + ' ' + x2 + ',' + y2 + '" marker-end="url(#arrow)"></path>';
+    }
+
+    function renderGraphNode(node, position, related, selectedVisible) {
+      if (!position) {
+        return '';
+      }
+      const isSelected = node.id === selectedGraphNode;
+      const isRelated = isSelected || related.prerequisites.has(node.id) || related.downstream.has(node.id);
+      const dim = selectedVisible && !isRelated;
+      const meta = [node.status, node.assignee || 'unassigned', node.milestone].filter(Boolean).join(' · ');
+      return '<g tabindex="0" role="button" data-graph-node="' + escapeHtml(node.id) + '" class="graphNode ' + escapeHtml(node.status) + (isSelected ? ' selected' : '') + (dim ? ' dim' : '') + '" transform="translate(' + position.x + ' ' + position.y + ')">' +
+        '<title>' + escapeHtml(node.id + ': ' + node.title) + '</title>' +
+        '<rect width="' + position.width + '" height="' + position.height + '"></rect>' +
+        '<text x="10" y="19" font-weight="700">' + escapeHtml(node.id) + '</text>' +
+        '<text x="10" y="38">' + escapeHtml(truncate(node.title, 26)) + '</text>' +
+        '<text class="metaText" x="10" y="57">' + escapeHtml(truncate(meta, 30)) + '</text>' +
+        '</g>';
+    }
+
+    function relatedGraphNodes(taskId) {
+      const prerequisites = new Set();
+      const downstream = new Set();
+      collectPrerequisites(taskId, prerequisites);
+      collectDownstream(taskId, downstream);
+      return { prerequisites, downstream };
+    }
+
+    function collectPrerequisites(taskId, result) {
+      const node = state.graph.nodes.find(item => item.id === taskId);
+      if (!node) return;
+      node.dependsOn.forEach(id => {
+        if (!result.has(id)) {
+          result.add(id);
+          collectPrerequisites(id, result);
+        }
+      });
+    }
+
+    function collectDownstream(taskId, result) {
+      const node = state.graph.nodes.find(item => item.id === taskId);
+      if (!node) return;
+      node.dependents.forEach(id => {
+        if (!result.has(id)) {
+          result.add(id);
+          collectDownstream(id, result);
+        }
+      });
+    }
+
+    function renderSelectedGraphDetails(node, related) {
+      if (!node) {
+        return '';
+      }
+      return '<strong>' + escapeHtml(node.id) + ': ' + escapeHtml(node.title) + '</strong>' +
+        '<p class="subtle">' + escapeHtml([node.status, node.priority, node.assignee, node.epic, node.milestone, node.dueDate].filter(Boolean).join(' · ') || 'No metadata') + '</p>' +
+        '<div class="pillRow"><span class="pill">Prerequisites: ' + related.prerequisites.size + '</span><span class="pill">Downstream: ' + related.downstream.size + '</span><span class="pill">Missing: ' + node.missingDependencies.length + '</span><button type="button" data-open-entity="' + escapeHtml(node.id) + '">Open file</button></div>';
     }
 
     function renderWarnings() {
-      const missing = state.graph.missingDependencies.map(item => escapeHtml(item.taskId) + ' references ' + escapeHtml(item.dependencyId));
+      const missing = state.graph.missingDependencies.map(item => escapeHtml(item.taskId) + ' references ' + escapeHtml(item.dependencyId) + ' <button type="button" data-open-entity="' + escapeHtml(item.taskId) + '">Open task</button>');
       const circular = state.graph.validationWarnings.map(item => escapeHtml(item));
       const warnings = [...missing, ...circular];
 
@@ -813,74 +1398,217 @@ function renderInsights(webview: vscode.Webview, payload: InsightsPayload): stri
       const root = document.getElementById('timeline');
       root.innerHTML = [
         '<div class="timelineTools">',
-        '<input id="timelineFilter" type="search" placeholder="Filter milestone or epic" aria-label="Filter timeline">',
+        '<input id="timelineFilter" type="search" placeholder="Filter task, milestone, or epic" aria-label="Filter timeline">',
+        '<select id="timelineWindow" aria-label="Timeline window">',
+        '<option value="month">Month</option>',
+        '<option value="week">Week</option>',
+        '<option value="quarter">Quarter</option>',
+        '<option value="all">All dated work</option>',
+        '</select>',
+        '<select id="timelineGroup" aria-label="Group timeline items">',
+        '<option value="none">No grouping</option>',
+        '<option value="epic">Group by epic</option>',
+        '<option value="milestone">Group by milestone</option>',
+        '<option value="status">Group by status</option>',
+        '<option value="assignee">Group by assignee</option>',
+        '<option value="kind">Group by type</option>',
+        '</select>',
+        '<select id="timelineKind" aria-label="Filter timeline item type">',
+        '<option value="all">All item types</option>',
+        '<option value="task">Tasks</option>',
+        '<option value="epic">Epics</option>',
+        '<option value="milestone">Milestones</option>',
+        '</select>',
         '<select id="healthFilter" aria-label="Filter delivery health">',
         '<option value="all">All delivery health</option>',
         '<option value="complete">Complete</option>',
         '<option value="active">Active</option>',
+        '<option value="overdue">Overdue</option>',
+        '<option value="undated">Undated</option>',
         '<option value="empty">No tasks</option>',
         '</select>',
         '</div>',
-        '<div id="timelineItems" class="timeline"></div>'
+        '<div id="timelineDetails" class="selectedDetails subtle">Select a timeline item to inspect dates and open its PlanFS file.</div>',
+        '<div id="timelineItems"></div>'
       ].join('');
 
       root.querySelector('#timelineFilter').addEventListener('input', renderTimelineItems);
+      root.querySelector('#timelineWindow').addEventListener('change', renderTimelineItems);
+      root.querySelector('#timelineGroup').addEventListener('change', renderTimelineItems);
+      root.querySelector('#timelineKind').addEventListener('change', renderTimelineItems);
       root.querySelector('#healthFilter').addEventListener('change', renderTimelineItems);
-      renderTimelineItems();
-
-      root.querySelectorAll('[data-save-date]').forEach(button => {
-        button.addEventListener('click', () => {
+      root.addEventListener('click', event => {
+        const button = event.target.closest('[data-save-date]');
+        if (button) {
           const milestoneId = button.dataset.saveDate;
           const input = root.querySelector('[data-date-for="' + milestoneId + '"]');
           vscode.postMessage({ type: 'updateMilestoneDate', milestoneId, targetDate: input.value });
-        });
+        }
       });
+      root.addEventListener('click', event => {
+        const item = event.target.closest('[data-timeline-item]');
+        if (item) {
+          selectedTimelineItem = item.dataset.timelineItem;
+          renderTimelineItems();
+        }
+      });
+      renderTimelineItems();
     }
 
     function renderTimelineItems() {
       const root = document.getElementById('timeline');
       const timelineItems = root.querySelector('#timelineItems');
+      const timelineDetails = root.querySelector('#timelineDetails');
       const filterText = root.querySelector('#timelineFilter').value.trim().toLowerCase();
+      const windowValue = root.querySelector('#timelineWindow').value;
+      const groupBy = root.querySelector('#timelineGroup').value;
+      const kind = root.querySelector('#timelineKind').value;
       const health = root.querySelector('#healthFilter').value;
-      const items = [
-        ...state.milestones.map(item => ({ ...item, kind: 'milestone' })),
-        ...state.epics.map(item => ({ ...item, kind: 'epic' }))
-      ].filter(item => {
+      const items = state.timeline.filter(item => {
         const searchable = [item.id, item.title, item.status].join(' ').toLowerCase();
         const healthMatch =
           health === 'all' ||
-          (health === 'complete' && item.percentDone === 100) ||
-          (health === 'active' && item.total > 0 && item.percentDone < 100) ||
-          (health === 'empty' && item.total === 0);
-        return searchable.includes(filterText) && healthMatch;
+          item.health === health;
+        return searchable.includes(filterText)
+          && healthMatch
+          && (kind === 'all' || item.kind === kind)
+          && timelineWindowMatches(item, windowValue);
       });
 
-      timelineItems.innerHTML = items
-        .map(item => item.kind === 'milestone' ? renderMilestone(item) : renderEpic(item))
+      timelineItems.innerHTML = renderGroupedTimeAxis(items, groupBy);
+      const selected = state.timeline.find(item => item.id === selectedTimelineItem);
+      timelineDetails.innerHTML = selected
+        ? renderTimelineDetails(selected)
+        : 'Select a timeline item to inspect dates and open its PlanFS file.';
+      timelineDetails.className = selected ? 'selectedDetails' : 'selectedDetails subtle';
+    }
+
+    function renderGroupedTimeAxis(items, groupBy) {
+      if (groupBy === 'none') {
+        return renderTimeAxis(items);
+      }
+
+      const groups = new Map();
+      items.forEach(item => {
+        const key = timelineGroupKey(item, groupBy);
+        if (!groups.has(key)) {
+          groups.set(key, []);
+        }
+        groups.get(key).push(item);
+      });
+
+      return Array.from(groups.entries())
+        .sort((a, b) => a[0].localeCompare(b[0]))
+        .map(([group, groupItems]) => '<section class="timelineGroup"><h2>' + escapeHtml(group) + '</h2>' + renderTimeAxis(groupItems) + '</section>')
         .join('');
     }
 
-    function renderMilestone(milestone) {
-      return '<article class="milestone">' +
-        '<div class="nodeHead"><span>' + escapeHtml(milestone.id) + '</span><span class="lane">' + escapeHtml(milestone.status) + '</span></div>' +
-        '<div class="nodeTitle">' + escapeHtml(milestone.title) + '</div>' +
-        '<div class="bar"><div class="fill" style="width:' + milestone.percentDone + '%"></div></div>' +
-        '<div class="subtle">' + milestone.done + ' of ' + milestone.total + ' tasks done · ' + milestone.percentDone + '%</div>' +
-        '<div class="row" style="margin-top:10px">' +
-          '<input type="date" data-date-for="' + escapeHtml(milestone.id) + '" value="' + escapeHtml(toDateInput(milestone.targetDate)) + '">' +
-          '<button data-save-date="' + escapeHtml(milestone.id) + '">Save date</button>' +
-        '</div>' +
-      '</article>';
+    function timelineGroupKey(item, groupBy) {
+      if (groupBy === 'epic') return item.epic || 'No epic';
+      if (groupBy === 'milestone') return item.milestone || 'No milestone';
+      if (groupBy === 'status') return item.status || 'No status';
+      if (groupBy === 'assignee') return item.assignee || 'Unassigned';
+      if (groupBy === 'kind') return item.kind;
+      return 'Timeline';
     }
 
-    function renderEpic(epic) {
-      return '<article class="milestone">' +
-        '<div class="nodeHead"><span>' + escapeHtml(epic.id) + '</span><span class="lane">epic · ' + escapeHtml(epic.status) + '</span></div>' +
-        '<div class="nodeTitle">' + escapeHtml(epic.title) + '</div>' +
-        '<div class="bar"><div class="fill" style="width:' + epic.percentDone + '%"></div></div>' +
-        '<div class="subtle">' + epic.done + ' of ' + epic.total + ' tasks done · ' + epic.percentDone + '%</div>' +
-        '<div class="subtle">Target: ' + escapeHtml(epic.targetDate || 'not set') + '</div>' +
-      '</article>';
+    function timelineWindowMatches(item, windowValue) {
+      if (windowValue === 'all' || !item.date) {
+        return true;
+      }
+
+      const time = new Date(item.date).getTime();
+      if (!Number.isFinite(time)) {
+        return true;
+      }
+
+      const now = Date.now();
+      const day = 1000 * 60 * 60 * 24;
+      const windows = {
+        week: 7 * day,
+        month: 31 * day,
+        quarter: 92 * day
+      };
+      const size = windows[windowValue] || windows.month;
+      return time >= now - size && time <= now + size;
+    }
+
+    function renderTimeAxis(items) {
+      if (items.length === 0) {
+        return '<div class="warningList subtle">No timeline items match the current filters.</div>';
+      }
+
+      const dated = items
+        .filter(item => item.date)
+        .map(item => ({ ...item, time: new Date(item.date).getTime() }))
+        .filter(item => Number.isFinite(item.time));
+      const undated = items.filter(item => !item.date);
+      const now = Date.now();
+      const times = dated.map(item => item.time);
+      const min = Math.min(now - 1000 * 60 * 60 * 24 * 14, ...times);
+      const max = Math.max(now + 1000 * 60 * 60 * 24 * 45, ...times);
+      const span = Math.max(1, max - min);
+      const positioned = dated.map((item, index) => ({
+        ...item,
+        x: 4 + ((item.time - min) / span) * 92,
+        y: 22 + (index % 5) * 62
+      }));
+      const nowX = 4 + ((now - min) / span) * 92;
+      const ticks = createTicks(min, max);
+
+      return '<div class="timelineAxis"><div class="timelineCanvas">' +
+        '<div class="axisLine"></div>' +
+        '<div class="nowLine" style="left:' + nowX + '%"></div><div class="nowLabel" style="left:' + nowX + '%">now</div>' +
+        ticks.map(tick => '<div class="tick" style="left:' + tick.x + '%"><span>' + escapeHtml(tick.label) + '</span></div>').join('') +
+        positioned.map(renderTimelineCard).join('') +
+        '</div></div>' +
+        (undated.length > 0 ? '<div class="undatedRail">' + undated.map(renderUndatedTimelineItem).join('') + '</div>' : '');
+    }
+
+    function renderTimelineCard(item) {
+      const top = item.time < Date.now() ? 24 + item.y : 184 + item.y / 2;
+      return '<button type="button" data-timeline-item="' + escapeHtml(item.id) + '" class="timelineItem ' + item.kind + ' ' + item.health + (selectedTimelineItem === item.id ? ' selected' : '') + '" style="left:' + item.x + '%; top:' + top + 'px">' +
+        '<div class="nodeHead"><span>' + escapeHtml(item.id) + '</span><span class="lane">' + escapeHtml(item.kind) + '</span></div>' +
+        '<div class="timelineTitle">' + escapeHtml(item.title) + '</div>' +
+        '<div class="subtle">' + escapeHtml(toDateInput(item.date)) + ' · ' + escapeHtml(item.status) + '</div>' +
+        renderTimelineProgress(item) +
+      '</button>';
+    }
+
+    function renderUndatedTimelineItem(item) {
+      return '<button type="button" data-timeline-item="' + escapeHtml(item.id) + '" class="milestone timelineItemStatic">' +
+        '<div class="nodeHead"><span>' + escapeHtml(item.id) + '</span><span class="lane">' + escapeHtml(item.kind) + ' · undated</span></div>' +
+        '<div class="nodeTitle">' + escapeHtml(item.title) + '</div>' +
+        '<div class="subtle">' + escapeHtml(item.status) + '</div>' +
+      '</button>';
+    }
+
+    function renderTimelineDetails(item) {
+      return '<strong>' + escapeHtml(item.id) + ': ' + escapeHtml(item.title) + '</strong>' +
+        '<p class="subtle">' + escapeHtml([item.kind, item.status, item.health, item.date, item.assignee, item.epic, item.milestone].filter(Boolean).join(' · ')) + '</p>' +
+        '<button type="button" data-open-entity="' + escapeHtml(item.id) + '">Open file</button>';
+    }
+
+    function renderTimelineProgress(item) {
+      if (typeof item.percentDone !== 'number') {
+        return '';
+      }
+      return '<div class="bar"><div class="fill" style="width:' + item.percentDone + '%"></div></div>' +
+        '<div class="subtle">' + item.done + ' of ' + item.total + ' tasks done · ' + item.percentDone + '%</div>' +
+        (item.kind === 'milestone'
+          ? '<div class="row" style="margin-top:8px"><input type="date" data-date-for="' + escapeHtml(item.id) + '" value="' + escapeHtml(toDateInput(item.date)) + '"><button data-save-date="' + escapeHtml(item.id) + '">Save date</button></div>'
+          : '');
+    }
+
+    function createTicks(min, max) {
+      const count = 6;
+      return Array.from({ length: count }, (_, index) => {
+        const time = min + ((max - min) / (count - 1)) * index;
+        return {
+          x: 4 + ((time - min) / (max - min)) * 92,
+          label: new Date(time).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+        };
+      });
     }
 
     function renderReports() {
@@ -1002,6 +1730,15 @@ function renderInsights(webview: vscode.Webview, payload: InsightsPayload): stri
 
     function renderMetrics(items) {
       return '<div class="metrics">' + items.map(item => '<div class="metric"><strong>' + item[1] + '</strong><span class="subtle">' + escapeHtml(item[0]) + '</span></div>').join('') + '</div>';
+    }
+
+    function unique(values) {
+      return Array.from(new Set(values));
+    }
+
+    function truncate(value, length) {
+      const text = String(value || '');
+      return text.length > length ? text.slice(0, length - 1) + '…' : text;
     }
 
     function toDateInput(value) {

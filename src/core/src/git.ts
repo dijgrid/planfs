@@ -83,6 +83,12 @@ export interface CommitMessageValidationResult {
   warnings: string[];
 }
 
+export interface RepositoryDeveloper {
+  name: string;
+  email?: string;
+  label: string;
+}
+
 export async function getBranchPlanningContext(
   rootPath: string,
   options: BranchPlanningOptions = {}
@@ -217,6 +223,30 @@ export async function validateCommitMessage(
     missingTaskIds,
     warnings
   };
+}
+
+export async function getRepositoryDevelopers(rootPath: string): Promise<RepositoryDeveloper[]> {
+  try {
+    const output = await git(rootPath, [
+      'log',
+      '--format=%an%x00%ae%x00%cn%x00%ce',
+      '--all',
+      '--max-count=500'
+    ]);
+    const developers = new Map<string, RepositoryDeveloper>();
+
+    for (const line of output.split('\n').filter(Boolean)) {
+      const [authorName, authorEmail, committerName, committerEmail] = line.split('\0');
+      addDeveloper(developers, authorName, authorEmail);
+      addDeveloper(developers, committerName, committerEmail);
+    }
+
+    return Array.from(developers.values()).sort((a, b) =>
+      a.label.localeCompare(b.label)
+    );
+  } catch {
+    return [];
+  }
 }
 
 function parseChangedFiles(output: string): BranchChangedFile[] {
@@ -430,6 +460,33 @@ function branchToTitle(branch: string): string {
 
 function unique(values: string[]): string[] {
   return Array.from(new Set(values));
+}
+
+function addDeveloper(
+  developers: Map<string, RepositoryDeveloper>,
+  name?: string,
+  email?: string
+): void {
+  const normalizedName = name?.trim();
+  const normalizedEmail = email?.trim();
+  if (!normalizedName && !normalizedEmail) {
+    return;
+  }
+
+  const key = (normalizedEmail || normalizedName || '').toLowerCase();
+  if (!key || developers.has(key)) {
+    return;
+  }
+
+  const label = normalizedName && normalizedEmail
+    ? `${normalizedName} <${normalizedEmail}>`
+    : normalizedName || normalizedEmail || '';
+
+  developers.set(key, {
+    name: normalizedName || normalizedEmail || '',
+    email: normalizedEmail || undefined,
+    label
+  });
 }
 
 async function git(rootPath: string, args: string[]): Promise<string> {

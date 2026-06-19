@@ -6,6 +6,7 @@ import { promisify } from 'util';
 import {
   getBranchPlanningContext,
   extractTaskIds,
+  getRepositoryDevelopers,
   suggestCommitMessage,
   validateCommitMessage
 } from './git';
@@ -73,6 +74,44 @@ describe('git planning helpers', () => {
       taskIds: ['TASK-003', 'TASK-002', 'TASK-001'],
       source: 'related-task'
     });
+  });
+
+  it('collects developer suggestions from repository history', async () => {
+    await expect(getRepositoryDevelopers(rootPath)).resolves.toEqual([
+      {
+        name: 'PlanFS Test',
+        email: 'test@example.com',
+        label: 'PlanFS Test <test@example.com>'
+      }
+    ]);
+  });
+
+  it('deduplicates developer suggestions by email', async () => {
+    await fs.writeFile(path.join(rootPath, 'notes.md'), 'extra commit\n', 'utf-8');
+    await git('add', 'notes.md');
+    await execFileAsync('git', ['commit', '-m', 'extra contributor'], {
+      cwd: rootPath,
+      env: {
+        ...process.env,
+        GIT_AUTHOR_NAME: 'PlanFS Duplicate',
+        GIT_AUTHOR_EMAIL: 'test@example.com',
+        GIT_COMMITTER_NAME: 'PlanFS Duplicate',
+        GIT_COMMITTER_EMAIL: 'test@example.com'
+      }
+    });
+
+    const developers = await getRepositoryDevelopers(rootPath);
+    expect(developers).toHaveLength(1);
+    expect(developers[0]?.email).toBe('test@example.com');
+  });
+
+  it('returns no developer suggestions when git history is unavailable', async () => {
+    const emptyRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'planfs-git-empty-'));
+    try {
+      await expect(getRepositoryDevelopers(emptyRoot)).resolves.toEqual([]);
+    } finally {
+      await fs.rm(emptyRoot, { recursive: true, force: true });
+    }
   });
 
   it('validates commit message task references', async () => {
