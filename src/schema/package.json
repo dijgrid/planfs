@@ -1,6 +1,6 @@
 {
   "name": "planfs-schema",
-  "version": "0.1.0",
+  "version": "0.5.0",
   "description": "Schema definitions for PlanFS entities",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
