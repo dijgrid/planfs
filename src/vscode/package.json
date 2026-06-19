@@ -2,7 +2,7 @@
   "name": "planfs-vscode",
   "displayName": "PlanFS",
   "description": "Git-native project management for VS Code",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "publisher": "dijgrid",
   "license": "MIT",
   "icon": "resources/icon.png",
@@ -138,7 +138,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "planfs-core": "0.5.0"
+    "planfs-core": "0.6.0"
   },
   "devDependencies": {
     "@types/jest": "^29.5.0",
