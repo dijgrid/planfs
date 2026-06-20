@@ -4,11 +4,14 @@
 
 import * as vscode from 'vscode';
 import {
+  getNextWorkCandidates,
+  getTaskReadiness,
   loadRepository,
   loadSavedFilters,
   SavedFilter,
   saveEntity,
   Task,
+  TaskReadiness,
   TaskStatus
 } from 'planfs-core';
 import { getPlanFSWorkspaceFolder } from './workspace';
@@ -26,6 +29,11 @@ interface BoardTask {
   tags?: string[];
   metadata: Record<string, unknown>;
   body: string;
+  readiness: TaskReadiness;
+  nextWorkReasons: string[];
+  downstreamCount: number;
+  critical: boolean;
+  nextWorkRank?: number;
 }
 
 interface BoardPayload {
@@ -164,7 +172,31 @@ export class BoardProvider {
 
 async function loadBoardPayload(rootPath: string): Promise<BoardPayload> {
   const repository = await loadRepository(rootPath);
-  const tasks = Array.from(repository.tasks.values()).map(toBoardTask);
+  const nextWorkCandidates = getNextWorkCandidates(repository, {
+    includeBlocked: true
+  });
+  const nextWorkByTask = new Map(
+    nextWorkCandidates.map((candidate, index) => [
+      candidate.task.id,
+      {
+        candidate,
+        rank: index
+      }
+    ])
+  );
+  const tasks = Array.from(repository.tasks.values()).map(task => {
+    const nextWork = nextWorkByTask.get(task.id);
+    const readiness = nextWork?.candidate.readiness
+      ?? getTaskReadiness(task, repository);
+
+    return toBoardTask(task, {
+      readiness: readiness.status,
+      nextWorkReasons: nextWork?.candidate.reasons ?? ['Done'],
+      downstreamCount: nextWork?.candidate.downstreamCount ?? 0,
+      critical: nextWork?.candidate.critical ?? false,
+      nextWorkRank: nextWork?.rank
+    });
+  });
   const savedFilters = await loadSavedFilters(rootPath);
 
   return {
@@ -174,7 +206,10 @@ async function loadBoardPayload(rootPath: string): Promise<BoardPayload> {
   };
 }
 
-function toBoardTask(task: Task): BoardTask {
+function toBoardTask(
+  task: Task,
+  nextWork: Pick<BoardTask, 'readiness' | 'nextWorkReasons' | 'downstreamCount' | 'critical' | 'nextWorkRank'>
+): BoardTask {
   return {
     id: task.id,
     title: task.title,
@@ -185,7 +220,12 @@ function toBoardTask(task: Task): BoardTask {
     milestone: task.milestone,
     tags: task.tags,
     metadata: task.metadata,
-    body: task.body
+    body: task.body,
+    readiness: nextWork.readiness,
+    nextWorkReasons: nextWork.nextWorkReasons,
+    downstreamCount: nextWork.downstreamCount,
+    critical: nextWork.critical,
+    nextWorkRank: nextWork.nextWorkRank
   };
 }
 
@@ -311,6 +351,11 @@ function renderBoard(
       min-width: 920px;
     }
 
+    .board.nextWork {
+      grid-template-columns: repeat(5, var(--column-width));
+      min-width: 1080px;
+    }
+
     .column {
       border: 1px solid var(--border);
       background: var(--panel);
@@ -406,6 +451,25 @@ function renderBoard(
       white-space: nowrap;
     }
 
+    .badge.reason {
+      border-color: var(--accent);
+      background: color-mix(in srgb, var(--accent) 18%, var(--vscode-badge-background));
+    }
+
+    .quickActions {
+      margin-top: 9px;
+    }
+
+    .quickActions button {
+      color: var(--vscode-button-foreground);
+      background: var(--vscode-button-background);
+      border: 1px solid var(--vscode-button-background);
+      border-radius: 3px;
+      padding: 4px 7px;
+      font: inherit;
+      cursor: pointer;
+    }
+
     .empty {
       color: var(--muted);
       font-style: italic;
@@ -423,6 +487,10 @@ function renderBoard(
     </header>
     <div class="toolbar">
       <input id="filter" type="search" placeholder="Filter by ID, title, assignee, epic, milestone, or tag" aria-label="Filter tasks">
+      <select id="mode" aria-label="Board mode">
+        <option value="status">Status Board</option>
+        <option value="next-work">Next Work</option>
+      </select>
       <select id="savedFilter" aria-label="Saved filter">
         <option value="">All tasks</option>
       </select>
@@ -445,8 +513,16 @@ function renderBoard(
       review: 'Review',
       done: 'Done'
     };
+    const nextWorkGroups = [
+      { id: 'ready', label: 'Ready Now' },
+      { id: 'in-progress', label: 'In Progress' },
+      { id: 'needs-review', label: 'Needs Review' },
+      { id: 'blocked', label: 'Blocked' },
+      { id: 'later', label: 'Later' }
+    ];
 
     const filterInput = document.getElementById('filter');
+    const modeInput = document.getElementById('mode');
     const savedFilterInput = document.getElementById('savedFilter');
     const sortInput = document.getElementById('sort');
     const board = document.getElementById('board');
@@ -454,6 +530,7 @@ function renderBoard(
     renderSavedFilterOptions();
 
     filterInput.addEventListener('input', () => render());
+    modeInput.addEventListener('change', () => render());
     savedFilterInput.addEventListener('change', () => render());
     sortInput.addEventListener('change', () => render());
     window.addEventListener('message', event => {
@@ -490,10 +567,18 @@ function renderBoard(
       const sortKey = sortInput.value;
       const filtered = state.tasks
         .filter(task => matchesSavedFilter(task, savedFilter?.criteria))
-        .filter(task => matchesFilter(task, filterText))
-        .sort((a, b) => compareTasks(a, b, sortKey));
+        .filter(task => matchesFilter(task, filterText));
 
-      board.replaceChildren(...state.statuses.map(status => renderColumn(status, filtered)));
+      if (modeInput.value === 'next-work') {
+        board.classList.add('nextWork');
+        sortInput.disabled = true;
+        board.replaceChildren(...nextWorkGroups.map(group => renderNextWorkColumn(group, filtered)));
+      } else {
+        board.classList.remove('nextWork');
+        sortInput.disabled = false;
+        const sorted = filtered.sort((a, b) => compareTasks(a, b, sortKey));
+        board.replaceChildren(...state.statuses.map(status => renderColumn(status, sorted)));
+      }
 
       if (options.animate) {
         animateMovedCards(previousRects);
@@ -595,14 +680,54 @@ function renderBoard(
         empty.textContent = 'No tasks';
         dropzone.append(empty);
       } else {
-        dropzone.append(...columnTasks.map(renderCard));
+        dropzone.append(...columnTasks.map(task => renderCard(task)));
       }
 
       column.append(header, dropzone);
       return column;
     }
 
-    function renderCard(task) {
+    function renderNextWorkColumn(group, tasks) {
+      const columnTasks = tasks
+        .filter(task => nextWorkGroupForTask(task) === group.id)
+        .sort(compareNextWorkTasks);
+      const column = document.createElement('section');
+      column.className = 'column';
+
+      const header = document.createElement('div');
+      header.className = 'columnHeader';
+      header.innerHTML = '<span>' + group.label + '</span><span class="count">' + columnTasks.length + '</span>';
+
+      const dropzone = document.createElement('div');
+      dropzone.className = 'dropzone';
+
+      if (columnTasks.length === 0) {
+        const empty = document.createElement('div');
+        empty.className = 'empty';
+        empty.textContent = 'No tasks';
+        dropzone.append(empty);
+      } else {
+        dropzone.append(...columnTasks.map(task => renderCard(task, { showReasons: true })));
+      }
+
+      column.append(header, dropzone);
+      return column;
+    }
+
+    function nextWorkGroupForTask(task) {
+      if (task.status === 'done') return null;
+      if (task.readiness === 'ready') return 'ready';
+      if (task.readiness === 'in-progress') return 'in-progress';
+      if (task.readiness === 'needs-review') return 'needs-review';
+      if (task.readiness === 'blocked' || task.readiness === 'missing-dependency') return 'blocked';
+      return 'later';
+    }
+
+    function compareNextWorkTasks(a, b) {
+      return (a.nextWorkRank ?? 9999) - (b.nextWorkRank ?? 9999) || compareTasks(a, b, 'priority');
+    }
+
+    function renderCard(task, options = {}) {
       const card = document.createElement('article');
       card.className = 'card ' + task.status;
       card.dataset.taskId = task.id;
@@ -613,11 +738,28 @@ function renderBoard(
       });
 
       const meta = [task.priority, task.assignee, task.epic].filter(Boolean);
+      const reasons = options.showReasons
+        ? (task.nextWorkReasons || []).slice(0, 3)
+        : [];
       card.innerHTML = [
         '<div class="cardId">' + escapeHtml(task.id) + '</div>',
         '<div class="cardTitle">' + escapeHtml(task.title) + '</div>',
-        '<div class="meta">' + meta.map(value => '<span class="badge">' + escapeHtml(value) + '</span>').join('') + '</div>'
+        '<div class="meta">' +
+          meta.map(value => '<span class="badge">' + escapeHtml(value) + '</span>').join('') +
+          reasons.map(value => '<span class="badge reason">' + escapeHtml(value) + '</span>').join('') +
+        '</div>',
+        options.showReasons && task.readiness === 'ready'
+          ? '<div class="quickActions"><button type="button" data-start-task="' + escapeHtml(task.id) + '">Start work</button></div>'
+          : ''
       ].join('');
+
+      const startButton = card.querySelector('[data-start-task]');
+      if (startButton) {
+        startButton.addEventListener('click', event => {
+          event.stopPropagation();
+          vscode.postMessage({ type: 'updateTaskStatus', taskId: task.id, status: 'in-progress' });
+        });
+      }
 
       return card;
     }

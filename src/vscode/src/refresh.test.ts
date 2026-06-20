@@ -126,6 +126,34 @@ describe('VS Code view refresh workspace selection', () => {
     expect(insightsPanel.webview.html).toContain('renderTimelineDetails');
   });
 
+  it('renders next-work board controls and readiness data', async () => {
+    selectPlanFSWorkspaceFolder(firstFolder);
+
+    await saveEntity(firstRoot, {
+      ...createTaskTemplate('TASK-020', 'Open dependency'),
+      status: 'todo'
+    });
+    await saveEntity(firstRoot, {
+      ...createTaskTemplate('TASK-021', 'Blocked board task'),
+      status: 'todo',
+      dependsOn: ['TASK-020']
+    });
+
+    const board = new BoardProvider(vscode.Uri.file('/extension'));
+    await board.open();
+
+    const boardPanel = jest.mocked(vscode.window.createWebviewPanel).mock.results[0].value;
+    expect(boardPanel.webview.html).toContain('Board mode');
+    expect(boardPanel.webview.html).toContain('Next Work');
+    expect(boardPanel.webview.html).toContain('Ready Now');
+    expect(boardPanel.webview.html).toContain('Needs Review');
+    expect(boardPanel.webview.html).toContain('Blocked');
+    expect(boardPanel.webview.html).toContain('Start work');
+    expect(boardPanel.webview.html).toContain('"readiness":"ready"');
+    expect(boardPanel.webview.html).toContain('"readiness":"blocked"');
+    expect(boardPanel.webview.html).toContain('Blocked by TASK-020');
+  });
+
   it('renders an epic-scoped task board in the structured editor', async () => {
     selectPlanFSWorkspaceFolder(firstFolder);
 
