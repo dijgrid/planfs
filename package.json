@@ -32,11 +32,16 @@
   "license": "MIT",
   "devDependencies": {
     "@types/node": "^18.0.0",
-    "@types/jest": "^29.0.0",
-    "@typescript-eslint/eslint-plugin": "^6.0.0",
-    "@typescript-eslint/parser": "^6.0.0",
-    "eslint": "^8.0.0",
+    "@types/jest": "^30.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.61.1",
+    "@typescript-eslint/parser": "^8.61.1",
+    "eslint": "^8.57.0",
     "prettier": "^3.0.0",
     "typescript": "^5.0.0"
+  },
+  "overrides": {
+    "@istanbuljs/load-nyc-config@1.1.0": {
+      "js-yaml": "4.2.0"
+    }
   }
 }
