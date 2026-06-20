@@ -125,6 +125,23 @@ describe('Repository', () => {
       expect(content).toContain('links:');
       expect(content).toContain('github:');
     });
+
+    it('should generate epic priority metadata', () => {
+      const epic: Epic = {
+        id: 'EPIC-test',
+        type: 'epic',
+        title: 'Test Epic',
+        status: 'active',
+        priority: 'critical',
+        body: '',
+        filePath: '',
+        metadata: {}
+      };
+
+      const content = generateEntityContent(epic);
+
+      expect(content).toContain('priority: critical');
+    });
   });
 
   describe('getNextTaskId', () => {

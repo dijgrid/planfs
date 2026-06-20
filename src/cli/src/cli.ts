@@ -9,6 +9,7 @@ import type { PullRequestProviderId } from 'planfs-core';
 import { validateCommand } from './commands/validate';
 import { initCommand } from './commands/init';
 import { listCommand } from './commands/list';
+import { nextCommand } from './commands/next';
 import { showCommand } from './commands/show';
 import { createCommand } from './commands/create';
 import { branchCommand } from './commands/branch';
@@ -158,6 +159,69 @@ export async function main(): Promise<void> {
             format: args.format as 'markdown' | 'json'
           }
         );
+        process.exit(exitCode);
+      }
+    )
+    .command(
+      'next',
+      'List ranked next-work candidates',
+      (y) =>
+        y
+          .option('assignee', {
+            type: 'string',
+            description: 'Filter by assignee'
+          })
+          .option('epic', {
+            type: 'string',
+            description: 'Filter by epic'
+          })
+          .option('milestone', {
+            type: 'string',
+            description: 'Filter by milestone'
+          })
+          .option('tag', {
+            type: 'array',
+            string: true,
+            description: 'Filter by tag'
+          })
+          .option('status', {
+            type: 'array',
+            string: true,
+            choices: ['todo', 'in-progress', 'review', 'done'],
+            description: 'Filter by status'
+          })
+          .option('include-blocked', {
+            type: 'boolean',
+            default: false,
+            description: 'Include blocked and missing-dependency tasks'
+          })
+          .option('explain', {
+            type: 'boolean',
+            default: false,
+            description: 'Show all ranking reasons'
+          })
+          .option('limit', {
+            type: 'number',
+            description: 'Maximum number of candidates to show'
+          })
+          .option('format', {
+            type: 'string',
+            choices: ['text', 'json'],
+            default: 'text',
+            description: 'Output format'
+          }),
+      async (args) => {
+        const exitCode = await nextCommand(process.cwd(), {
+          assignee: args.assignee as string | undefined,
+          epic: args.epic as string | undefined,
+          milestone: args.milestone as string | undefined,
+          tag: args.tag as string[] | undefined,
+          status: args.status as string[] | undefined,
+          includeBlocked: args.includeBlocked as boolean,
+          explain: args.explain as boolean,
+          limit: args.limit as number | undefined,
+          format: args.format as 'text' | 'json'
+        });
         process.exit(exitCode);
       }
     )

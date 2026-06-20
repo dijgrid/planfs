@@ -47,6 +47,7 @@ export interface Epic extends BaseEntity {
   type: 'epic';
   title: string;
   status: EpicStatus;
+  priority?: TaskPriority;
   owner?: string;
   description?: string;
   targetDate?: string;

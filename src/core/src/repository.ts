@@ -141,6 +141,7 @@ export function generateEntityContent(entity: Entity): string {
     }
     case 'epic': {
       const epic = entity as Epic;
+      if (epic.priority) metadata.priority = epic.priority;
       if (epic.owner) metadata.owner = epic.owner;
       if (epic.description) metadata.description = epic.description;
       if (epic.targetDate) metadata.targetDate = epic.targetDate;

@@ -6,7 +6,7 @@ PlanFS brings Git-native project planning into VS Code. It reads and writes huma
 
 - **PlanFS Explorer** - Browse tasks, epics, milestones, and decisions from the activity bar.
 - **Repository initialization** - Create the standard `.planfs` directory structure from VS Code.
-- **Kanban board** - Move tasks between status columns and persist updates back to Markdown.
+- **Board** - Move tasks between status columns, or switch to Next Work mode to see ready, active, review, blocked, and later work with explanation badges.
 - **Insights** - Review dependency graphs, roadmap timelines, and planning reports.
 - **Entity creation** - Create tasks, epics, and milestones without leaving the editor.
 - **Structured editing** - Edit task, epic, and milestone metadata with validation while keeping Markdown bodies readable.
@@ -51,7 +51,7 @@ Each command writes a clean Markdown file with YAML frontmatter to the matching 
 
 ### Board And Insights
 
-Use `PlanFS: Open Board` to work with tasks in a kanban view. Drag cards between status columns to update task files, or apply saved filters to focus the board.
+Use `PlanFS: Open Board` to work with tasks in a board view. Status Board mode lets you drag cards between status columns and persists updates back to Markdown. Next Work mode groups visible tasks into Ready Now, In Progress, Needs Review, Blocked, and Later, using the shared PlanFS next-work ranking rules. Saved filters and free-text filtering apply in both modes.
 
 Use `PlanFS: Open Insights` to inspect dependency graphs, roadmap timing, and summary reports.
 

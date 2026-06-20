@@ -5,6 +5,7 @@ import { createCommand } from './create';
 import { gitCommand } from './git';
 import { initCommand } from './init';
 import { listCommand } from './list';
+import { nextCommand } from './next';
 import { pullRequestCommand } from './pr';
 import { showCommand } from './show';
 import { validateCommand } from './validate';
@@ -189,6 +190,68 @@ describe('CLI commands', () => {
     ).resolves.toBe(1);
   });
 
+  it('lists ranked next-work candidates', async () => {
+    await writeTask('TASK-001', [
+      'title: Done dependency',
+      'status: done'
+    ]);
+    await writeTask('TASK-002', [
+      'title: Blocked task',
+      'status: todo',
+      'priority: critical',
+      'dependsOn:',
+      '  - TASK-003'
+    ]);
+    await writeTask('TASK-003', [
+      'title: Open dependency',
+      'status: todo',
+      'priority: low'
+    ]);
+    await writeTask('TASK-004', [
+      'title: Ready high priority',
+      'status: todo',
+      'priority: high',
+      'assignee: justin',
+      'dependsOn:',
+      '  - TASK-001'
+    ]);
+
+    await expect(nextCommand(rootPath, { format: 'json' })).resolves.toBe(0);
+
+    const output = JSON.parse(
+      logSpy.mock.calls[logSpy.mock.calls.length - 1]?.[0] as string
+    );
+    expect(output.map((candidate: { id: string }) => candidate.id)).toEqual([
+      'TASK-004',
+      'TASK-003'
+    ]);
+    expect(output[0]).toMatchObject({
+      readiness: 'ready',
+      priority: 'high',
+      assignee: 'justin'
+    });
+  });
+
+  it('can include blocked next-work candidates with explanations', async () => {
+    await writeTask('TASK-001', [
+      'title: Open dependency',
+      'status: todo'
+    ]);
+    await writeTask('TASK-002', [
+      'title: Blocked task',
+      'status: todo',
+      'dependsOn:',
+      '  - TASK-001'
+    ]);
+
+    await expect(
+      nextCommand(rootPath, { includeBlocked: true, explain: true })
+    ).resolves.toBe(0);
+
+    expect(logSpy).toHaveBeenCalledWith('TASK-002 Blocked task');
+    expect(logSpy).toHaveBeenCalledWith('  Blocked by TASK-001');
+  });
+
   it('lists pull request provider boundaries', async () => {
     await expect(
       pullRequestCommand(rootPath, 'providers', { format: 'json' })
@@ -232,4 +295,24 @@ describe('CLI commands', () => {
       '  - github: linked (https://github.com/dijgrid/planfs/pull/5)'
     );
   });
+
+  async function writeTask(id: string, metadataLines: string[]): Promise<void> {
+    await fs.mkdir(path.join(rootPath, '.planfs', 'tasks'), { recursive: true });
+    await fs.mkdir(path.join(rootPath, '.planfs', 'epics'), { recursive: true });
+    await fs.mkdir(path.join(rootPath, '.planfs', 'milestones'), { recursive: true });
+    await fs.mkdir(path.join(rootPath, '.planfs', 'decisions'), { recursive: true });
+    await fs.writeFile(
+      path.join(rootPath, '.planfs', 'tasks', `${id}.md`),
+      [
+        '---',
+        `id: ${id}`,
+        ...metadataLines,
+        '---',
+        '',
+        `${id} body.`,
+        ''
+      ].join('\n'),
+      'utf-8'
+    );
+  }
 });

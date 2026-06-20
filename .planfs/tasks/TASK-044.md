@@ -1,7 +1,7 @@
 ---
 id: TASK-044
 title: Add next-work documentation and validation coverage
-status: todo
+status: done
 priority: medium
 assignee: justin
 epic: EPIC-next-work-planning
@@ -23,8 +23,8 @@ Document the next-work workflow and back it with validation that reflects the im
 
 ## Acceptance Criteria
 
-- [ ] Getting started documentation explains how to use `planfs next` and the board Next Work mode
-- [ ] File format documentation explains task and epic priority in the context of next-work ranking
-- [ ] VS Code documentation describes Next Work mode without promising unsupported automation
-- [ ] Release notes call out the next-work workflow and its ranking signals
-- [ ] Validation and tests cover the full next-work path from parsed files to CLI output and board payload
+- [x] Getting started documentation explains how to use `planfs next` and the board Next Work mode
+- [x] File format documentation explains task and epic priority in the context of next-work ranking
+- [x] VS Code documentation describes Next Work mode without promising unsupported automation
+- [x] Release notes call out the next-work workflow and its ranking signals
+- [x] Validation and tests cover the full next-work path from parsed files to CLI output and board payload

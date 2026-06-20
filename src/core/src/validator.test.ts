@@ -92,6 +92,23 @@ describe('Validator', () => {
       expect(errors.some(e => e.message.includes('priority'))).toBe(true);
     });
 
+    it('should catch invalid epic priority', () => {
+      const epic: Epic = {
+        id: 'EPIC-test',
+        type: 'epic',
+        title: 'Test Epic',
+        status: 'active',
+        priority: 'invalid' as any,
+        filePath: '',
+        metadata: {},
+        body: ''
+      };
+
+      const errors = validateEntity(epic);
+
+      expect(errors.some(e => e.message.includes('priority'))).toBe(true);
+    });
+
     it('should catch invalid milestone status', () => {
       const milestone: Milestone = {
         id: 'MILESTONE-001',
