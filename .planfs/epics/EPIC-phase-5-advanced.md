@@ -3,18 +3,21 @@ id: EPIC-phase-5-advanced
 title: Phase 5 - Advanced Planning Features
 status: active
 owner: justin
-description: Add customization, bulk workflows, scale improvements, risks, and requirements
+description: Coordinate the focused Phase 5 advanced planning epics
 targetDate: 2026-11-03
 createdAt: 2026-06-15T00:00:00Z
-updatedAt: 2026-06-15T00:00:00Z
+updatedAt: 2026-06-20T00:00:00Z
 ---
 
-Phase 5 adds power-user capabilities and expands PlanFS beyond tasks, epics, milestones, and decisions.
+Phase 5 adds power-user capabilities and expands PlanFS beyond the initial planning workflow.
 
-## Child Tasks
+This phase is split into smaller focused epics so each advanced feature area can be planned, sequenced, and completed independently.
 
-- TASK-023: Add custom fields and templates
-- TASK-024: Add bulk update and import workflows
-- TASK-025: Optimize large repository performance
-- TASK-026: Add risk and requirement entity support
-- TASK-059: Add full project lifecycle integration test suite
+## Child Epics
+
+- EPIC-project-setup-release-readiness: Project Setup and Release Readiness
+- EPIC-customization-templates: Customization and Templates
+- EPIC-bulk-import-workflows: Bulk Updates and Import Workflows
+- EPIC-large-repository-scale: Large Repository Scale
+- EPIC-risk-requirement-support: Risk and Requirement Support
+- EPIC-lifecycle-integration-testing: Lifecycle Integration Testing

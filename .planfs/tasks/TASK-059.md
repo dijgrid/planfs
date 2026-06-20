@@ -4,7 +4,7 @@ title: Add full project lifecycle integration test suite
 status: todo
 priority: high
 assignee: justin
-epic: EPIC-phase-5-advanced
+epic: EPIC-lifecycle-integration-testing
 milestone: MILESTONE-phase-5
 dependsOn:
   - TASK-006
@@ -18,7 +18,7 @@ tags:
 dueDate: 2026-09-20
 createdAt: 2026-06-20T00:00:00Z
 updatedAt: 2026-06-20T00:00:00Z
-refinementState: ready
+refinementState: needs-refinement
 backlogOrder: 80
 ---
 
@@ -35,3 +35,14 @@ Add a substantial integration test suite that simulates a realistic project from
 - [ ] Final project state verifies all planned work is complete, terminal states are represented correctly, and summaries/counts match expectations
 - [ ] Test output makes failures diagnosable without requiring manual inspection of generated Markdown
 - [ ] Suite is documented so future contributors know when to update it versus adding narrower unit tests
+
+## Questions
+
+- [ ] Should the lifecycle suite exercise the CLI, core repository APIs, VS Code behavior, or a layered combination?
+- [ ] Should the fixture be generated entirely during the test, stored as a snapshot fixture, or both?
+- [ ] Which workflows should be considered part of the canonical lifecycle for the first version?
+- [ ] Should the scenario include Git operations such as branch changes, commits, or pull request metadata?
+- [ ] How much should the suite assert exact Markdown output versus behavior through repository APIs?
+- [ ] Should the lifecycle test cover archive, backlog, and next-work workflows once those features exist?
+- [ ] What runtime budget is acceptable for the full lifecycle suite in local development and CI?
+- [ ] Should failures emit generated artifacts for inspection, and if so where should those artifacts be written?

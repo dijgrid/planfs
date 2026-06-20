@@ -23,3 +23,4 @@ This epic intentionally avoids duplicating the Next Work workflow. Next Work ans
 - TASK-048: Add contextual task creation from board views
 - TASK-058: Collapse terminal board states
 - TASK-049: Add board bulk selection and action surface
+- TASK-060: Add archive workflow for epics and tasks

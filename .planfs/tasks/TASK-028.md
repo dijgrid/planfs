@@ -4,7 +4,7 @@ title: Add repository initialization commands
 status: done
 priority: high
 assignee: justin
-epic: EPIC-phase-5-advanced
+epic: EPIC-project-setup-release-readiness
 milestone: MILESTONE-phase-5
 dependsOn:
   - TASK-007
