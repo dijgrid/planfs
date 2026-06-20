@@ -103,7 +103,8 @@ Then open a repository with `.planfs/` and verify:
 - The PlanFS activity bar view appears.
 - `PlanFS: Initialize Repository` is available.
 - `PlanFS: Open Board` opens the board.
-- The board supports Status Board and Next Work modes. Next Work groups ready, active, review, blocked, and later tasks with ranking reason badges.
+- The board supports Status Board and Next Work modes. Status Board supports swimlane grouping, contextual task creation, bulk updates, and collapsed Done columns; Next Work groups ready, active, review, blocked, and later tasks with ranking reason badges.
+- Selecting a board card opens its details drawer with planning metadata and context, while Markdown body editing remains in the task file through Open Markdown.
 - `PlanFS: Open Insights` opens insights.
 - The Insights dependency graph renders task nodes by epic lane, supports filters, zoom controls, and dependency highlighting.
 - The Insights timeline shows a now marker with dated tasks, epics, and milestones placed on the time axis.

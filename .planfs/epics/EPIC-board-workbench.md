@@ -16,7 +16,10 @@ This epic intentionally avoids duplicating the Next Work workflow. Next Work ans
 ## Child Tasks
 
 - TASK-045: Add board task details drawer
+- TASK-056: Remove Markdown body preview from board details drawer
+- TASK-057: Make board view switching more prominent
 - TASK-046: Add board card quick actions
 - TASK-047: Add board swimlanes and grouping modes
 - TASK-048: Add contextual task creation from board views
+- TASK-058: Collapse terminal board states
 - TASK-049: Add board bulk selection and action surface

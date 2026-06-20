@@ -78,7 +78,7 @@ class MockWebview {
   }
 
   async postMessage(message: unknown): Promise<boolean> {
-    this.messageListener?.(message);
+    await this.messageListener?.(message);
     return true;
   }
 }
@@ -134,5 +134,12 @@ export const window = {
 };
 
 export const commands = {
-  registerCommand: jest.fn(() => ({ dispose: jest.fn() }))
+  registerCommand: jest.fn(() => ({ dispose: jest.fn() })),
+  executeCommand: jest.fn()
+};
+
+export const env = {
+  clipboard: {
+    writeText: jest.fn()
+  }
 };
