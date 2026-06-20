@@ -14,6 +14,8 @@ tags:
 dueDate: 2026-10-03
 createdAt: 2026-06-15T00:00:00Z
 updatedAt: 2026-06-15T00:00:00Z
+refinementState: ready
+backlogOrder: 40
 ---
 
 Add lightweight collaboration around planning artifacts.

@@ -16,6 +16,8 @@ tags:
 dueDate: 2026-09-18
 createdAt: 2026-06-20T00:00:00Z
 updatedAt: 2026-06-20T00:00:00Z
+refinementState: ready
+backlogOrder: 50
 ---
 
 Expose bulk task updates on the board once shared bulk update behavior exists, so users can change groups of visible tasks without editing many files one by one.

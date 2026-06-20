@@ -16,6 +16,8 @@ tags:
 dueDate: 2026-08-28
 createdAt: 2026-06-20T00:00:00Z
 updatedAt: 2026-06-20T00:00:00Z
+refinementState: ready
+backlogOrder: 20
 ---
 
 Add focused card actions for common board workflows so users do not need to manually edit files for simple transitions.

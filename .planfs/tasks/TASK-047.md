@@ -16,6 +16,8 @@ tags:
 dueDate: 2026-09-04
 createdAt: 2026-06-20T00:00:00Z
 updatedAt: 2026-06-20T00:00:00Z
+refinementState: ready
+backlogOrder: 30
 ---
 
 Add board grouping modes so the same task set can be scanned by ownership, delivery structure, or priority while retaining status context.

@@ -16,6 +16,8 @@ tags:
 dueDate: 2026-11-03
 createdAt: 2026-06-15T00:00:00Z
 updatedAt: 2026-06-15T00:00:00Z
+refinementState: ready
+backlogOrder: 40
 ---
 
 Expand PlanFS beyond the initial MVP entity types.

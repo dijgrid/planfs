@@ -17,6 +17,8 @@ tags:
 dueDate: 2026-06-19
 createdAt: 2026-06-19T00:00:00Z
 updatedAt: 2026-06-19T20:08:35Z
+refinementState: ready
+backlogOrder: 90
 ---
 
 Back the visual planning release work with focused tests and documentation grounded in the implemented behavior.

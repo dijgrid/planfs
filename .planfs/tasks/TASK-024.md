@@ -16,6 +16,8 @@ tags:
 dueDate: 2026-10-21
 createdAt: 2026-06-15T00:00:00Z
 updatedAt: 2026-06-15T00:00:00Z
+refinementState: ready
+backlogOrder: 20
 ---
 
 Support managing or migrating many tasks at once.

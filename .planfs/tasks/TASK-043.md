@@ -16,6 +16,8 @@ tags:
 dueDate: 2026-07-31
 createdAt: 2026-06-20T00:00:00Z
 updatedAt: 2026-06-20T00:00:00Z
+refinementState: ready
+backlogOrder: 40
 ---
 
 Add a board mode focused on recommending and acting on the next useful work instead of only showing status columns.

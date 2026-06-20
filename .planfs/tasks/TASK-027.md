@@ -15,6 +15,8 @@ tags:
 dueDate: 2026-06-16
 createdAt: 2026-06-16T00:00:00Z
 updatedAt: 2026-06-16T00:00:00Z
+refinementState: ready
+backlogOrder: 50
 ---
 
 Expand `planfs create` beyond tasks so users can create top-level planning structure from the CLI.

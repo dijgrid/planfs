@@ -17,6 +17,8 @@ tags:
 dueDate: 2026-08-07
 createdAt: 2026-06-20T00:00:00Z
 updatedAt: 2026-06-20T00:00:00Z
+refinementState: ready
+backlogOrder: 50
 ---
 
 Document the next-work workflow and back it with validation that reflects the implemented behavior.

@@ -17,6 +17,8 @@ tags:
 dueDate: 2026-09-11
 createdAt: 2026-06-20T00:00:00Z
 updatedAt: 2026-06-20T00:00:00Z
+refinementState: ready
+backlogOrder: 40
 ---
 
 Let users create tasks directly from the board with metadata prefilled from the current column, swimlane, and filter context.

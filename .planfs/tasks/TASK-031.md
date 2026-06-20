@@ -15,6 +15,8 @@ tags:
 dueDate: 2026-06-19
 createdAt: 2026-06-19T00:00:00Z
 updatedAt: 2026-06-19T20:08:35Z
+refinementState: ready
+backlogOrder: 20
 ---
 
 Replace the current dependency visualizer with a graph layout that makes epic-to-task flow and task dependencies understandable at a glance.

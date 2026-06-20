@@ -15,6 +15,8 @@ tags:
 dueDate: 2026-06-19
 createdAt: 2026-06-19T00:00:00Z
 updatedAt: 2026-06-19T20:08:35Z
+refinementState: ready
+backlogOrder: 80
 ---
 
 Improve the epic structured editor by showing an epic-scoped mini-board of related tasks alongside the epic metadata and Markdown body.

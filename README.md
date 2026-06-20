@@ -12,7 +12,7 @@ It currently provides:
 
 - `planfs-core`: parsing, loading, serialization, and validation
 - `planfs-cli`: command-line validation and querying
-- `planfs-vscode`: VS Code explorer, board, insights views, structured editing, and task creation commands
+- `planfs-vscode`: VS Code explorer, backlog, board, insights views, structured editing, and task creation commands
 - `planfs-schema`: shared entity schemas
 - `.planfs/`: this repository's own roadmap represented as PlanFS data
 
@@ -114,7 +114,7 @@ Then load and test the extension:
 3. Select `Run PlanFS Extension`.
 4. Press `F5` to launch an Extension Development Host.
 5. In the Extension Development Host, open this repository or another folder containing `.planfs/`.
-6. Use the command palette to run `PlanFS: Initialize Repository`, `PlanFS: Open Board`, `PlanFS: Open Insights`, `PlanFS: Create Task`, or `PlanFS: Refresh Views`.
+6. Use the command palette to run `PlanFS: Initialize Repository`, `PlanFS: Open Backlog`, `PlanFS: Open Board`, `PlanFS: Open Insights`, `PlanFS: Create Task`, or `PlanFS: Refresh Views`.
 7. Check the PlanFS activity bar view for tasks, epics, milestones, and decisions.
 
 After changing TypeScript, rebuild before relaunching:

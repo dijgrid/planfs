@@ -14,6 +14,8 @@ tags:
 dueDate: 2026-06-15
 createdAt: 2026-06-15T00:00:00Z
 updatedAt: 2026-06-15T00:00:00Z
+refinementState: ready
+backlogOrder: 10
 ---
 
 Implement the foundational core library for discovering, parsing, loading, querying, and serializing PlanFS entities.

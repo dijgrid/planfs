@@ -12,6 +12,7 @@ import { listCommand } from './commands/list';
 import { nextCommand } from './commands/next';
 import { showCommand } from './commands/show';
 import { createCommand } from './commands/create';
+import { backlogCommand, BacklogAction } from './commands/backlog';
 import { branchCommand } from './commands/branch';
 import { gitCommand, GitAction } from './commands/git';
 import { pullRequestCommand, PullRequestAction } from './commands/pr';
@@ -157,6 +158,91 @@ export async function main(): Promise<void> {
             base: args.base as string | undefined,
             provider: args.provider as PullRequestProviderId,
             format: args.format as 'markdown' | 'json'
+          }
+        );
+        process.exit(exitCode);
+      }
+    )
+    .command(
+      'backlog <action>',
+      'Manage backlog intake, refinement, and hygiene',
+      (y) =>
+        y
+          .positional('action', {
+            describe: 'Backlog workflow to run',
+            choices: ['list', 'capture', 'set-state', 'review']
+          })
+          .option('title', {
+            alias: 't',
+            type: 'string',
+            description: 'Title for captured backlog items'
+          })
+          .option('id', {
+            type: 'string',
+            description: 'Task ID to update'
+          })
+          .option('state', {
+            type: 'string',
+            choices: ['captured', 'needs-refinement', 'ready', 'deferred', 'discarded'],
+            description: 'Backlog refinement state'
+          })
+          .option('assignee', {
+            type: 'string',
+            description: 'Filter or set assignee'
+          })
+          .option('epic', {
+            type: 'string',
+            description: 'Filter or set epic'
+          })
+          .option('milestone', {
+            type: 'string',
+            description: 'Filter or set milestone'
+          })
+          .option('priority', {
+            type: 'string',
+            choices: ['low', 'medium', 'high', 'critical'],
+            description: 'Filter or set priority'
+          })
+          .option('tag', {
+            type: 'array',
+            string: true,
+            description: 'Filter by tag'
+          })
+          .option('query', {
+            type: 'string',
+            description: 'Filter by text query'
+          })
+          .option('body', {
+            type: 'string',
+            description: 'Markdown body for captured backlog items'
+          })
+          .option('limit', {
+            type: 'number',
+            description: 'Maximum number of items to show'
+          })
+          .option('format', {
+            type: 'string',
+            choices: ['text', 'json'],
+            default: 'text',
+            description: 'Output format'
+          }),
+      async (args) => {
+        const exitCode = await backlogCommand(
+          process.cwd(),
+          args.action as BacklogAction,
+          {
+            title: args.title as string | undefined,
+            id: args.id as string | undefined,
+            state: args.state as string | undefined,
+            assignee: args.assignee as string | undefined,
+            epic: args.epic as string | undefined,
+            milestone: args.milestone as string | undefined,
+            priority: args.priority as string | undefined,
+            tag: args.tag as string[] | undefined,
+            query: args.query as string | undefined,
+            body: args.body as string | undefined,
+            limit: args.limit as number | undefined,
+            format: args.format as 'text' | 'json'
           }
         );
         process.exit(exitCode);

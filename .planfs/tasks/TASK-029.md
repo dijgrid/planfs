@@ -14,6 +14,8 @@ tags:
 dueDate: 2026-06-18
 createdAt: 2026-06-18T00:00:00Z
 updatedAt: 2026-06-18T00:00:00Z
+refinementState: ready
+backlogOrder: 70
 ---
 
 Review and tighten the repository documentation so it is easier to maintain and more useful for contributors, users, and release work.

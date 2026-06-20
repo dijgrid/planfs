@@ -92,6 +92,7 @@ export function getNextWorkCandidates(
 
   const candidates = Array.from(repository.tasks.values())
     .filter(task => statuses.has(task.status))
+    .filter(task => !task.refinementState || task.refinementState === 'ready')
     .filter(task => matchesScope(task, options))
     .map(task => {
       const readiness = getTaskReadiness(task, repository);

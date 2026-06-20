@@ -15,6 +15,8 @@ tags:
 dueDate: 2026-08-22
 createdAt: 2026-06-20T00:00:00Z
 updatedAt: 2026-06-20T00:00:00Z
+refinementState: ready
+backlogOrder: 60
 ---
 
 Simplify the board details drawer by removing the Markdown body preview. Users who want to read or edit the Markdown body should use the existing Open Markdown action instead.

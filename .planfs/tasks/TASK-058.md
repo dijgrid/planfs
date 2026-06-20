@@ -15,6 +15,8 @@ tags:
 dueDate: 2026-09-06
 createdAt: 2026-06-20T00:00:00Z
 updatedAt: 2026-06-20T00:00:00Z
+refinementState: ready
+backlogOrder: 80
 ---
 
 Limit the visual weight of terminal board states so completed work does not crowd out active planning. Done and other terminal-like groups should remain available for reference without dominating the board.

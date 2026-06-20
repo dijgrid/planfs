@@ -15,6 +15,8 @@ tags:
 dueDate: 2026-06-19
 createdAt: 2026-06-19T00:00:00Z
 updatedAt: 2026-06-19T20:08:35Z
+refinementState: ready
+backlogOrder: 60
 ---
 
 Add timeline controls and context so developers can move through project history and upcoming work without losing orientation.

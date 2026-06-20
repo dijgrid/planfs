@@ -85,6 +85,8 @@ Tasks represent units of work.
 | `updatedAt` | datetime | ISO 8601 timestamp (auto-updated) |
 | `dueDate` | datetime | Optional target completion date |
 | `estimate` | string | Optional effort estimate (e.g., "2d", "5h") |
+| `refinementState` | enum | Optional backlog refinement state: `captured`, `needs-refinement`, `ready`, `deferred`, or `discarded` |
+| `backlogOrder` | number | Optional human-editable ordering value within an epic, or globally when no epic is set |
 | `links` | object | External references |
 
 ### Full Schema
@@ -107,10 +109,14 @@ createdAt: "2026-06-14T10:00:00Z"
 updatedAt: "2026-06-14T10:00:00Z"
 dueDate: "2026-07-01"
 estimate: "3d"
+refinementState: ready
+backlogOrder: 10
 links:
   github: "https://github.com/user/repo/issues/123"
   figma: "https://figma.com/..."
 ```
+
+Backlog refinement metadata is separate from task `status`. Missing `refinementState` is treated as `ready` for backward compatibility, while explicit `captured`, `needs-refinement`, `deferred`, and `discarded` items stay out of next-work recommendations until refined.
 
 ### File Location & Naming
 

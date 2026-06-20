@@ -136,6 +136,8 @@ export function generateEntityContent(entity: Entity): string {
       if (task.tags) metadata.tags = task.tags;
       if (task.dueDate) metadata.dueDate = task.dueDate;
       if (task.estimate) metadata.estimate = task.estimate;
+      if (task.refinementState) metadata.refinementState = task.refinementState;
+      if (task.backlogOrder !== undefined) metadata.backlogOrder = task.backlogOrder;
       if (task.links) metadata.links = task.links;
       break;
     }
