@@ -7,6 +7,7 @@ assignee: justin
 tags:
   - setup
   - infrastructure
+dueDate: 2026-06-14
 createdAt: 2026-06-14T10:00:00Z
 updatedAt: 2026-06-14T10:00:00Z
 ---

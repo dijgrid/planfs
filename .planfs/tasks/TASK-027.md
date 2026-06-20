@@ -12,6 +12,7 @@ tags:
   - cli
   - creation
   - phase-5
+dueDate: 2026-06-16
 createdAt: 2026-06-16T00:00:00Z
 updatedAt: 2026-06-16T00:00:00Z
 ---

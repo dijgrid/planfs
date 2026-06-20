@@ -12,6 +12,7 @@ tags:
   - search
   - filtering
   - phase-2
+dueDate: 2026-06-15
 createdAt: 2026-06-15T00:00:00Z
 updatedAt: 2026-06-15T00:00:00Z
 ---

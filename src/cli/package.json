@@ -1,6 +1,6 @@
 {
   "name": "planfs-cli",
-  "version": "0.6.1",
+  "version": "0.7.0",
   "description": "Command-line interface for PlanFS",
   "main": "dist/index.js",
   "bin": {
@@ -23,7 +23,7 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "planfs-core": "0.6.1",
+    "planfs-core": "0.7.0",
     "yargs": "^17.7.0"
   },
   "devDependencies": {
