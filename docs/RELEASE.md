@@ -103,12 +103,14 @@ Then open a repository with `.planfs/` and verify:
 - The PlanFS activity bar view appears.
 - `PlanFS: Initialize Repository` is available.
 - `PlanFS: Open Board` opens the board.
+- The board supports Status Board and Next Work modes. Next Work groups ready, active, review, blocked, and later tasks with ranking reason badges.
 - `PlanFS: Open Insights` opens insights.
 - The Insights dependency graph renders task nodes by epic lane, supports filters, zoom controls, and dependency highlighting.
 - The Insights timeline shows a now marker with dated tasks, epics, and milestones placed on the time axis.
 - `PlanFS: Create Task`, `PlanFS: Create Epic`, and `PlanFS: Create Milestone` work.
 - `PlanFS: Open Structured Editor` shows an epic-scoped task board for epics.
 - Assignee and owner inputs still accept arbitrary text while offering Git-derived developer suggestions when available.
+- `planfs next` lists ranked next-work candidates and can include blocked work with explanations.
 - The Explorer refreshes after editing `.planfs` files.
 
 To remove a local VSIX install:

@@ -203,6 +203,17 @@ planfs list tasks --status todo
 planfs list tasks --assignee justin
 ```
 
+### Find Next Work
+
+```bash
+planfs next
+planfs next --assignee justin
+planfs next --epic EPIC-phase-2-enhanced --explain
+planfs next --include-blocked
+```
+
+`planfs next` ranks actionable work using dependency readiness, task priority, epic priority when present, due dates, milestone or epic target dates, critical-path position, downstream work unblocked, and assignee scope. Use `--explain` to see the ranking reasons behind each recommendation.
+
 ### Create Planning Artifacts from CLI
 
 ```bash
@@ -223,7 +234,9 @@ The CLI requires `--title` for all created entities. Milestones also require `--
 
 1. Open command palette (Cmd+Shift+P)
 2. Type "PlanFS: Open Board"
-3. Drag cards between status columns to update task files
+3. Use Status Board mode to drag cards between status columns
+4. Switch to Next Work mode to see Ready Now, In Progress, Needs Review, Blocked, and Later groups
+5. Use Start work on ready cards to move them to `in-progress`
 
 ### View Insights
 
@@ -271,11 +284,14 @@ Description of what needs to be done.
 id: EPIC-auth-system
 title: Epic title
 status: active        # active | completed | on-hold | archived
+priority: high        # optional, low | medium | high | critical
 owner: username       # optional
 ---
 
 Description of the epic and its goals.
 ```
+
+Epic priority uses the same generic values as task priority and can lift related tasks in next-work ranking without replacing task-level priority.
 
 ### Milestone
 

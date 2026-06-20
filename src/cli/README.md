@@ -9,6 +9,7 @@ Command-line interface for PlanFS.
 - **Validate** - Check repository integrity
 - **Init** - Create repository structure
 - **List** - Query entities with filtering
+- **Next** - List ranked next-work candidates with explanations
 - **Show** - Display entity details
 - **Create** - Create new entities
 - **PR** - Generate pull request planning context
@@ -71,6 +72,20 @@ planfs list epics
 planfs list milestones
 planfs list decisions
 ```
+
+### Next
+
+List the most actionable work:
+
+```bash
+planfs next
+planfs next --assignee justin
+planfs next --epic EPIC-auth-system --explain
+planfs next --include-blocked
+planfs next --format json
+```
+
+`planfs next` filters out completed work by default, ranks ready and active tasks, and explains blockers when `--include-blocked` is used.
 
 ### Show
 

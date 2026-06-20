@@ -1,7 +1,7 @@
 ---
 id: EPIC-next-work-planning
 title: Next Work Planning Workflow
-status: active
+status: completed
 owner: justin
 description: Make PlanFS recommend, explain, and act on the most useful work to pick up next
 targetDate: 2026-08-14
