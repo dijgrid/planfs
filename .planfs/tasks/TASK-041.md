@@ -15,6 +15,8 @@ tags:
 dueDate: 2026-07-17
 createdAt: 2026-06-20T00:00:00Z
 updatedAt: 2026-06-20T00:00:00Z
+refinementState: ready
+backlogOrder: 20
 ---
 
 Support generic priority on epics using the same priority values as tasks so next-work ranking can account for the importance of the larger effort.

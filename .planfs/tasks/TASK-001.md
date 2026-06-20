@@ -10,6 +10,8 @@ tags:
 dueDate: 2026-06-14
 createdAt: 2026-06-14T10:00:00Z
 updatedAt: 2026-06-14T10:00:00Z
+refinementState: ready
+backlogOrder: 10
 ---
 
 Set up the initial project repository structure, documentation, and development environment for PlanFS.

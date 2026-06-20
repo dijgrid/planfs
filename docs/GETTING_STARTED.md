@@ -238,6 +238,17 @@ The CLI requires `--title` for all created entities. Milestones also require `--
 4. Switch to Next Work mode to see Ready Now, In Progress, Needs Review, Blocked, and Later groups
 5. Use Start work on ready cards to move them to `in-progress`
 
+### Manage Backlog
+
+```bash
+planfs backlog capture --title "Investigate flaky import flow"
+planfs backlog list --state captured
+planfs backlog set-state --id TASK-060 --state ready
+planfs backlog review
+```
+
+Backlog refinement decides whether work is captured, needs refinement, ready, deferred, or discarded. `planfs next` remains focused on actionable work and does not recommend explicitly non-ready backlog items.
+
 ### View Insights
 
 1. Open command palette (Cmd+Shift+P)
@@ -267,6 +278,8 @@ milestone: MILESTONE-xxx  # optional
 dependsOn:            # optional
   - TASK-000
 tags: []              # optional
+refinementState: ready # optional, captured | needs-refinement | ready | deferred | discarded
+backlogOrder: 10      # optional, ordered within epic or globally
 ---
 
 Description of what needs to be done.

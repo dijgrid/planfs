@@ -16,6 +16,8 @@ tags:
 dueDate: 2026-08-21
 createdAt: 2026-06-20T00:00:00Z
 updatedAt: 2026-06-20T00:00:00Z
+refinementState: ready
+backlogOrder: 10
 ---
 
 Add a board-side details drawer so selecting a task reveals enough context to decide and act without immediately opening the Markdown file.

@@ -9,6 +9,7 @@ import {
   loadRepository,
   saveEntity
 } from 'planfs-core';
+import { BacklogProvider } from './backlog';
 import { BoardProvider } from './board';
 import { EntityEditorProvider } from './editor';
 import { ExplorerProvider } from './explorer';
@@ -135,6 +136,34 @@ describe('VS Code view refresh workspace selection', () => {
     const insightsPanel = jest.mocked(vscode.window.createWebviewPanel).mock.results[1].value;
     expect(insightsPanel.webview.html).toContain('TASK-002');
     expect(insightsPanel.webview.html).not.toContain('TASK-001');
+  });
+
+  it('renders and updates the backlog view as a separate command surface', async () => {
+    await saveEntity(firstRoot, {
+      ...createTaskTemplate('TASK-050', 'Captured backlog task'),
+      refinementState: 'captured',
+      priority: 'high',
+      body: 'Needs later refinement.'
+    });
+
+    const backlog = new BacklogProvider(vscode.Uri.file('/extension'));
+    await backlog.open();
+    const backlogPanel = jest.mocked(vscode.window.createWebviewPanel).mock.results[0].value;
+
+    expect(backlogPanel.webview.html).toContain('PlanFS Backlog');
+    expect(backlogPanel.webview.html).toContain('Captured backlog task');
+    expect(backlogPanel.webview.html).toContain('captureBacklogItem');
+    expect(backlogPanel.webview.html).toContain('updateRefinementState');
+    expect(backlogPanel.webview.html).toContain('Group by refinement');
+
+    await backlogPanel.webview.postMessage({
+      type: 'updateRefinementState',
+      taskId: 'TASK-050',
+      refinementState: 'ready'
+    });
+
+    const repository = await loadRepository(firstRoot);
+    expect(repository.tasks.get('TASK-050')?.refinementState).toBe('ready');
   });
 
   it('renders visual planning controls for graph and timeline insights', async () => {

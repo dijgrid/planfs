@@ -15,6 +15,8 @@ tags:
 dueDate: 2026-07-24
 createdAt: 2026-06-20T00:00:00Z
 updatedAt: 2026-06-20T00:00:00Z
+refinementState: ready
+backlogOrder: 30
 ---
 
 Add a CLI workflow for listing the most actionable next tasks from the repository.

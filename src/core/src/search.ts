@@ -12,7 +12,9 @@ export interface EntityFilterCriteria {
   status?: string | string[];
   assignee?: string;
   epic?: string;
+  milestone?: string;
   priority?: string;
+  refinementState?: string;
   tags?: string[];
 }
 
@@ -52,7 +54,12 @@ export function matchesCriteria(
   }
 
   if (entity.type !== 'task') {
-    return !criteria.assignee && !criteria.epic && !criteria.priority && !criteria.tags?.length;
+    return !criteria.assignee
+      && !criteria.epic
+      && !criteria.milestone
+      && !criteria.priority
+      && !criteria.refinementState
+      && !criteria.tags?.length;
   }
 
   const task = entity as Task;
@@ -65,7 +72,15 @@ export function matchesCriteria(
     return false;
   }
 
+  if (criteria.milestone && task.milestone !== criteria.milestone) {
+    return false;
+  }
+
   if (criteria.priority && task.priority !== criteria.priority) {
+    return false;
+  }
+
+  if (criteria.refinementState && (task.refinementState ?? 'ready') !== criteria.refinementState) {
     return false;
   }
 

@@ -19,6 +19,7 @@ In VS Code:
 3. Press `F5`.
 4. In the Extension Development Host, open this repository or another folder containing `.planfs/`.
 5. Use the command palette:
+   - `PlanFS: Open Backlog`
    - `PlanFS: Open Board`
    - `PlanFS: Open Insights`
    - `PlanFS: Open Structured Editor`
@@ -67,6 +68,7 @@ Or install from VS Code:
 After installation, open a repository containing `.planfs/`. The PlanFS activity bar view should appear, and the command palette should include:
 
 - `PlanFS: Open Board`
+- `PlanFS: Open Backlog`
 - `PlanFS: Open Insights`
 - `PlanFS: Open Structured Editor`
 - `PlanFS: Initialize Repository`

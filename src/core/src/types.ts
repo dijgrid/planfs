@@ -5,6 +5,7 @@
 export type EntityType = 'task' | 'epic' | 'milestone' | 'decision';
 export type TaskStatus = 'todo' | 'in-progress' | 'review' | 'done';
 export type TaskPriority = 'low' | 'medium' | 'high' | 'critical';
+export type RefinementState = 'captured' | 'needs-refinement' | 'ready' | 'deferred' | 'discarded';
 export type EpicStatus = 'active' | 'completed' | 'on-hold' | 'archived';
 export type MilestoneStatus = 'active' | 'completed' | 'delayed';
 export type DecisionStatus = 'proposed' | 'accepted' | 'rejected' | 'superseded';
@@ -37,6 +38,8 @@ export interface Task extends BaseEntity {
   tags?: string[];
   dueDate?: string;
   estimate?: string;
+  refinementState?: RefinementState;
+  backlogOrder?: number;
   links?: Record<string, string>;
 }
 

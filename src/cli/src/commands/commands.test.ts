@@ -2,6 +2,7 @@ import { promises as fs } from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { createCommand } from './create';
+import { backlogCommand } from './backlog';
 import { gitCommand } from './git';
 import { initCommand } from './init';
 import { listCommand } from './list';
@@ -230,6 +231,67 @@ describe('CLI commands', () => {
       priority: 'high',
       assignee: 'justin'
     });
+  });
+
+  it('captures, lists, updates, and reviews backlog items', async () => {
+    await fs.mkdir(path.join(rootPath, '.planfs', 'tasks'), { recursive: true });
+    await fs.mkdir(path.join(rootPath, '.planfs', 'epics'), { recursive: true });
+    await fs.mkdir(path.join(rootPath, '.planfs', 'milestones'), { recursive: true });
+    await fs.mkdir(path.join(rootPath, '.planfs', 'decisions'), { recursive: true });
+
+    await expect(backlogCommand(rootPath, 'capture', {
+      title: 'Investigate import flow',
+      body: 'Rough note for later.',
+      priority: 'high',
+      assignee: 'justin'
+    })).resolves.toBe(0);
+
+    await expect(backlogCommand(rootPath, 'list', {
+      state: 'captured',
+      query: 'import',
+      format: 'json'
+    })).resolves.toBe(0);
+
+    let output = JSON.parse(
+      logSpy.mock.calls[logSpy.mock.calls.length - 1]?.[0] as string
+    );
+    expect(output).toHaveLength(1);
+    expect(output[0]).toMatchObject({
+      id: 'TASK-001',
+      refinementState: 'captured',
+      priority: 'high'
+    });
+
+    await expect(backlogCommand(rootPath, 'set-state', {
+      id: 'TASK-001',
+      state: 'ready'
+    })).resolves.toBe(0);
+
+    const updated = await fs.readFile(
+      path.join(rootPath, '.planfs', 'tasks', 'TASK-001.md'),
+      'utf-8'
+    );
+    expect(updated).toContain('refinementState: ready');
+
+    await expect(backlogCommand(rootPath, 'review', { format: 'json' })).resolves.toBe(0);
+    output = JSON.parse(
+      logSpy.mock.calls[logSpy.mock.calls.length - 1]?.[0] as string
+    );
+    expect(output).toEqual([]);
+  });
+
+  it('reports incomplete backlog review items', async () => {
+    await writeTask('TASK-001', [
+      'title: Thin backlog item',
+      'status: todo',
+      'refinementState: needs-refinement',
+      'updatedAt: 2026-01-01T00:00:00Z'
+    ]);
+
+    await expect(backlogCommand(rootPath, 'review', {})).resolves.toBe(0);
+
+    expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('BACKLOG REVIEW'));
+    expect(logSpy).toHaveBeenCalledWith('TASK-001 Thin backlog item');
   });
 
   it('can include blocked next-work candidates with explanations', async () => {

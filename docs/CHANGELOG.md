@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Backlog refinement metadata, ordering, CLI workflows, hygiene review, and a dedicated VS Code backlog view distinct from Next Work recommendations.
 - Core file parsing library (planfs-core)
 - VS Code extension with Explorer view
 - CLI validation tool

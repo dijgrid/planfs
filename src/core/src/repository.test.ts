@@ -126,6 +126,25 @@ describe('Repository', () => {
       expect(content).toContain('github:');
     });
 
+    it('should generate backlog refinement metadata', () => {
+      const task: Task = {
+        id: 'TASK-001',
+        type: 'task',
+        title: 'Backlog Task',
+        status: 'todo',
+        refinementState: 'needs-refinement',
+        backlogOrder: 10,
+        body: '',
+        filePath: '',
+        metadata: {}
+      };
+
+      const content = generateEntityContent(task);
+
+      expect(content).toContain('refinementState: needs-refinement');
+      expect(content).toContain('backlogOrder: 10');
+    });
+
     it('should generate epic priority metadata', () => {
       const epic: Epic = {
         id: 'EPIC-test',

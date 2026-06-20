@@ -9,6 +9,7 @@ Command-line interface for PlanFS.
 - **Validate** - Check repository integrity
 - **Init** - Create repository structure
 - **List** - Query entities with filtering
+- **Backlog** - Capture, refine, order, and review backlog items
 - **Next** - List ranked next-work candidates with explanations
 - **Show** - Display entity details
 - **Create** - Create new entities
@@ -86,6 +87,21 @@ planfs next --format json
 ```
 
 `planfs next` filters out completed work by default, ranks ready and active tasks, and explains blockers when `--include-blocked` is used.
+
+### Backlog
+
+Capture and refine work before it becomes actionable:
+
+```bash
+planfs backlog capture --title "Investigate import workflow"
+planfs backlog list
+planfs backlog list --state needs-refinement --assignee justin
+planfs backlog set-state --id TASK-060 --state ready
+planfs backlog review
+planfs backlog list --format json
+```
+
+Backlog refinement states are `captured`, `needs-refinement`, `ready`, `deferred`, and `discarded`. Explicit non-ready backlog items are separate from next-work recommendations.
 
 ### Show
 

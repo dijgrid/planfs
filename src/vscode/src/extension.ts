@@ -3,6 +3,7 @@
  */
 
 import * as vscode from 'vscode';
+import { BacklogProvider } from './backlog';
 import { BoardProvider } from './board';
 import { PlanFSDecorationProvider } from './decorations';
 import { EntityEditorProvider } from './editor';
@@ -14,6 +15,7 @@ import { openTaskCommand } from './commands/open';
 import { selectPlanFSWorkspaceFolderForUri } from './workspace';
 
 let explorerProvider: ExplorerProvider;
+let backlogProvider: BacklogProvider;
 let boardProvider: BoardProvider;
 let insightsProvider: InsightsProvider;
 let editorProvider: EntityEditorProvider;
@@ -24,6 +26,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   // Initialize explorer
   explorerProvider = new ExplorerProvider();
+  backlogProvider = new BacklogProvider(context.extensionUri);
   boardProvider = new BoardProvider(context.extensionUri);
   insightsProvider = new InsightsProvider(context.extensionUri);
   editorProvider = new EntityEditorProvider(context.extensionUri);
@@ -33,6 +36,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // Register commands
   context.subscriptions.push(
     vscode.commands.registerCommand('planfs.openBoard', () => boardProvider.open()),
+    vscode.commands.registerCommand('planfs.openBacklog', () => backlogProvider.open()),
     vscode.commands.registerCommand('planfs.openInsights', () => insightsProvider.open()),
     vscode.commands.registerCommand('planfs.initializeRepository', () => initializeRepositoryCommand(explorerProvider)),
     vscode.commands.registerCommand('planfs.createTask', () => createTaskCommand(explorerProvider)),
@@ -63,6 +67,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
 async function refreshViews(): Promise<void> {
   await explorerProvider.refresh();
+  await backlogProvider.refresh();
   await boardProvider.refresh();
   await insightsProvider.refresh();
   await editorProvider.refresh();

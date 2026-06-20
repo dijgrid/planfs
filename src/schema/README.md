@@ -40,7 +40,7 @@ if (validateTask(task)) {
 ### Task Schema
 
 - Required: `id`, `title`, `status`
-- Optional: `priority`, `assignee`, `epic`, `milestone`, `dependsOn`, `tags`, `dueDate`, `estimate`, `links`
+- Optional: `priority`, `assignee`, `epic`, `milestone`, `dependsOn`, `tags`, `dueDate`, `estimate`, `refinementState`, `backlogOrder`, `links`
 
 ### Epic Schema
 

@@ -92,6 +92,25 @@ describe('Validator', () => {
       expect(errors.some(e => e.message.includes('priority'))).toBe(true);
     });
 
+    it('should catch invalid refinement state and backlog order', () => {
+      const task: Task = {
+        id: 'TASK-001',
+        type: 'task',
+        title: 'Test Task',
+        status: 'todo',
+        refinementState: 'unclear' as any,
+        backlogOrder: 'first' as any,
+        filePath: '',
+        metadata: {},
+        body: ''
+      };
+
+      const errors = validateEntity(task);
+
+      expect(errors.some(e => e.message.includes('refinementState'))).toBe(true);
+      expect(errors.some(e => e.message.includes('backlogOrder'))).toBe(true);
+    });
+
     it('should catch invalid epic priority', () => {
       const epic: Epic = {
         id: 'EPIC-test',

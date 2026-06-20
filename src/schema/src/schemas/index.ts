@@ -63,6 +63,15 @@ export const taskSchema = {
       type: 'string',
       description: 'Estimated effort (e.g., "2d", "5h")'
     },
+    refinementState: {
+      type: 'string',
+      enum: ['captured', 'needs-refinement', 'ready', 'deferred', 'discarded'],
+      description: 'Backlog refinement state, separate from task status'
+    },
+    backlogOrder: {
+      type: 'number',
+      description: 'Optional human-editable backlog ordering value'
+    },
     links: {
       type: 'object',
       additionalProperties: {

@@ -16,6 +16,8 @@ tags:
 dueDate: 2026-07-10
 createdAt: 2026-06-20T00:00:00Z
 updatedAt: 2026-06-20T00:00:00Z
+refinementState: ready
+backlogOrder: 10
 ---
 
 Add shared core APIs that classify task readiness and rank candidate work consistently for CLI, VS Code, and future automation.

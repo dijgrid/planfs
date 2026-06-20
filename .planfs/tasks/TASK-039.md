@@ -15,6 +15,8 @@ tags:
 dueDate: 2026-06-19
 createdAt: 2026-06-19T00:00:00Z
 updatedAt: 2026-06-19T20:08:35Z
+refinementState: ready
+backlogOrder: 100
 ---
 
 Collect developer identities from the Git repository and use them as suggestions in PlanFS UI inputs for task assignees, epic owners, and similar people fields.

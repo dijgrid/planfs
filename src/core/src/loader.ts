@@ -71,6 +71,8 @@ function loadTask(base: { id: string; type: EntityType; filePath: string; metada
     tags: Array.isArray(metadata.tags) ? (metadata.tags as string[]) : undefined,
     dueDate: metadata.dueDate as string | undefined,
     estimate: metadata.estimate as string | undefined,
+    refinementState: metadata.refinementState as Task['refinementState'] | undefined,
+    backlogOrder: typeof metadata.backlogOrder === 'number' ? metadata.backlogOrder : undefined,
     links: typeof metadata.links === 'object' && metadata.links !== null ? (metadata.links as Record<string, string>) : undefined
   };
 }

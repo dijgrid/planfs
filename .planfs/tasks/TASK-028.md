@@ -16,6 +16,8 @@ tags:
 dueDate: 2026-06-16
 createdAt: 2026-06-16T00:00:00Z
 updatedAt: 2026-06-16T00:00:00Z
+refinementState: ready
+backlogOrder: 60
 ---
 
 Give users an explicit way to initialize PlanFS structure from both the CLI and VS Code.

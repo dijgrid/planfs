@@ -15,6 +15,8 @@ tags:
 dueDate: 2026-06-15
 createdAt: 2026-06-15T00:00:00Z
 updatedAt: 2026-06-15T00:00:00Z
+refinementState: ready
+backlogOrder: 70
 ---
 
 Support task creation from the CLI and keep unsupported creation paths explicit.

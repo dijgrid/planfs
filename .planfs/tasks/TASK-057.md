@@ -15,6 +15,8 @@ tags:
 dueDate: 2026-08-23
 createdAt: 2026-06-20T00:00:00Z
 updatedAt: 2026-06-20T00:00:00Z
+refinementState: ready
+backlogOrder: 70
 ---
 
 Improve the PlanFS board UI so switching between board modes is obvious and intentional. The current dropdown is too easy to miss now that Status Board and Next Work represent meaningfully different workflows.

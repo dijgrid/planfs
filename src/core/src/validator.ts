@@ -119,6 +119,25 @@ function validateTask(task: Task): ValidationError[] {
     }
   }
 
+  if (task.refinementState) {
+    const validRefinementStates = ['captured', 'needs-refinement', 'ready', 'deferred', 'discarded'];
+    if (!validRefinementStates.includes(task.refinementState)) {
+      errors.push({
+        id: task.id,
+        message: `Invalid refinementState: ${task.refinementState}. Must be one of: ${validRefinementStates.join(', ')}`,
+        severity: 'error'
+      });
+    }
+  }
+
+  if (task.backlogOrder !== undefined && typeof task.backlogOrder !== 'number') {
+    errors.push({
+      id: task.id,
+      message: 'Task backlogOrder must be a number',
+      severity: 'error'
+    });
+  }
+
   // Validate dependencies format
   if (task.dependsOn) {
     if (!Array.isArray(task.dependsOn)) {

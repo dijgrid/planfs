@@ -15,6 +15,8 @@ tags:
 dueDate: 2026-10-28
 createdAt: 2026-06-15T00:00:00Z
 updatedAt: 2026-06-15T00:00:00Z
+refinementState: ready
+backlogOrder: 30
 ---
 
 Keep PlanFS responsive as repositories grow.

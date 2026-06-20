@@ -18,6 +18,8 @@ tags:
 dueDate: 2026-09-20
 createdAt: 2026-06-20T00:00:00Z
 updatedAt: 2026-06-20T00:00:00Z
+refinementState: ready
+backlogOrder: 80
 ---
 
 Add a substantial integration test suite that simulates a realistic project from initial planning through completion. The suite should create epics, milestones, and tasks, exercise planning workflows, move work through statuses, and verify the repository remains valid and useful at each stage.

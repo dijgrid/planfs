@@ -18,6 +18,8 @@ describe('search helpers', () => {
     priority: 'high',
     assignee: 'justin',
     epic: 'EPIC-phase-2-enhanced',
+    milestone: 'MILESTONE-phase-2',
+    refinementState: 'needs-refinement',
     tags: ['search', 'vscode'],
     body: 'Create reusable filtering across the board and explorer.',
     filePath: '',
@@ -66,7 +68,7 @@ describe('search helpers', () => {
     expect(searchEntities(repository, { query: 'filtering work' }).map(e => e.id)).toEqual(['EPIC-phase-2-enhanced']);
   });
 
-  it('filters tasks by status, assignee, epic, priority, and tags', () => {
+  it('filters tasks by status, assignee, epic, milestone, priority, refinement state, and tags', () => {
     expect(searchTasks(repository, { status: 'todo' }).map(task => task.id)).toEqual(['TASK-001']);
     expect(searchTasks(repository, { status: ['todo', 'done'] }).map(task => task.id)).toEqual([
       'TASK-001',
@@ -74,7 +76,9 @@ describe('search helpers', () => {
     ]);
     expect(searchTasks(repository, { assignee: 'justin' }).map(task => task.id)).toEqual(['TASK-001']);
     expect(searchTasks(repository, { epic: 'EPIC-phase-2-enhanced' }).map(task => task.id)).toEqual(['TASK-001']);
+    expect(searchTasks(repository, { milestone: 'MILESTONE-phase-2' }).map(task => task.id)).toEqual(['TASK-001']);
     expect(searchTasks(repository, { priority: 'high' }).map(task => task.id)).toEqual(['TASK-001']);
+    expect(searchTasks(repository, { refinementState: 'needs-refinement' }).map(task => task.id)).toEqual(['TASK-001']);
     expect(searchTasks(repository, { tags: ['search', 'vscode'] }).map(task => task.id)).toEqual(['TASK-001']);
   });
 

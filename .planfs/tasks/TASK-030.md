@@ -17,6 +17,8 @@ tags:
 dueDate: 2026-06-19
 createdAt: 2026-06-19T00:00:00Z
 updatedAt: 2026-06-19T20:08:35Z
+refinementState: ready
+backlogOrder: 10
 ---
 
 Define a shared data shape for VS Code visual planning views so graph, timeline, and epic editor surfaces use the same task, epic, milestone, dependency, and schedule facts.

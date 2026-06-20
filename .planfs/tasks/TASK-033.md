@@ -15,6 +15,8 @@ tags:
 dueDate: 2026-06-19
 createdAt: 2026-06-19T00:00:00Z
 updatedAt: 2026-06-19T20:08:35Z
+refinementState: ready
+backlogOrder: 40
 ---
 
 Polish the dependency graph so it remains useful across repositories with many tasks, few dependencies, or incomplete planning metadata.
