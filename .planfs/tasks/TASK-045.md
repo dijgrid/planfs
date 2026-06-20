@@ -1,0 +1,31 @@
+---
+id: TASK-045
+title: Add board task details drawer
+status: todo
+priority: high
+assignee: justin
+epic: EPIC-board-workbench
+milestone: MILESTONE-phase-5
+dependsOn:
+  - TASK-012
+  - TASK-030
+tags:
+  - vscode
+  - board
+  - editor
+dueDate: 2026-08-21
+createdAt: 2026-06-20T00:00:00Z
+updatedAt: 2026-06-20T00:00:00Z
+---
+
+Add a board-side details drawer so selecting a task reveals enough context to decide and act without immediately opening the Markdown file.
+
+## Acceptance Criteria
+
+- [ ] Clicking or keyboard-selecting a board card opens a details drawer without losing the current board filters
+- [ ] Drawer shows task title, ID, status, priority, assignee, epic, milestone, tags, due date, estimate, links, dependencies, dependents, and body preview
+- [ ] Drawer provides clear paths to open the Markdown file and structured editor
+- [ ] Drawer reflects missing or blocked dependency context from shared planning data where available
+- [ ] Drawer updates when the underlying task file changes on disk
+- [ ] Board remains usable on narrow VS Code panels without overlapping cards, filters, or drawer content
+- [ ] Tests cover drawer rendering, selection persistence, refresh behavior, and keyboard access
