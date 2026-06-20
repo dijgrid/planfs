@@ -17,3 +17,4 @@ Phase 5 adds power-user capabilities and expands PlanFS beyond tasks, epics, mil
 - TASK-024: Add bulk update and import workflows
 - TASK-025: Optimize large repository performance
 - TASK-026: Add risk and requirement entity support
+- TASK-059: Add full project lifecycle integration test suite

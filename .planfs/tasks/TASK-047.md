@@ -1,7 +1,7 @@
 ---
 id: TASK-047
 title: Add board swimlanes and grouping modes
-status: todo
+status: done
 priority: high
 assignee: justin
 epic: EPIC-board-workbench
@@ -22,10 +22,16 @@ Add board grouping modes so the same task set can be scanned by ownership, deliv
 
 ## Acceptance Criteria
 
-- [ ] Board can group visible tasks by epic, milestone, assignee, priority, or no grouping
-- [ ] Grouped views preserve existing status columns within each swimlane
-- [ ] Saved filters and free-text filters apply before grouping
-- [ ] Empty groups are suppressed unless they provide useful planning context
-- [ ] Group headers show counts and enough metadata to identify the epic, milestone, assignee, or priority
-- [ ] Layout remains readable for repositories with many groups and tasks
-- [ ] Tests cover grouping by each supported dimension and interaction with saved filters
+- [x] Board can group visible tasks by epic, milestone, assignee, priority, or no grouping
+- [x] Grouped views preserve existing status columns within each swimlane
+- [x] Saved filters and free-text filters apply before grouping
+- [x] Empty groups are suppressed unless they provide useful planning context
+- [x] Group headers show counts and enough metadata to identify the epic, milestone, assignee, or priority
+- [x] Layout remains readable for repositories with many groups and tasks
+- [x] Tests cover grouping by each supported dimension and interaction with saved filters
+
+## Implementation Notes
+
+- Added a Status Board grouping selector for no grouping, epic, milestone, assignee, and priority.
+- Grouped views render as swimlanes, each preserving the existing status columns and filtered task set.
+- Grouping runs after saved filters and free-text filters, suppresses empty groups, and persists the selected grouping in webview state.

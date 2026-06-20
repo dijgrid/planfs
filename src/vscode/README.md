@@ -51,7 +51,7 @@ Each command writes a clean Markdown file with YAML frontmatter to the matching 
 
 ### Board And Insights
 
-Use `PlanFS: Open Board` to work with tasks in a board view. Status Board mode lets you drag cards between status columns and persists updates back to Markdown. Next Work mode groups visible tasks into Ready Now, In Progress, Needs Review, Blocked, and Later, using the shared PlanFS next-work ranking rules. Saved filters and free-text filtering apply in both modes.
+Use `PlanFS: Open Board` to work with tasks in a board view. Status Board mode lets you drag cards between status columns, group tasks into swimlanes, create tasks from the current column or group context, and bulk update selected cards. Done columns show a small preview by default and can be expanded when completed work needs inspection. Next Work mode groups visible tasks into Ready Now, In Progress, Needs Review, Blocked, and Later, using the shared PlanFS next-work ranking rules. Saved filters and free-text filtering apply in both modes. Select a card to inspect it in the board details drawer; use Open Markdown when you want to read or edit the task body.
 
 Use `PlanFS: Open Insights` to inspect dependency graphs, roadmap timing, and summary reports.
 
