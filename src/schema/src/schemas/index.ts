@@ -106,6 +106,11 @@ export const epicSchema = {
       enum: ['active', 'completed', 'on-hold', 'archived'],
       description: 'Epic status'
     },
+    priority: {
+      type: 'string',
+      enum: ['low', 'medium', 'high', 'critical'],
+      description: 'Epic priority level'
+    },
     owner: {
       type: 'string',
       description: 'Epic owner username'

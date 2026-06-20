@@ -11,4 +11,5 @@ export * from './repository';
 export * from './graph';
 export * from './git';
 export * from './search';
+export * from './next-work';
 export * from './pull-request';

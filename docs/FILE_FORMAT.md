@@ -141,6 +141,7 @@ Epics represent larger bodies of work comprising multiple tasks.
 
 | Field | Type | Description |
 |-------|------|-------------|
+| `priority` | enum | One of: `low`, `medium`, `high`, `critical` |
 | `owner` | string | GitHub username or email |
 | `description` | string | Longer description (also in body) |
 | `tags` | array | Labels for categorization |
@@ -155,6 +156,7 @@ Epics represent larger bodies of work comprising multiple tasks.
 id: EPIC-auth-system
 title: "Authentication System"
 status: active  # active | completed | on-hold | archived
+priority: high  # low | medium | high | critical
 owner: "username"
 description: "Build user authentication and authorization"
 tags:

@@ -88,6 +88,7 @@ function loadEpic(base: { id: string; type: EntityType; filePath: string; metada
     updatedAt: base.updatedAt,
     title: metadata.title as string || '',
     status: (metadata.status as string || 'active') as Epic['status'],
+    priority: metadata.priority as Epic['priority'] | undefined,
     owner: metadata.owner as string | undefined,
     description: metadata.description as string | undefined,
     targetDate: metadata.targetDate as string | undefined,

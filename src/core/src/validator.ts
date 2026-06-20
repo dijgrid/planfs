@@ -166,6 +166,18 @@ function validateEpic(epic: Epic): ValidationError[] {
     });
   }
 
+  // Validate priority
+  if (epic.priority) {
+    const validPriorities = ['low', 'medium', 'high', 'critical'];
+    if (!validPriorities.includes(epic.priority)) {
+      errors.push({
+        id: epic.id,
+        message: `Invalid epic priority: ${epic.priority}. Must be one of: ${validPriorities.join(', ')}`,
+        severity: 'error'
+      });
+    }
+  }
+
   return errors;
 }
 
