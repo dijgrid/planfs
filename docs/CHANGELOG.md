@@ -7,8 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-06-20
+
 ### Added
 - Backlog refinement metadata, ordering, CLI workflows, hygiene review, and a dedicated VS Code backlog view distinct from Next Work recommendations.
+- Board planning workbench improvements including details drawer, view switching, quick actions, swimlane grouping, contextual task creation, bulk updates, and collapsed terminal states.
+- Next Work ranking APIs, CLI command, and VS Code board mode for ready, active, review, blocked, and later work.
+- Visual planning improvements for dependency graphs, timeline navigation, epic-scoped task boards, and developer suggestions in UI inputs.
+- Pull request planning summaries, branch-aware planning views, and CI validation workflows.
+- Repository initialization commands for CLI and VS Code.
+- CLI support for creating epics and milestones.
+- VS Code Marketplace packaging metadata, icons, and release workflow documentation.
 - Core file parsing library (planfs-core)
 - VS Code extension with Explorer view
 - CLI validation tool
