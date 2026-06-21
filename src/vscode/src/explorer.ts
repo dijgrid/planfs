@@ -4,6 +4,7 @@
 
 import * as vscode from 'vscode';
 import {
+  getNextWorkCandidates,
   loadRepository,
   getAllEntities,
   loadSavedFilters,
@@ -14,6 +15,7 @@ import {
   Entity,
   Epic,
   Milestone,
+  NextWorkCandidate,
   Repository,
   SavedFilter,
   Task,
@@ -31,6 +33,7 @@ export class ExplorerProvider implements vscode.TreeDataProvider<TreeItem> {
   private entities: Entity[] = [];
   private savedFilters: SavedFilter[] = [];
   private activeFilter: SavedFilter | null = null;
+  private nextWorkCandidates: NextWorkCandidate[] = [];
 
   async refresh(): Promise<void> {
     try {
@@ -38,17 +41,22 @@ export class ExplorerProvider implements vscode.TreeDataProvider<TreeItem> {
       if (!workspaceFolder) {
         this.repository = null;
         this.entities = [];
+        this.nextWorkCandidates = [];
       } else {
         this.repository = await loadRepository(workspaceFolder.uri.fsPath);
         this.savedFilters = await loadSavedFilters(workspaceFolder.uri.fsPath);
         this.entities = this.activeFilter
           ? searchEntities(this.repository, this.activeFilter.criteria)
           : getAllEntities(this.repository);
+        this.nextWorkCandidates = getNextWorkCandidates(this.repository, {
+          limit: 3
+        });
       }
     } catch (error) {
       console.error('Failed to load repository:', error);
       this.repository = null;
       this.entities = [];
+      this.nextWorkCandidates = [];
     }
 
     this._onDidChangeTreeData.fire(null);
@@ -97,17 +105,42 @@ export class ExplorerProvider implements vscode.TreeDataProvider<TreeItem> {
 
     if (!element) {
       // Root level - show categories
-      return Promise.resolve([
+      const rootItems: TreeItem[] = [
         new TreeItem(
           this.activeFilter ? `Filter: ${this.activeFilter.name}` : 'No saved filter',
           vscode.TreeItemCollapsibleState.None,
           'filter'
-        ),
+        )
+      ];
+
+      if (this.nextWorkCandidates.length > 0) {
+        const section = new TreeItem(
+          'Next Work',
+          vscode.TreeItemCollapsibleState.Expanded,
+          'next-work',
+          'next-work'
+        );
+        section.description = `${this.nextWorkCandidates.length} ready`;
+        section.iconPath = new vscode.ThemeIcon('target');
+        rootItems.push(section);
+      }
+
+      rootItems.push(
         new TreeItem('Tasks', vscode.TreeItemCollapsibleState.Collapsed, 'tasks', 'tasks'),
         new TreeItem('Epics', vscode.TreeItemCollapsibleState.Collapsed, 'epics', 'epics'),
         new TreeItem('Milestones', vscode.TreeItemCollapsibleState.Collapsed, 'milestones', 'milestones'),
         new TreeItem('Decisions', vscode.TreeItemCollapsibleState.Collapsed, 'decisions', 'decisions')
-      ]);
+      );
+
+      return Promise.resolve(rootItems);
+    }
+
+    if (element.type === 'next-work') {
+      const taskItems = this.nextWorkCandidates.map((candidate, index) =>
+        createNextWorkTaskItem(candidate, index)
+      );
+      taskItems.push(createOpenNextWorkBoardItem());
+      return Promise.resolve(taskItems);
     }
 
     // Show items in category
@@ -193,6 +226,46 @@ export class TreeItem extends vscode.TreeItem {
       }
     }
   }
+}
+
+function createNextWorkTaskItem(
+  candidate: NextWorkCandidate,
+  index: number
+): TreeItem {
+  const task = candidate.task;
+  const item = new TreeItem(
+    `${index + 1}. ${task.id}: ${task.title}`,
+    vscode.TreeItemCollapsibleState.None,
+    'next-work-task',
+    task.id,
+    task
+  );
+  const context = task.dueDate ? `due ${task.dueDate}` : task.milestone ?? task.epic;
+  item.description = [
+    task.priority,
+    task.status,
+    context
+  ].filter(Boolean).join(' | ');
+  item.tooltip = `${task.id}: ${task.title}\n${candidate.reasons.slice(0, 2).join('; ')}`;
+  item.iconPath = index === 0
+    ? new vscode.ThemeIcon('star-full', new vscode.ThemeColor('charts.yellow'))
+    : new vscode.ThemeIcon('circle-filled', new vscode.ThemeColor('descriptionForeground'));
+  return item;
+}
+
+function createOpenNextWorkBoardItem(): TreeItem {
+  const item = new TreeItem(
+    'Open Next Work Board',
+    vscode.TreeItemCollapsibleState.None,
+    'next-work-board'
+  );
+  item.description = 'more context';
+  item.iconPath = new vscode.ThemeIcon('layout');
+  item.command = {
+    command: 'planfs.openNextWorkBoard',
+    title: 'Open Next Work Board'
+  };
+  return item;
 }
 
 function getTaskStatusIcon(status: TaskStatus): vscode.ThemeIcon {

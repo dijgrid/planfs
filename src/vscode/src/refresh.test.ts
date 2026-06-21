@@ -257,6 +257,94 @@ describe('VS Code view refresh workspace selection', () => {
     expect(boardPanel.webview.html).toContain('Blocked by TASK-020');
   });
 
+  it('can open the board directly in next-work mode', async () => {
+    selectPlanFSWorkspaceFolder(firstFolder);
+
+    const board = new BoardProvider(vscode.Uri.file('/extension'));
+    await board.open('next-work');
+
+    const boardPanel = jest.mocked(vscode.window.createWebviewPanel).mock.results[0].value;
+    expect(boardPanel.webview.html).toContain('const initialMode = "next-work"');
+    expect(boardPanel.webview.html).toContain("initialMode === 'next-work'");
+  });
+
+  it('shows a compact next-work quick view in the explorer', async () => {
+    selectPlanFSWorkspaceFolder(firstFolder);
+
+    await saveEntity(firstRoot, {
+      ...createTaskTemplate('TASK-020', 'Open dependency'),
+      status: 'todo',
+      priority: 'medium'
+    });
+    await saveEntity(firstRoot, {
+      ...createTaskTemplate('TASK-021', 'Top recommended task'),
+      status: 'todo',
+      priority: 'critical',
+      dueDate: '2026-09-01',
+      refinementState: 'ready'
+    });
+    await saveEntity(firstRoot, {
+      ...createTaskTemplate('TASK-022', 'Blocked quick view task'),
+      status: 'todo',
+      priority: 'high',
+      dependsOn: ['TASK-020'],
+      refinementState: 'ready'
+    });
+    await saveEntity(firstRoot, {
+      ...createTaskTemplate('TASK-023', 'Needs refinement task'),
+      status: 'todo',
+      priority: 'critical',
+      refinementState: 'needs-refinement'
+    });
+
+    const explorer = new ExplorerProvider();
+    await explorer.refresh();
+
+    const rootItems = await explorer.getChildren();
+    const nextWorkSection = rootItems.find(item => item.type === 'next-work');
+    expect(nextWorkSection).toBeDefined();
+    expect(nextWorkSection?.label).toBe('Next Work');
+    expect(nextWorkSection?.description).toBe('3 ready');
+
+    const quickItems = nextWorkSection ? await explorer.getChildren(nextWorkSection) : [];
+    expect(quickItems.map(item => item.id)).toEqual([
+      'TASK-021',
+      'TASK-020',
+      'TASK-001',
+      undefined
+    ]);
+    expect(quickItems[0].label).toContain('Top recommended task');
+    expect(quickItems[0].description).toContain('critical');
+    expect(quickItems[0].description).toContain('todo');
+    expect(quickItems[0].description).toContain('due 2026-09-01');
+    expect(quickItems[0].command).toEqual({
+      command: 'planfs.openTask',
+      title: 'Open',
+      arguments: [quickItems[0]]
+    });
+    expect(quickItems[3].label).toBe('Open Next Work Board');
+    expect(quickItems[3].command).toEqual({
+      command: 'planfs.openNextWorkBoard',
+      title: 'Open Next Work Board'
+    });
+  });
+
+  it('omits the next-work quick view when no tasks are actionable', async () => {
+    selectPlanFSWorkspaceFolder(firstFolder);
+
+    const repository = await loadRepository(firstRoot);
+    const task = repository.tasks.get('TASK-001');
+    expect(task).toBeDefined();
+    task!.status = 'done';
+    await saveEntity(firstRoot, task!);
+
+    const explorer = new ExplorerProvider();
+    await explorer.refresh();
+
+    const rootItems = await explorer.getChildren();
+    expect(rootItems.find(item => item.type === 'next-work')).toBeUndefined();
+  });
+
   it('handles board card quick actions and guarded transitions', async () => {
     selectPlanFSWorkspaceFolder(firstFolder);
 
