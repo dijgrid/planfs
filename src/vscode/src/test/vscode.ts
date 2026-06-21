@@ -70,6 +70,7 @@ export const ViewColumn = {
 class MockWebview {
   html = '';
   readonly cspSource = 'vscode-webview:';
+  readonly postedMessages: unknown[] = [];
   private messageListener: Listener<unknown> | undefined;
 
   onDidReceiveMessage(listener: Listener<unknown>): { dispose: () => void } {
@@ -78,6 +79,7 @@ class MockWebview {
   }
 
   async postMessage(message: unknown): Promise<boolean> {
+    this.postedMessages.push(message);
     await this.messageListener?.(message);
     return true;
   }
