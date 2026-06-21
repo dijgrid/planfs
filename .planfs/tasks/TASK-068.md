@@ -15,7 +15,7 @@ tags:
   - lifecycle
 dueDate: 2026-09-27
 createdAt: 2026-06-21T17:49:55Z
-updatedAt: 2026-06-21T18:04:42Z
+updatedAt: 2026-06-21T18:10:15Z
 refinementState: ready
 backlogOrder: 81
 ---
@@ -39,6 +39,7 @@ The first version should concentrate on extension behavior that the CLI lifecycl
 
 - Added a mock-based VS Code lifecycle suite in `src/vscode/src/lifecycle.test.ts`.
 - The suite covers Explorer refresh, Next Work quick view, board rendering, board command wiring, board status transitions, raw Markdown opening, structured editor rendering, and structured editor saves.
+- Negative paths cover invalid board quick transitions and invalid structured editor saves without corrupting repository state.
 - Real extension-host smoke coverage is intentionally split into `TASK-069`.
 
 ## Questions

@@ -88,6 +88,20 @@ describe('CLI project lifecycle integration', () => {
       }
     });
 
+    await expect(aiCommand(rootPath, 'update-task', {
+      id: 'TASK-002',
+      epic: 'EPIC-missing',
+      format: 'json'
+    })).resolves.toBe(1);
+    expect(errorSpy).toHaveBeenCalledWith(
+      'Error:',
+      expect.stringContaining('Referenced epic not found')
+    );
+    let repository = await loadRepository(rootPath);
+    expect(repository.tasks.get('TASK-002')?.epic).toBe('EPIC-product-launch');
+    expect(validateRepositoryState(repository).valid).toBe(true);
+    errorSpy.mockClear();
+
     await transitionTask('TASK-001', 'in-progress');
     await expect(nextCommand(rootPath, { includeBlocked: true, format: 'json' })).resolves.toBe(0);
     expect(lastJson().map((candidate: { id: string; readiness: string }) => [
@@ -152,7 +166,7 @@ describe('CLI project lifecycle integration', () => {
     });
     await expect(validateCommand(rootPath, { format: 'json' })).resolves.toBe(0);
 
-    const repository = await loadRepository(rootPath);
+    repository = await loadRepository(rootPath);
     expect(Array.from(repository.tasks.values()).every(task => task.status === 'done')).toBe(true);
     expect(repository.epics.get('EPIC-product-launch')?.status).toBe('active');
     expect(repository.milestones.get('MILESTONE-v1-launch')?.status).toBe('active');

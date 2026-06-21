@@ -17,7 +17,7 @@ tags:
   - lifecycle
 dueDate: 2026-09-20
 createdAt: 2026-06-20T00:00:00Z
-updatedAt: 2026-06-21T17:49:55Z
+updatedAt: 2026-06-21T18:10:15Z
 refinementState: ready
 backlogOrder: 80
 ---
@@ -40,6 +40,7 @@ Add a substantial integration test suite that simulates a realistic project from
 
 - Added a CLI-focused lifecycle integration test in `src/cli/src/commands/lifecycle.test.ts`.
 - The suite initializes a temporary repository, creates an epic, milestone, and tasks through CLI commands, enriches metadata through supported core APIs, moves tasks through todo, in-progress, review, and done, and validates after each major phase.
+- The suite also verifies invalid AI metadata updates fail before writing and leave the repository valid.
 - The first version intentionally excludes VS Code lifecycle coverage; that follow-up is tracked separately in `TASK-068`.
 
 ## Questions

@@ -122,9 +122,22 @@ describe('VS Code lifecycle integration', () => {
     await boardPanel.webview.postMessage({
       type: 'transitionTaskStatus',
       taskId: 'TASK-001',
-      status: 'in-progress'
+      status: 'done'
     });
     let repository = await loadRepository(rootPath);
+    expect(repository.tasks.get('TASK-001')?.status).toBe('todo');
+    expect(vscode.window.showErrorMessage).toHaveBeenCalledWith(
+      'Cannot move TASK-001 from todo to done with this quick action.'
+    );
+    expect(validateRepositoryState(repository).valid).toBe(true);
+    jest.mocked(vscode.window.showErrorMessage).mockClear();
+
+    await boardPanel.webview.postMessage({
+      type: 'transitionTaskStatus',
+      taskId: 'TASK-001',
+      status: 'in-progress'
+    });
+    repository = await loadRepository(rootPath);
     expect(repository.tasks.get('TASK-001')?.status).toBe('in-progress');
     expect(validateRepositoryState(repository).valid).toBe(true);
 
@@ -144,6 +157,39 @@ describe('VS Code lifecycle integration', () => {
     expect(editorPanel.webview.html).toContain('Structured lifecycle implementation');
     expect(editorPanel.webview.html).toContain('EPIC-product-launch');
     expect(editorPanel.webview.html).toContain('MILESTONE-v1-launch');
+
+    await editorPanel.webview.postMessage({
+      type: 'save',
+      entity: {
+        ...repository.tasks.get('TASK-002')!,
+        id: 'TASK-renamed'
+      }
+    });
+    repository = await loadRepository(rootPath);
+    expect(repository.tasks.has('TASK-renamed')).toBe(false);
+    expect(repository.tasks.get('TASK-002')?.title).toBe('Structured lifecycle implementation');
+    expect(vscode.window.showErrorMessage).toHaveBeenCalledWith(
+      'Entity IDs cannot be changed from the structured editor'
+    );
+    expect(validateRepositoryState(repository).valid).toBe(true);
+    jest.mocked(vscode.window.showErrorMessage).mockClear();
+
+    await editorPanel.webview.postMessage({
+      type: 'save',
+      entity: {
+        ...repository.tasks.get('TASK-002')!,
+        status: 'not-a-status'
+      }
+    });
+    repository = await loadRepository(rootPath);
+    expect(repository.tasks.get('TASK-002')?.status).toBe('todo');
+    expect(editorPanel.webview.postedMessages).toContainEqual({
+      type: 'validation',
+      errors: expect.arrayContaining([
+        expect.stringContaining('Invalid task status')
+      ])
+    });
+    expect(validateRepositoryState(repository).valid).toBe(true);
 
     await editorPanel.webview.postMessage({
       type: 'save',
