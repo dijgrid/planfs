@@ -111,6 +111,45 @@ describe('Validator', () => {
       expect(errors.some(e => e.message.includes('backlogOrder'))).toBe(true);
     });
 
+    it('should catch unsupported metadata fields', () => {
+      const task: Task = {
+        id: 'TASK-001',
+        type: 'task',
+        title: 'Test Task',
+        status: 'todo',
+        filePath: '',
+        metadata: {
+          id: 'TASK-001',
+          title: 'Test Task',
+          status: 'todo',
+          ownerGuess: 'ai'
+        },
+        body: ''
+      };
+
+      const errors = validateEntity(task);
+
+      expect(errors.some(e => e.message.includes('Unsupported task metadata field: ownerGuess'))).toBe(true);
+    });
+
+    it('should warn on stale or inconsistent updatedAt timestamps', () => {
+      const task: Task = {
+        id: 'TASK-001',
+        type: 'task',
+        title: 'Test Task',
+        status: 'todo',
+        createdAt: '2026-01-02T00:00:00Z',
+        updatedAt: '2026-01-01T00:00:00Z',
+        filePath: '',
+        metadata: {},
+        body: ''
+      };
+
+      const errors = validateEntity(task);
+
+      expect(errors.some(e => e.message.includes('earlier than createdAt'))).toBe(true);
+    });
+
     it('should catch invalid epic priority', () => {
       const epic: Epic = {
         id: 'EPIC-test',
@@ -215,6 +254,44 @@ describe('Validator', () => {
       const errors = validateRepository([task, epic]);
 
       expect(errors.some(e => e.message.includes('epic not found'))).toBe(true);
+    });
+
+    it('should warn when open tasks reference inactive epics or milestones', () => {
+      const task: Task = {
+        id: 'TASK-001',
+        type: 'task',
+        title: 'Task',
+        status: 'todo',
+        epic: 'EPIC-001',
+        milestone: 'MILESTONE-001',
+        filePath: '',
+        metadata: {},
+        body: ''
+      };
+      const epic: Epic = {
+        id: 'EPIC-001',
+        type: 'epic',
+        title: 'Epic',
+        status: 'completed',
+        filePath: '',
+        metadata: {},
+        body: ''
+      };
+      const milestone: Milestone = {
+        id: 'MILESTONE-001',
+        type: 'milestone',
+        title: 'Milestone',
+        status: 'completed',
+        targetDate: '2026-07-01',
+        filePath: '',
+        metadata: {},
+        body: ''
+      };
+
+      const errors = validateRepository([task, epic, milestone]);
+
+      expect(errors.some(e => e.message.includes('completed epic'))).toBe(true);
+      expect(errors.some(e => e.message.includes('completed milestone'))).toBe(true);
     });
 
     it('should detect circular dependencies', () => {
