@@ -442,6 +442,13 @@ function renderEditor(webview: vscode.Webview, payload: EditorPayload): string {
       font-family: var(--vscode-editor-font-family);
     }
 
+    input[type="checkbox"] {
+      width: auto;
+      min-width: auto;
+      flex: 0 0 auto;
+      margin: 2px 0 0;
+    }
+
     .actions {
       display: flex;
       gap: 8px;

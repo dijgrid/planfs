@@ -309,15 +309,17 @@ function renderBacklogHtml(payload: BacklogHtmlPayload): string {
     * { box-sizing: border-box; }
     body { margin: 0; color: var(--vscode-foreground); background: var(--vscode-editor-background); font-family: var(--vscode-font-family); font-size: var(--vscode-font-size); }
     .toolbar { display: flex; gap: 8px; align-items: center; padding: 12px; border-bottom: 1px solid var(--vscode-panel-border); flex-wrap: wrap; }
-    input, select, button { color: var(--vscode-input-foreground); background: var(--vscode-input-background); border: 1px solid var(--vscode-input-border); padding: 6px 8px; border-radius: 4px; }
+    input, select, button { max-width: 100%; color: var(--vscode-input-foreground); background: var(--vscode-input-background); border: 1px solid var(--vscode-input-border); padding: 6px 8px; border-radius: 4px; }
+    input, select { width: 100%; min-width: 0; }
+    input[type="checkbox"] { width: auto; min-width: auto; flex: 0 0 auto; margin: 2px 0 0; }
     button { cursor: pointer; color: var(--vscode-button-foreground); background: var(--vscode-button-background); border-color: var(--vscode-button-background); }
     button.secondary { color: var(--vscode-button-secondaryForeground); background: var(--vscode-button-secondaryBackground); border-color: var(--vscode-button-secondaryBackground); }
-    main { display: grid; grid-template-columns: minmax(320px, 0.95fr) minmax(320px, 1.05fr); gap: 12px; padding: 12px; min-height: calc(100vh - 58px); }
+    main { display: grid; grid-template-columns: minmax(320px, 0.95fr) minmax(320px, 1.05fr); gap: 12px; height: calc(100vh - 58px); padding: 12px; overflow: hidden; }
     .editorPanel, .listPanel { min-width: 0; border: 1px solid var(--vscode-panel-border); border-radius: 6px; background: var(--vscode-editorWidget-background); }
-    .editorPanel { padding: 12px; align-self: start; position: sticky; top: 12px; }
-    .listPanel { padding: 10px; }
-    main.swapped .editorPanel { order: 2; }
-    main.swapped .listPanel { order: 1; }
+    .editorPanel { min-height: 0; padding: 12px; overflow: auto; }
+    .listPanel { min-height: 0; padding: 10px; overflow: auto; }
+    main.swapped .editorPanel { order: 1; }
+    main.swapped .listPanel { order: 2; }
     .swimlane { margin-bottom: 20px; }
     .swimlane h2 { font-size: 14px; margin: 0 0 8px; }
     .grid { display: grid; gap: 8px; }
@@ -330,8 +332,8 @@ function renderBacklogHtml(payload: BacklogHtmlPayload): string {
     .editorHead { display: flex; justify-content: space-between; gap: 10px; align-items: start; margin-bottom: 10px; }
     .editorTitle { margin: 0; font-size: 18px; overflow-wrap: anywhere; }
     .editorSub { color: var(--vscode-descriptionForeground); font-size: 12px; }
-    .formGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
-    label { display: grid; gap: 4px; color: var(--vscode-descriptionForeground); }
+    .formGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; min-width: 0; }
+    label { display: grid; gap: 4px; min-width: 0; color: var(--vscode-descriptionForeground); }
     label.full, .full { grid-column: 1 / -1; }
     .editorActions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
     .sections { display: grid; gap: 10px; margin-top: 12px; }
@@ -341,8 +343,11 @@ function renderBacklogHtml(payload: BacklogHtmlPayload): string {
     .sectionItem.done { color: var(--vscode-descriptionForeground); }
     .sectionText { line-height: 1.35; overflow-wrap: anywhere; }
     @media (max-width: 820px) {
-      main { grid-template-columns: 1fr; }
-      .editorPanel { position: static; }
+      main { grid-template-columns: 1fr; height: auto; overflow: visible; }
+      .editorPanel, .listPanel { max-height: 70vh; }
+    }
+    @media (max-width: 1120px) {
+      .formGrid { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -363,16 +368,18 @@ function renderBacklogHtml(payload: BacklogHtmlPayload): string {
     <button type="button" id="swapPanels" class="secondary">Swap panels</button>
   </div>
   <main id="layout">
-    <section id="editor" class="editorPanel"></section>
     <section id="content" class="listPanel"></section>
+    <section id="editor" class="editorPanel"></section>
   </main>
   <script>
     const vscode = acquireVsCodeApi();
     const payload = ${json};
+    const persistedState = vscode.getState?.() || {};
     let query = '';
     let savedFilterId = '';
     let groupBy = '';
     let selectedTaskId = payload.tasks[0]?.id || '';
+    let panelsSwapped = Boolean(persistedState.panelsSwapped);
     const content = document.getElementById('content');
     const editor = document.getElementById('editor');
     const layout = document.getElementById('layout');
@@ -381,6 +388,7 @@ function renderBacklogHtml(payload: BacklogHtmlPayload): string {
     const groupByInput = document.getElementById('groupBy');
 
     savedFilter.innerHTML = '<option value="">All backlog</option>' + payload.savedFilters.map(filter => '<option value="' + escapeHtml(filter.id) + '">' + escapeHtml(filter.name) + '</option>').join('');
+    layout.classList.toggle('swapped', panelsSwapped);
 
     document.getElementById('capture').addEventListener('click', () => {
       const input = document.getElementById('captureTitle');
@@ -391,7 +399,9 @@ function renderBacklogHtml(payload: BacklogHtmlPayload): string {
     savedFilter.addEventListener('change', () => { savedFilterId = savedFilter.value; render(); });
     groupByInput.addEventListener('change', () => { groupBy = groupByInput.value; render(); });
     document.getElementById('swapPanels').addEventListener('click', () => {
-      layout.classList.toggle('swapped');
+      panelsSwapped = !panelsSwapped;
+      layout.classList.toggle('swapped', panelsSwapped);
+      vscode.setState?.({ ...persistedState, panelsSwapped });
     });
 
     function render() {

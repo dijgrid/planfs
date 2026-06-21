@@ -26,3 +26,4 @@ This epic intentionally avoids duplicating the Next Work workflow. Next Work ans
 - TASK-060: Add archive workflow for epics and tasks
 - TASK-064: Add next-work quick view to the PlanFS explorer
 - TASK-065: Replace Markdown body editing with structured sections in PlanFS editors
+- TASK-067: Add persistent VS Code UI state preferences
