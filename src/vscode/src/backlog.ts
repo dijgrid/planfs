@@ -18,6 +18,7 @@ import {
   validateRepositoryState
 } from 'planfs-core';
 import { extractMarkdownSections, MarkdownSection } from './markdownSections';
+import { PlanFSUiPreferences, UI_PREFERENCES } from './preferences';
 import { getPlanFSWorkspaceFolder } from './workspace';
 
 const REFINEMENT_STATES: RefinementState[] = [
@@ -31,7 +32,10 @@ const REFINEMENT_STATES: RefinementState[] = [
 export class BacklogProvider {
   private panel: vscode.WebviewPanel | undefined;
 
-  constructor(private readonly extensionUri: vscode.Uri) {}
+  constructor(
+    private readonly extensionUri: vscode.Uri,
+    private readonly uiPreferences: PlanFSUiPreferences
+  ) {}
 
   async open(): Promise<void> {
     const workspaceFolder = getPlanFSWorkspaceFolder();
@@ -75,6 +79,9 @@ export class BacklogProvider {
       }
       if (message?.type === 'openRaw') {
         await this.openRawTask(String(message.taskId));
+      }
+      if (message?.type === 'updateUiPreference') {
+        await this.updateUiPreference(String(message.key), message.value);
       }
     });
 
@@ -138,7 +145,13 @@ export class BacklogProvider {
         id: filter.id,
         name: filter.name,
         criteria: filter.criteria
-      }))
+      })),
+      preferences: {
+        backlogPanelsSwapped: this.uiPreferences.get(
+          UI_PREFERENCES.backlogPanelsSwapped,
+          workspaceFolder
+        )
+      }
     });
   }
 
@@ -245,6 +258,21 @@ export class BacklogProvider {
     const document = await vscode.workspace.openTextDocument(task.filePath);
     await vscode.window.showTextDocument(document, { preview: false });
   }
+
+  private async updateUiPreference(key: string, value: unknown): Promise<void> {
+    const workspaceFolder = getPlanFSWorkspaceFolder();
+    if (!workspaceFolder) {
+      return;
+    }
+
+    if (key === UI_PREFERENCES.backlogPanelsSwapped.key) {
+      await this.uiPreferences.set(
+        UI_PREFERENCES.backlogPanelsSwapped,
+        Boolean(value),
+        workspaceFolder
+      );
+    }
+  }
 }
 
 interface BacklogTaskUpdate {
@@ -295,6 +323,9 @@ interface BacklogHtmlPayload {
       tags?: string[];
     };
   }>;
+  preferences: {
+    backlogPanelsSwapped: boolean;
+  };
 }
 
 function renderBacklogHtml(payload: BacklogHtmlPayload): string {
@@ -374,12 +405,11 @@ function renderBacklogHtml(payload: BacklogHtmlPayload): string {
   <script>
     const vscode = acquireVsCodeApi();
     const payload = ${json};
-    const persistedState = vscode.getState?.() || {};
     let query = '';
     let savedFilterId = '';
     let groupBy = '';
     let selectedTaskId = payload.tasks[0]?.id || '';
-    let panelsSwapped = Boolean(persistedState.panelsSwapped);
+    let panelsSwapped = Boolean(payload.preferences.backlogPanelsSwapped);
     const content = document.getElementById('content');
     const editor = document.getElementById('editor');
     const layout = document.getElementById('layout');
@@ -401,7 +431,8 @@ function renderBacklogHtml(payload: BacklogHtmlPayload): string {
     document.getElementById('swapPanels').addEventListener('click', () => {
       panelsSwapped = !panelsSwapped;
       layout.classList.toggle('swapped', panelsSwapped);
-      vscode.setState?.({ ...persistedState, panelsSwapped });
+      vscode.setState?.({ panelsSwapped });
+      vscode.postMessage({ type: 'updateUiPreference', key: 'backlog.panelsSwapped', value: panelsSwapped });
     });
 
     function render() {

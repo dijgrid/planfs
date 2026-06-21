@@ -14,6 +14,7 @@ import { BoardProvider } from './board';
 import { EntityEditorProvider } from './editor';
 import { ExplorerProvider } from './explorer';
 import { InsightsProvider } from './insights';
+import { PlanFSUiPreferences, UI_PREFERENCES } from './preferences';
 import {
   selectPlanFSWorkspaceFolder,
   selectPlanFSWorkspaceFolderForUri
@@ -21,6 +22,21 @@ import {
 
 interface MutableWorkspace {
   workspaceFolders: vscode.WorkspaceFolder[] | undefined;
+}
+
+class TestMemento implements vscode.Memento {
+  private readonly values = new Map<string, unknown>();
+  readonly keys = jest.fn(() => Array.from(this.values.keys()));
+  readonly get = jest.fn((key: string, defaultValue?: unknown) =>
+    this.values.has(key) ? this.values.get(key) : defaultValue
+  ) as vscode.Memento['get'];
+  readonly update = jest.fn(async (key: string, value: unknown) => {
+    if (value === undefined) {
+      this.values.delete(key);
+      return;
+    }
+    this.values.set(key, value);
+  });
 }
 
 jest.mock('planfs-core', () => {
@@ -146,7 +162,10 @@ describe('VS Code view refresh workspace selection', () => {
       body: 'Needs later refinement.\n\n## Acceptance Criteria\n\n- [ ] Refine the task'
     });
 
-    const backlog = new BacklogProvider(vscode.Uri.file('/extension'));
+    const uiPreferences = new PlanFSUiPreferences(new TestMemento());
+    await uiPreferences.set(UI_PREFERENCES.backlogPanelsSwapped, true, firstFolder);
+
+    const backlog = new BacklogProvider(vscode.Uri.file('/extension'), uiPreferences);
     await backlog.open();
     const backlogPanel = jest.mocked(vscode.window.createWebviewPanel).mock.results[0].value;
 
@@ -159,6 +178,8 @@ describe('VS Code view refresh workspace selection', () => {
     expect(backlogPanel.webview.html).toContain('Open Markdown');
     expect(backlogPanel.webview.html).toContain('Acceptance Criteria');
     expect(backlogPanel.webview.html).toContain('Group by refinement');
+    expect(backlogPanel.webview.html).toContain('"backlogPanelsSwapped":true');
+    expect(backlogPanel.webview.html).toContain('updateUiPreference');
 
     await backlogPanel.webview.postMessage({
       type: 'updateBacklogTask',
