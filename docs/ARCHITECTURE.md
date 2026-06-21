@@ -91,6 +91,8 @@ planfs git commit-message
 planfs git validate-message "TASK-001: message"
 planfs pr summary
 planfs pr providers
+planfs ai summary
+planfs ai update-task --id TASK-001 --status in-progress --dry-run
 ```
 
 The CLI is also the CI integration surface. Automation should prefer JSON-capable commands such as:
@@ -195,6 +197,8 @@ node src/cli/dist/cli.js validate --format json
 ```
 
 See [CI Validation](./CI.md) for automation examples.
+
+AI-assisted workflows should start from `planfs ai summary` and apply common metadata changes through `planfs ai update-task --dry-run` before writing. See [AI-Assisted Planning Workflows](./AI_WORKFLOWS.md).
 
 ## Extension Packaging
 

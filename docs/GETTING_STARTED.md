@@ -119,6 +119,8 @@ planfs git commit-message
 planfs git validate-message "TASK-001: update planning docs"
 planfs pr summary
 planfs pr providers --format json
+planfs ai summary
+planfs ai update-task --id TASK-001 --status in-progress --dry-run
 planfs list tasks --status todo --epic EPIC-phase-2-enhanced
 planfs create task
 ```
@@ -213,6 +215,17 @@ planfs next --include-blocked
 ```
 
 `planfs next` ranks actionable work using dependency readiness, task priority, epic priority when present, due dates, milestone or epic target dates, critical-path position, downstream work unblocked, and assignee scope. Use `--explain` to see the ranking reasons behind each recommendation.
+
+### Use AI-Assisted Planning Helpers
+
+```bash
+planfs ai summary
+planfs ai summary --assignee justin --limit 10
+planfs ai update-task --id TASK-001 --status in-progress --dry-run
+planfs ai update-task --id TASK-001 --status in-progress
+```
+
+`planfs ai summary` emits compact JSON with open work, active epics and milestones, ready and blocked tasks, stale indicators, recently completed work, and file paths for targeted follow-up reads. `planfs ai update-task` supports safe metadata updates with validation and dry-run previews. See [AI-Assisted Planning Workflows](./AI_WORKFLOWS.md).
 
 ### Create Planning Artifacts from CLI
 

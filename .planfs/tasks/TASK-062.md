@@ -1,7 +1,7 @@
 ---
 id: TASK-062
 title: Add safe AI-assisted planning update commands
-status: todo
+status: done
 priority: high
 assignee: justin
 epic: EPIC-ai-integration
@@ -15,7 +15,7 @@ tags:
   - preview
 dueDate: 2026-10-04
 createdAt: 2026-06-21T00:00:00Z
-updatedAt: 2026-06-21T00:00:00Z
+updatedAt: 2026-06-21T17:23:39Z
 refinementState: ready
 backlogOrder: 96
 ---
@@ -26,13 +26,19 @@ The workflow should support previewing changes before writing so multi-file plan
 
 ## Acceptance Criteria
 
-- [ ] CLI supports updating task metadata fields commonly changed during board cleanup
-- [ ] Supported fields include status, priority, assignee, refinement state, due date, epic, milestone, and tags
-- [ ] Update commands preserve clean YAML formatting and human-readable Markdown bodies
-- [ ] Commands support a dry-run or preview mode before applying file writes
-- [ ] Applied changes update `updatedAt` consistently
-- [ ] Invalid updates fail before writing partial changes
-- [ ] Tests cover successful updates, preview output, validation failures, and formatting preservation
+- [x] CLI supports updating task metadata fields commonly changed during board cleanup
+- [x] Supported fields include status, priority, assignee, refinement state, due date, epic, milestone, and tags
+- [x] Update commands preserve clean YAML formatting and human-readable Markdown bodies
+- [x] Commands support a dry-run or preview mode before applying file writes
+- [x] Applied changes update `updatedAt` consistently
+- [x] Invalid updates fail before writing partial changes
+- [x] Tests cover successful updates, preview output, validation failures, and formatting preservation
+
+## Implementation Notes
+
+- Added validated task metadata updates through `updateTaskPlanning` and `planfs ai update-task`.
+- Dry runs return changed fields and a full Markdown preview without writing files.
+- Applied updates reuse the core serializer, preserve Markdown bodies, update `updatedAt`, and validate before writing.
 
 ## Notes
 
