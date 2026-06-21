@@ -168,7 +168,7 @@
   "devDependencies": {
     "@types/jest": "^30.0.0",
     "@types/node": "^18.16.0",
-    "@types/vscode": "^1.60.0",
+    "@types/vscode": "1.60.0",
     "@typescript-eslint/eslint-plugin": "^8.61.1",
     "@typescript-eslint/parser": "^8.61.1",
     "eslint": "^8.57.0",

@@ -98,6 +98,14 @@ Install the generated VSIX into a normal VS Code instance:
 code --install-extension dist/planfs-vscode-0.1.0.vsix --force
 ```
 
+If the install emits a Node deprecation warning, trace it before treating it as a PlanFS packaging issue. On macOS, run the VS Code CLI with Node tracing enabled:
+
+```sh
+ELECTRON_RUN_AS_NODE=1 "/Applications/Visual Studio Code.app/Contents/MacOS/Code" --trace-deprecation "/Applications/Visual Studio Code.app/Contents/Resources/app/out/cli.js" --install-extension "/absolute/path/to/dist/planfs-vscode-0.1.0.vsix" --force
+```
+
+As of VS Code 1.125.1, the known `DEP0169` warning for `url.parse()` comes from VS Code's extension gallery metadata request in `cliProcessMain.js` after a successful local VSIX install. PlanFS source and packaging scripts do not call `url.parse()`. Track this as an upstream VS Code CLI warning and retest when updating the local VS Code version used for release verification.
+
 Then open a repository with `.planfs/` and verify:
 
 - The PlanFS activity bar view appears.
@@ -183,6 +191,15 @@ After publishing:
 - Update `.planfs` release or follow-up tasks if anything remains.
 
 ## Troubleshooting
+
+Before release packaging, review dependency status and security advisories:
+
+```sh
+npm outdated --workspaces --long
+npm audit --workspaces --audit-level=low
+```
+
+Apply safe patch and minor updates before packaging. Document major-version upgrades as follow-up work unless the release includes the required migration and full verification. Current major families intentionally held for migration planning include ESLint, TypeScript, Node type definitions, and yargs. Keep `src/vscode` `@types/vscode` aligned with `engines.vscode`; `vsce` rejects packages whose declared VS Code API type version is newer than the extension engine range.
 
 If `npx @vscode/vsce publish` cannot detect repository links, confirm `src/vscode/package.json` includes repository metadata and that README image/link references use Marketplace-safe URLs.
 
