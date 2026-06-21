@@ -20,6 +20,7 @@ describe('pull request helpers', () => {
     await git('init');
     await git('config', 'user.email', 'test@example.com');
     await git('config', 'user.name', 'PlanFS Test');
+    await git('config', 'commit.gpgsign', 'false');
     await git('checkout', '-b', 'main');
     await fs.mkdir(path.join(rootPath, '.planfs', 'tasks'), { recursive: true });
     await fs.mkdir(path.join(rootPath, '.planfs', 'epics'), { recursive: true });

@@ -4,6 +4,7 @@
 
 import * as vscode from 'vscode';
 import {
+  getCurrentRepositoryUser,
   getNextWorkCandidates,
   loadRepository,
   getAllEntities,
@@ -34,6 +35,7 @@ export class ExplorerProvider implements vscode.TreeDataProvider<TreeItem> {
   private savedFilters: SavedFilter[] = [];
   private activeFilter: SavedFilter | null = null;
   private nextWorkCandidates: NextWorkCandidate[] = [];
+  private currentWorkTasks: Task[] = [];
 
   async refresh(): Promise<void> {
     try {
@@ -42,6 +44,7 @@ export class ExplorerProvider implements vscode.TreeDataProvider<TreeItem> {
         this.repository = null;
         this.entities = [];
         this.nextWorkCandidates = [];
+        this.currentWorkTasks = [];
       } else {
         this.repository = await loadRepository(workspaceFolder.uri.fsPath);
         this.savedFilters = await loadSavedFilters(workspaceFolder.uri.fsPath);
@@ -51,12 +54,17 @@ export class ExplorerProvider implements vscode.TreeDataProvider<TreeItem> {
         this.nextWorkCandidates = getNextWorkCandidates(this.repository, {
           limit: 3
         });
+        this.currentWorkTasks = await getCurrentWorkTasks(
+          this.repository,
+          workspaceFolder.uri.fsPath
+        );
       }
     } catch (error) {
       console.error('Failed to load repository:', error);
       this.repository = null;
       this.entities = [];
       this.nextWorkCandidates = [];
+      this.currentWorkTasks = [];
     }
 
     this._onDidChangeTreeData.fire(null);
@@ -113,6 +121,18 @@ export class ExplorerProvider implements vscode.TreeDataProvider<TreeItem> {
         )
       ];
 
+      if (this.currentWorkTasks.length > 0) {
+        const section = new TreeItem(
+          'Current Work',
+          vscode.TreeItemCollapsibleState.Expanded,
+          'current-work',
+          'current-work'
+        );
+        section.description = `${this.currentWorkTasks.length} active`;
+        section.iconPath = new vscode.ThemeIcon('person');
+        rootItems.push(section);
+      }
+
       if (this.nextWorkCandidates.length > 0) {
         const section = new TreeItem(
           'Next Work',
@@ -141,6 +161,12 @@ export class ExplorerProvider implements vscode.TreeDataProvider<TreeItem> {
       );
       taskItems.push(createOpenNextWorkBoardItem());
       return Promise.resolve(taskItems);
+    }
+
+    if (element.type === 'current-work') {
+      return Promise.resolve(
+        this.currentWorkTasks.map((task, index) => createCurrentWorkTaskItem(task, index))
+      );
     }
 
     // Show items in category
@@ -200,6 +226,67 @@ export class ExplorerProvider implements vscode.TreeDataProvider<TreeItem> {
   }
 }
 
+async function getCurrentWorkTasks(
+  repository: Repository,
+  rootPath: string
+): Promise<Task[]> {
+  const currentUser = await getCurrentRepositoryUser(rootPath);
+  if (!currentUser) {
+    return [];
+  }
+
+  const aliases = new Set(
+    currentUser.aliases.map((alias: string) => alias.toLowerCase())
+  );
+  return Array.from(repository.tasks.values())
+    .filter(task => task.status === 'in-progress' || task.status === 'review')
+    .filter(task => task.assignee && aliases.has(task.assignee.toLowerCase()))
+    .sort(compareCurrentWorkTasks);
+}
+
+function compareCurrentWorkTasks(a: Task, b: Task): number {
+  return currentWorkStatusRank(a.status) - currentWorkStatusRank(b.status)
+    || compareOptionalDate(a.dueDate, b.dueDate)
+    || comparePriority(a.priority, b.priority)
+    || a.id.localeCompare(b.id);
+}
+
+function currentWorkStatusRank(status: TaskStatus): number {
+  return status === 'review' ? 0 : 1;
+}
+
+function compareOptionalDate(a: string | undefined, b: string | undefined): number {
+  if (!a && !b) {
+    return 0;
+  }
+  if (!a) {
+    return 1;
+  }
+  if (!b) {
+    return -1;
+  }
+  return a.localeCompare(b);
+}
+
+function comparePriority(a: Task['priority'], b: Task['priority']): number {
+  return priorityRank(a) - priorityRank(b);
+}
+
+function priorityRank(priority: Task['priority']): number {
+  switch (priority) {
+    case 'critical':
+      return 0;
+    case 'high':
+      return 1;
+    case 'medium':
+      return 2;
+    case 'low':
+      return 3;
+    default:
+      return 99;
+  }
+}
+
 export class TreeItem extends vscode.TreeItem {
   constructor(
     public readonly label: string,
@@ -250,6 +337,28 @@ function createNextWorkTaskItem(
   item.iconPath = index === 0
     ? new vscode.ThemeIcon('star-full', new vscode.ThemeColor('charts.yellow'))
     : new vscode.ThemeIcon('circle-filled', new vscode.ThemeColor('descriptionForeground'));
+  return item;
+}
+
+function createCurrentWorkTaskItem(
+  task: Task,
+  index: number
+): TreeItem {
+  const item = new TreeItem(
+    `${index + 1}. ${task.id}: ${task.title}`,
+    vscode.TreeItemCollapsibleState.None,
+    'current-work-task',
+    task.id,
+    task
+  );
+  const context = task.dueDate ? `due ${task.dueDate}` : task.milestone ?? task.epic;
+  item.description = [
+    task.status,
+    task.priority,
+    context
+  ].filter(Boolean).join(' | ');
+  item.tooltip = `${task.id}: ${task.title}\n${task.status}`;
+  item.iconPath = getTaskStatusIcon(task.status);
   return item;
 }
 

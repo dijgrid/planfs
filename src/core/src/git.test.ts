@@ -6,6 +6,7 @@ import { promisify } from 'util';
 import {
   getBranchPlanningContext,
   extractTaskIds,
+  getCurrentRepositoryUser,
   getRepositoryDevelopers,
   suggestCommitMessage,
   validateCommitMessage
@@ -21,6 +22,7 @@ describe('git planning helpers', () => {
     await git('init');
     await git('config', 'user.email', 'test@example.com');
     await git('config', 'user.name', 'PlanFS Test');
+    await git('config', 'commit.gpgsign', 'false');
     await git('checkout', '-b', 'main');
     await fs.mkdir(path.join(rootPath, '.planfs', 'tasks'), { recursive: true });
     await fs.mkdir(path.join(rootPath, '.planfs', 'epics'), { recursive: true });
@@ -84,6 +86,19 @@ describe('git planning helpers', () => {
         label: 'PlanFS Test <test@example.com>'
       }
     ]);
+  });
+
+  it('resolves the current repository user from git config', async () => {
+    await expect(getCurrentRepositoryUser(rootPath)).resolves.toEqual({
+      name: 'PlanFS Test',
+      email: 'test@example.com',
+      label: 'PlanFS Test <test@example.com>',
+      aliases: [
+        'PlanFS Test',
+        'test@example.com',
+        'PlanFS Test <test@example.com>'
+      ]
+    });
   });
 
   it('deduplicates developer suggestions by email', async () => {

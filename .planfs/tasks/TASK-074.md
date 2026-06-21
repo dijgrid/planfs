@@ -1,7 +1,7 @@
 ---
 id: TASK-074
 title: Add current-work quick view to the PlanFS explorer
-status: todo
+status: done
 priority: high
 assignee: justin
 epic: EPIC-board-workbench
@@ -15,10 +15,10 @@ tags:
   - current-work
   - ux
 dueDate: 2026-09-16
-createdAt: 2026-06-21T18:59:38Z
-updatedAt: 2026-06-21T18:59:38Z
 refinementState: ready
 backlogOrder: 86
+createdAt: 2026-06-21T18:59:38Z
+updatedAt: 2026-06-21T19:29:51.271Z
 ---
 
 Add a compact Current Work quick view to the PlanFS Explorer so users can see work already assigned to them and actively underway.
@@ -27,14 +27,20 @@ This should mirror the lightweight feel of the existing Next Work explorer secti
 
 ## Acceptance Criteria
 
-- [ ] PlanFS Explorer shows a compact Current Work section when the current user has assigned active work
-- [ ] Current Work includes tasks assigned to the current user with status `in-progress` or `review`
-- [ ] The section appears near the existing Next Work section without crowding normal navigation
-- [ ] Each item shows task ID, title, status, priority, and due date or epic/milestone context when available
-- [ ] Current Work items can open the task artifact or structured editor directly
-- [ ] The section refreshes when task files, assignee, or status values change
-- [ ] Empty and no-current-user states are handled without noisy placeholder text
-- [ ] Tests cover current-user matching, status filtering, empty state behavior, refresh behavior, and command wiring
+- [x] PlanFS Explorer shows a compact Current Work section when the current user has assigned active work
+- [x] Current Work includes tasks assigned to the current user with status `in-progress` or `review`
+- [x] The section appears near the existing Next Work section without crowding normal navigation
+- [x] Each item shows task ID, title, status, priority, and due date or epic/milestone context when available
+- [x] Current Work items can open the task artifact or structured editor directly
+- [x] The section refreshes when task files, assignee, or status values change
+- [x] Empty and no-current-user states are handled without noisy placeholder text
+- [x] Tests cover current-user matching, status filtering, empty state behavior, refresh behavior, and command wiring
+
+## Implementation Notes
+
+- Added current Git user detection in `planfs-core` using repository `user.name` and `user.email`.
+- Added a compact Current Work explorer section before Next Work for assigned `in-progress` and `review` tasks.
+- Covered current-user matching, filtering, empty state behavior, ordering, and command wiring in VS Code explorer tests.
 
 ## Questions
 
