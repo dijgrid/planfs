@@ -1,6 +1,8 @@
+import { execFile } from 'child_process';
 import { promises as fs } from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+import { promisify } from 'util';
 import * as vscode from 'vscode';
 import {
   archiveEntity,
@@ -25,6 +27,8 @@ import {
 interface MutableWorkspace {
   workspaceFolders: vscode.WorkspaceFolder[] | undefined;
 }
+
+const execFileAsync = promisify(execFile);
 
 class TestMemento implements vscode.Memento {
   private readonly values = new Map<string, unknown>();
@@ -352,6 +356,82 @@ describe('VS Code view refresh workspace selection', () => {
       command: 'planfs.openNextWorkBoard',
       title: 'Open Next Work Board'
     });
+  });
+
+  it('shows current work assigned to the current git user in the explorer', async () => {
+    selectPlanFSWorkspaceFolder(firstFolder);
+    await initializeGitIdentity(firstRoot);
+
+    await saveEntity(firstRoot, {
+      ...createTaskTemplate('TASK-040', 'Active current task'),
+      status: 'in-progress',
+      priority: 'high',
+      assignee: 'PlanFS Test <test@example.com>',
+      dueDate: '2026-09-15'
+    });
+    await saveEntity(firstRoot, {
+      ...createTaskTemplate('TASK-041', 'Review current task'),
+      status: 'review',
+      priority: 'critical',
+      assignee: 'PlanFS Test'
+    });
+    await saveEntity(firstRoot, {
+      ...createTaskTemplate('TASK-042', 'Other active task'),
+      status: 'in-progress',
+      priority: 'critical',
+      assignee: 'casey'
+    });
+    await saveEntity(firstRoot, {
+      ...createTaskTemplate('TASK-043', 'Assigned todo task'),
+      status: 'todo',
+      priority: 'critical',
+      assignee: 'PlanFS Test'
+    });
+
+    const explorer = new ExplorerProvider();
+    await explorer.refresh();
+
+    const rootItems = await explorer.getChildren();
+    const currentWorkSection = rootItems.find(item => item.type === 'current-work');
+    expect(currentWorkSection).toBeDefined();
+    expect(currentWorkSection?.label).toBe('Current Work');
+    expect(currentWorkSection?.description).toBe('2 active');
+
+    const currentItems = currentWorkSection ? await explorer.getChildren(currentWorkSection) : [];
+    expect(currentItems.map(item => item.id)).toEqual(['TASK-041', 'TASK-040']);
+    expect(currentItems[0].label).toContain('Review current task');
+    expect(currentItems[0].description).toContain('review');
+    expect(currentItems[0].description).toContain('critical');
+    expect(currentItems[0].command).toEqual({
+      command: 'planfs.openTask',
+      title: 'Open',
+      arguments: [currentItems[0]]
+    });
+    expect(rootItems.findIndex(item => item.type === 'current-work')).toBeLessThan(
+      rootItems.findIndex(item => item.type === 'next-work')
+    );
+  });
+
+  it('omits current work when no active tasks match the current git user', async () => {
+    selectPlanFSWorkspaceFolder(firstFolder);
+    await initializeGitIdentity(firstRoot);
+
+    await saveEntity(firstRoot, {
+      ...createTaskTemplate('TASK-040', 'Other active task'),
+      status: 'in-progress',
+      assignee: 'casey'
+    });
+    await saveEntity(firstRoot, {
+      ...createTaskTemplate('TASK-041', 'Done current task'),
+      status: 'done',
+      assignee: 'PlanFS Test'
+    });
+
+    const explorer = new ExplorerProvider();
+    await explorer.refresh();
+
+    const rootItems = await explorer.getChildren();
+    expect(rootItems.find(item => item.type === 'current-work')).toBeUndefined();
   });
 
   it('omits the next-work quick view when no tasks are actionable', async () => {
@@ -785,3 +865,9 @@ describe('VS Code view refresh workspace selection', () => {
     expect(repository.tasks.get('TASK-020')?.body).toContain('## Acceptance Criteria');
   });
 });
+
+async function initializeGitIdentity(rootPath: string): Promise<void> {
+  await execFileAsync('git', ['init'], { cwd: rootPath });
+  await execFileAsync('git', ['config', 'user.name', 'PlanFS Test'], { cwd: rootPath });
+  await execFileAsync('git', ['config', 'user.email', 'test@example.com'], { cwd: rootPath });
+}

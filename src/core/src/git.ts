@@ -89,6 +89,10 @@ export interface RepositoryDeveloper {
   label: string;
 }
 
+export interface CurrentRepositoryUser extends RepositoryDeveloper {
+  aliases: string[];
+}
+
 export async function getBranchPlanningContext(
   rootPath: string,
   options: BranchPlanningOptions = {}
@@ -246,6 +250,25 @@ export async function getRepositoryDevelopers(rootPath: string): Promise<Reposit
     );
   } catch {
     return [];
+  }
+}
+
+export async function getCurrentRepositoryUser(rootPath: string): Promise<CurrentRepositoryUser | undefined> {
+  try {
+    const [name, email] = await Promise.all([
+      git(rootPath, ['config', 'user.name']),
+      git(rootPath, ['config', 'user.email'])
+    ]);
+    const developer = createDeveloper(name.trim(), email.trim());
+    if (!developer) {
+      return undefined;
+    }
+    return {
+      ...developer,
+      aliases: developerAliases(developer)
+    };
+  } catch {
+    return undefined;
   }
 }
 
@@ -467,26 +490,39 @@ function addDeveloper(
   name?: string,
   email?: string
 ): void {
-  const normalizedName = name?.trim();
-  const normalizedEmail = email?.trim();
-  if (!normalizedName && !normalizedEmail) {
+  const developer = createDeveloper(name, email);
+  const key = (developer?.email || developer?.name || '').toLowerCase();
+  if (!developer || !key || developers.has(key)) {
     return;
   }
 
-  const key = (normalizedEmail || normalizedName || '').toLowerCase();
-  if (!key || developers.has(key)) {
-    return;
+  developers.set(key, developer);
+}
+
+function createDeveloper(name?: string, email?: string): RepositoryDeveloper | undefined {
+  const normalizedName = name?.trim();
+  const normalizedEmail = email?.trim();
+  if (!normalizedName && !normalizedEmail) {
+    return undefined;
   }
 
   const label = normalizedName && normalizedEmail
     ? `${normalizedName} <${normalizedEmail}>`
     : normalizedName || normalizedEmail || '';
 
-  developers.set(key, {
+  return {
     name: normalizedName || normalizedEmail || '',
     email: normalizedEmail || undefined,
     label
-  });
+  };
+}
+
+function developerAliases(developer: RepositoryDeveloper): string[] {
+  return unique([
+    developer.name,
+    developer.email ?? '',
+    developer.label
+  ].map(value => value.trim()).filter(Boolean));
 }
 
 async function git(rootPath: string, args: string[]): Promise<string> {
