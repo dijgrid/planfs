@@ -21,3 +21,4 @@ This phase is split into smaller focused epics so each advanced feature area can
 - EPIC-large-repository-scale: Large Repository Scale
 - EPIC-risk-requirement-support: Risk and Requirement Support
 - EPIC-lifecycle-integration-testing: Lifecycle Integration Testing
+- EPIC-ai-integration: Improved AI Integration

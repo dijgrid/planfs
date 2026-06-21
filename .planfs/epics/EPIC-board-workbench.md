@@ -6,7 +6,7 @@ owner: justin
 description: Turn the VS Code board into an action-oriented planning surface beyond status drag and drop
 targetDate: 2026-09-18
 createdAt: 2026-06-20T00:00:00Z
-updatedAt: 2026-06-20T00:00:00Z
+updatedAt: 2026-06-21T00:00:00Z
 ---
 
 Expand the PlanFS board from a status overview into a day-to-day planning workbench where users can inspect, create, group, and update planning items without bouncing between many Markdown files.
@@ -24,3 +24,5 @@ This epic intentionally avoids duplicating the Next Work workflow. Next Work ans
 - TASK-058: Collapse terminal board states
 - TASK-049: Add board bulk selection and action surface
 - TASK-060: Add archive workflow for epics and tasks
+- TASK-064: Add next-work quick view to the PlanFS explorer
+- TASK-065: Replace Markdown body editing with structured sections in PlanFS editors
