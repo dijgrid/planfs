@@ -68,6 +68,7 @@ interface CreateTaskContext {
 }
 
 type BulkUpdateAction = 'status' | 'assignee' | 'tag' | 'epic' | 'milestone' | 'priority';
+type BoardMode = 'status' | 'next-work';
 
 interface BulkUpdateRequest {
   taskIds: string[];
@@ -77,10 +78,13 @@ interface BulkUpdateRequest {
 export class BoardProvider {
   private panel: vscode.WebviewPanel | undefined;
   private hasRenderedBoard = false;
+  private preferredMode: BoardMode = 'status';
 
   constructor(private readonly extensionUri: vscode.Uri) {}
 
-  async open(): Promise<void> {
+  async open(mode: BoardMode = 'status'): Promise<void> {
+    this.preferredMode = mode;
+
     const workspaceFolder = getPlanFSWorkspaceFolder();
     if (!workspaceFolder) {
       vscode.window.showErrorMessage('No workspace folder open');
@@ -89,7 +93,7 @@ export class BoardProvider {
 
     if (this.panel) {
       this.panel.reveal(vscode.ViewColumn.One);
-      await this.render();
+      await this.render({ replaceHtml: mode === 'next-work' });
       return;
     }
 
@@ -179,7 +183,7 @@ export class BoardProvider {
         }
       }
 
-      this.panel.webview.html = renderBoard(this.panel.webview, payload);
+      this.panel.webview.html = renderBoard(this.panel.webview, payload, this.preferredMode);
       this.hasRenderedBoard = true;
     } catch (error) {
       this.panel.webview.html = renderMessage(
@@ -748,10 +752,12 @@ function applyBulkUpdate(
 
 function renderBoard(
   webview: vscode.Webview,
-  payload: BoardPayload
+  payload: BoardPayload,
+  initialMode: BoardMode = 'status'
 ): string {
   const nonce = getNonce();
   const serializedPayload = JSON.stringify(payload);
+  const serializedInitialMode = JSON.stringify(initialMode);
 
   return `<!doctype html>
 <html lang="en">
@@ -1298,7 +1304,10 @@ function renderBoard(
     let selectedTaskId = state.tasks[0]?.id || '';
     const selectedBulkTaskIds = new Set();
     const persistedState = typeof vscode.getState === 'function' ? vscode.getState() : {};
-    let boardMode = persistedState?.boardMode === 'next-work' ? 'next-work' : 'status';
+    const initialMode = ${serializedInitialMode};
+    let boardMode = initialMode === 'next-work'
+      ? 'next-work'
+      : persistedState?.boardMode === 'next-work' ? 'next-work' : 'status';
     const groupingModes = ['none', 'epic', 'milestone', 'assignee', 'priority'];
     const terminalStatuses = ['done'];
     const terminalPreviewLimit = 5;

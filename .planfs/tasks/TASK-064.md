@@ -1,7 +1,7 @@
 ---
 id: TASK-064
 title: Add next-work quick view to the PlanFS explorer
-status: todo
+status: done
 priority: high
 assignee: justin
 epic: EPIC-board-workbench
@@ -17,7 +17,7 @@ tags:
   - ux
 dueDate: 2026-09-06
 createdAt: 2026-06-21T00:00:00Z
-updatedAt: 2026-06-21T00:00:00Z
+updatedAt: 2026-06-21T17:07:18Z
 refinementState: ready
 backlogOrder: 85
 ---
@@ -28,14 +28,20 @@ The view should be glanceable and action-oriented: one primary recommendation, a
 
 ## Acceptance Criteria
 
-- [ ] PlanFS Explorer shows a compact Next Work section when at least one actionable task exists
-- [ ] The section highlights the top recommended task with title, priority, status, due date or target context, and a concise ranking reason
-- [ ] The quick view can open the task artifact directly
-- [ ] The quick view can open the full Next Work board for deeper triage
-- [ ] Empty, blocked-only, and no-repository states are handled without noisy placeholder text
-- [ ] The quick view refreshes when planning files change or task metadata is updated
-- [ ] The UI remains visually lightweight and does not duplicate the full board columns or detailed ranking list
-- [ ] Tests or extension coverage verify recommendation selection, refresh behavior, and command wiring
+- [x] PlanFS Explorer shows a compact Next Work section when at least one actionable task exists
+- [x] The section highlights the top recommended task with title, priority, status, due date or target context, and a concise ranking reason
+- [x] The quick view can open the task artifact directly
+- [x] The quick view can open the full Next Work board for deeper triage
+- [x] Empty, blocked-only, and no-repository states are handled without noisy placeholder text
+- [x] The quick view refreshes when planning files change or task metadata is updated
+- [x] The UI remains visually lightweight and does not duplicate the full board columns or detailed ranking list
+- [x] Tests or extension coverage verify recommendation selection, refresh behavior, and command wiring
+
+## Implementation Notes
+
+- Added a compact `Next Work` group at the top of the Explorer with up to three ranked actionable tasks and a direct `Open Next Work Board` action.
+- Added `planfs.openNextWorkBoard` so the Explorer can open the board directly in Next Work mode.
+- Covered candidate ranking, empty actionable state, task-opening command wiring, and Next Work board mode in VS Code tests.
 
 ## Questions
 

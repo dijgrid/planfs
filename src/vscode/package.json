@@ -43,6 +43,7 @@
     "workspaceContains:.planfs",
     "onCommand:planfs.initializeRepository",
     "onCommand:planfs.openBoard",
+    "onCommand:planfs.openNextWorkBoard",
     "onCommand:planfs.openBacklog",
     "onCommand:planfs.openInsights",
     "onCommand:planfs.createTask",
@@ -64,6 +65,10 @@
       {
         "command": "planfs.openBoard",
         "title": "PlanFS: Open Board"
+      },
+      {
+        "command": "planfs.openNextWorkBoard",
+        "title": "PlanFS: Open Next Work Board"
       },
       {
         "command": "planfs.openBacklog",

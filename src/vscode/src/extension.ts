@@ -38,6 +38,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // Register commands
   context.subscriptions.push(
     vscode.commands.registerCommand('planfs.openBoard', () => boardProvider.open()),
+    vscode.commands.registerCommand('planfs.openNextWorkBoard', () => boardProvider.open('next-work')),
     vscode.commands.registerCommand('planfs.openBacklog', () => backlogProvider.open()),
     vscode.commands.registerCommand('planfs.openInsights', () => insightsProvider.open()),
     vscode.commands.registerCommand('planfs.initializeRepository', () => initializeRepositoryCommand(explorerProvider)),
