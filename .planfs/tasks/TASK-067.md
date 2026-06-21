@@ -1,7 +1,7 @@
 ---
 id: TASK-067
 title: Add persistent VS Code UI state preferences
-status: todo
+status: done
 priority: medium
 assignee: justin
 epic: EPIC-board-workbench
@@ -28,16 +28,16 @@ Individual webviews can use VS Code webview state for local session restoration,
 
 ## Acceptance Criteria
 
-- [ ] Shared helper stores and retrieves PlanFS UI preferences from VS Code workspace or global state
-- [ ] Preferences are scoped intentionally so repository-specific layout choices do not leak unexpectedly across workspaces
-- [ ] Backlog panel side preference can persist through panel recreation and VS Code restart
-- [ ] Future views can reuse the same helper for sort, grouping, collapsed sections, selected view mode, and panel layout preferences
-- [ ] Defaults remain predictable when no saved preference exists
-- [ ] Tests cover storing, loading, clearing, and fallback behavior
-- [ ] Documentation explains which UI preferences are persisted and where they are scoped
+- [x] Shared helper stores and retrieves PlanFS UI preferences from VS Code workspace or global state
+- [x] Preferences are scoped intentionally so repository-specific layout choices do not leak unexpectedly across workspaces
+- [x] Backlog panel side preference can persist through panel recreation and VS Code restart
+- [x] Future views can reuse the same helper for sort, grouping, collapsed sections, selected view mode, and panel layout preferences
+- [x] Defaults remain predictable when no saved preference exists
+- [x] Tests cover storing, loading, clearing, and fallback behavior
+- [x] Documentation explains which UI preferences are persisted and where they are scoped
 
 ## Questions
 
 - [x] Should layout preferences be workspace-scoped by default, with global preferences only for truly user-wide choices? **Lets go with global preferences here**
-- [ ] Should saved UI state live in VS Code `workspaceState`, `globalState`, `.planfs` config, or a mix by preference type? **I think UI state should live in the vscode globalState store**
-- [ ] Should UI state be exportable or intentionally local-only to avoid repository churn? **Ya this state should be stored only within vscode and should not affect the repo**
+- [x] Should saved UI state live in VS Code `workspaceState`, `globalState`, `.planfs` config, or a mix by preference type? **I think UI state should live in the vscode globalState store**
+- [x] Should UI state be exportable or intentionally local-only to avoid repository churn? **Ya this state should be stored only within vscode and should not affect the repo**

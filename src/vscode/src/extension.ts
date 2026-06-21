@@ -9,6 +9,7 @@ import { PlanFSDecorationProvider } from './decorations';
 import { EntityEditorProvider } from './editor';
 import { ExplorerProvider } from './explorer';
 import { InsightsProvider } from './insights';
+import { PlanFSUiPreferences } from './preferences';
 import { createTaskCommand, createEpicCommand, createMilestoneCommand } from './commands/create';
 import { initializeRepositoryCommand } from './commands/init';
 import { openTaskCommand } from './commands/open';
@@ -25,8 +26,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   console.log('PlanFS extension activated');
 
   // Initialize explorer
+  const uiPreferences = new PlanFSUiPreferences(context.globalState);
   explorerProvider = new ExplorerProvider();
-  backlogProvider = new BacklogProvider(context.extensionUri);
+  backlogProvider = new BacklogProvider(context.extensionUri, uiPreferences);
   boardProvider = new BoardProvider(context.extensionUri);
   insightsProvider = new InsightsProvider(context.extensionUri);
   editorProvider = new EntityEditorProvider(context.extensionUri);
