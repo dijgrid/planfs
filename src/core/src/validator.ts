@@ -43,6 +43,7 @@ const ALLOWED_METADATA_FIELDS: Record<Entity['type'], Set<string>> = {
     'refinementState',
     'backlogOrder',
     'links',
+    'archive',
     'createdAt',
     'updatedAt'
   ]),
@@ -56,6 +57,7 @@ const ALLOWED_METADATA_FIELDS: Record<Entity['type'], Set<string>> = {
     'targetDate',
     'tags',
     'links',
+    'archive',
     'createdAt',
     'updatedAt'
   ]),
@@ -116,6 +118,7 @@ export function validateEntity(entity: Entity): ValidationError[] {
   }
 
   errors.push(...validateTimestamps(entity));
+  errors.push(...validateArchiveMetadata(entity));
 
   // Type-specific validation
   switch (entity.type) {
@@ -131,6 +134,43 @@ export function validateEntity(entity: Entity): ValidationError[] {
     case 'decision':
       errors.push(...validateDecision(entity as Decision));
       break;
+  }
+
+  return errors;
+}
+
+function validateArchiveMetadata(entity: Entity): ValidationError[] {
+  if (!entity.archive && entity.metadata.archive === undefined) {
+    return [];
+  }
+
+  const archive = entity.archive ?? entity.metadata.archive;
+  if (typeof archive !== 'object' || archive === null) {
+    return [{
+      id: entity.id,
+      path: entity.filePath,
+      message: 'Archive metadata must be an object',
+      severity: 'error'
+    }];
+  }
+
+  const record = archive as { archivedAt?: unknown; originalPath?: unknown };
+  const errors: ValidationError[] = [];
+  if (typeof record.archivedAt !== 'string' || parseDate(record.archivedAt) === undefined) {
+    errors.push({
+      id: entity.id,
+      path: entity.filePath,
+      message: 'Archive metadata archivedAt must be an ISO 8601 timestamp',
+      severity: 'error'
+    });
+  }
+  if (typeof record.originalPath !== 'string' || !record.originalPath.trim()) {
+    errors.push({
+      id: entity.id,
+      path: entity.filePath,
+      message: 'Archive metadata originalPath is required',
+      severity: 'error'
+    });
   }
 
   return errors;

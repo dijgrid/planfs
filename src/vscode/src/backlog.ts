@@ -405,11 +405,14 @@ function renderBacklogHtml(payload: BacklogHtmlPayload): string {
   <script>
     const vscode = acquireVsCodeApi();
     const payload = ${json};
-    let query = '';
-    let savedFilterId = '';
-    let groupBy = '';
-    let selectedTaskId = payload.tasks[0]?.id || '';
-    let panelsSwapped = Boolean(payload.preferences.backlogPanelsSwapped);
+    const restoredState = vscode.getState?.() || {};
+    let query = String(restoredState.query || '');
+    let savedFilterId = String(restoredState.savedFilterId || '');
+    let groupBy = String(restoredState.groupBy || '');
+    let selectedTaskId = String(restoredState.selectedTaskId || payload.tasks[0]?.id || '');
+    let panelsSwapped = typeof restoredState.panelsSwapped === 'boolean'
+      ? restoredState.panelsSwapped
+      : Boolean(payload.preferences.backlogPanelsSwapped);
     const content = document.getElementById('content');
     const editor = document.getElementById('editor');
     const layout = document.getElementById('layout');
@@ -418,6 +421,11 @@ function renderBacklogHtml(payload: BacklogHtmlPayload): string {
     const groupByInput = document.getElementById('groupBy');
 
     savedFilter.innerHTML = '<option value="">All backlog</option>' + payload.savedFilters.map(filter => '<option value="' + escapeHtml(filter.id) + '">' + escapeHtml(filter.name) + '</option>').join('');
+    filter.value = query;
+    savedFilter.value = payload.savedFilters.some(filter => filter.id === savedFilterId) ? savedFilterId : '';
+    savedFilterId = savedFilter.value;
+    groupByInput.value = ['refinementState', 'epic', 'milestone', 'assignee', 'priority'].includes(groupBy) ? groupBy : '';
+    groupBy = groupByInput.value;
     layout.classList.toggle('swapped', panelsSwapped);
 
     document.getElementById('capture').addEventListener('click', () => {
@@ -425,15 +433,25 @@ function renderBacklogHtml(payload: BacklogHtmlPayload): string {
       vscode.postMessage({ type: 'captureBacklogItem', title: input.value });
       input.value = '';
     });
-    filter.addEventListener('input', () => { query = filter.value.toLowerCase(); render(); });
-    savedFilter.addEventListener('change', () => { savedFilterId = savedFilter.value; render(); });
-    groupByInput.addEventListener('change', () => { groupBy = groupByInput.value; render(); });
+    filter.addEventListener('input', () => { query = filter.value.toLowerCase(); persistUiState(); render(); });
+    savedFilter.addEventListener('change', () => { savedFilterId = savedFilter.value; persistUiState(); render(); });
+    groupByInput.addEventListener('change', () => { groupBy = groupByInput.value; persistUiState(); render(); });
     document.getElementById('swapPanels').addEventListener('click', () => {
       panelsSwapped = !panelsSwapped;
       layout.classList.toggle('swapped', panelsSwapped);
-      vscode.setState?.({ panelsSwapped });
+      persistUiState();
       vscode.postMessage({ type: 'updateUiPreference', key: 'backlog.panelsSwapped', value: panelsSwapped });
     });
+
+    function persistUiState() {
+      vscode.setState?.({
+        query,
+        savedFilterId,
+        groupBy,
+        selectedTaskId,
+        panelsSwapped
+      });
+    }
 
     function render() {
       const saved = payload.savedFilters.find(filter => filter.id === savedFilterId);
@@ -460,11 +478,13 @@ function renderBacklogHtml(payload: BacklogHtmlPayload): string {
       content.querySelectorAll('[data-select-task]').forEach(card => {
         card.addEventListener('click', () => {
           selectedTaskId = card.dataset.selectTask;
+          persistUiState();
           render();
         });
         card.addEventListener('focus', () => {
           if (selectedTaskId !== card.dataset.selectTask) {
             selectedTaskId = card.dataset.selectTask;
+            persistUiState();
             render();
           }
         });
@@ -519,6 +539,7 @@ function renderBacklogHtml(payload: BacklogHtmlPayload): string {
           }
         }
         edited.tags = splitList(edited.tags);
+        persistUiState();
         vscode.postMessage({ type: 'updateBacklogTask', task: edited });
       });
       document.getElementById('openRaw').addEventListener('click', () => {
@@ -572,6 +593,7 @@ function renderBacklogHtml(payload: BacklogHtmlPayload): string {
       return String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
     }
 
+    persistUiState();
     render();
   </script>
 </body>

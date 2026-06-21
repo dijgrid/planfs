@@ -4,6 +4,7 @@
 
 import * as vscode from 'vscode';
 import { BacklogProvider } from './backlog';
+import { ArchiveProvider, archiveExplorerItem } from './archive';
 import { BoardProvider } from './board';
 import { PlanFSDecorationProvider } from './decorations';
 import { EntityEditorProvider } from './editor';
@@ -17,6 +18,7 @@ import { selectPlanFSWorkspaceFolderForUri } from './workspace';
 
 let explorerProvider: ExplorerProvider;
 let backlogProvider: BacklogProvider;
+let archiveProvider: ArchiveProvider;
 let boardProvider: BoardProvider;
 let insightsProvider: InsightsProvider;
 let editorProvider: EntityEditorProvider;
@@ -29,6 +31,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const uiPreferences = new PlanFSUiPreferences(context.globalState);
   explorerProvider = new ExplorerProvider();
   backlogProvider = new BacklogProvider(context.extensionUri, uiPreferences);
+  archiveProvider = new ArchiveProvider(context.extensionUri);
   boardProvider = new BoardProvider(context.extensionUri);
   insightsProvider = new InsightsProvider(context.extensionUri);
   editorProvider = new EntityEditorProvider(context.extensionUri);
@@ -40,6 +43,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand('planfs.openBoard', () => boardProvider.open()),
     vscode.commands.registerCommand('planfs.openNextWorkBoard', () => boardProvider.open('next-work')),
     vscode.commands.registerCommand('planfs.openBacklog', () => backlogProvider.open()),
+    vscode.commands.registerCommand('planfs.openArchive', () => archiveProvider.open()),
+    vscode.commands.registerCommand('planfs.archiveItem', async (item) => {
+      await archiveExplorerItem(item);
+      await refreshViews();
+    }),
     vscode.commands.registerCommand('planfs.openInsights', () => insightsProvider.open()),
     vscode.commands.registerCommand('planfs.initializeRepository', () => initializeRepositoryCommand(explorerProvider)),
     vscode.commands.registerCommand('planfs.createTask', () => createTaskCommand(explorerProvider)),
@@ -71,6 +79,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 async function refreshViews(): Promise<void> {
   await explorerProvider.refresh();
   await backlogProvider.refresh();
+  await archiveProvider.refresh();
   await boardProvider.refresh();
   await insightsProvider.refresh();
   await editorProvider.refresh();

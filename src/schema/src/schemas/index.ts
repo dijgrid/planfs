@@ -80,6 +80,21 @@ export const taskSchema = {
       },
       description: 'External references'
     },
+    archive: {
+      type: 'object',
+      required: ['archivedAt', 'originalPath'],
+      properties: {
+        archivedAt: {
+          type: 'string',
+          format: 'date-time'
+        },
+        originalPath: {
+          type: 'string'
+        }
+      },
+      additionalProperties: false,
+      description: 'Archive metadata for items moved out of the active plan'
+    },
     createdAt: {
       type: 'string',
       format: 'date-time',
@@ -146,6 +161,21 @@ export const epicSchema = {
         type: 'string'
       },
       description: 'External references'
+    },
+    archive: {
+      type: 'object',
+      required: ['archivedAt', 'originalPath'],
+      properties: {
+        archivedAt: {
+          type: 'string',
+          format: 'date-time'
+        },
+        originalPath: {
+          type: 'string'
+        }
+      },
+      additionalProperties: false,
+      description: 'Archive metadata for items moved out of the active plan'
     },
     createdAt: {
       type: 'string',

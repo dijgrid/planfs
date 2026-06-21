@@ -10,6 +10,7 @@ export interface DiscoveredFile {
   path: string;
   name: string;
   type: 'task' | 'epic' | 'milestone' | 'decision';
+  archived?: boolean;
 }
 
 export interface PlanfsInitializationResult {
@@ -24,7 +25,10 @@ const PLANFS_DIRECTORIES = [
   '.planfs/epics',
   '.planfs/milestones',
   '.planfs/decisions',
-  '.planfs/filters'
+  '.planfs/filters',
+  '.planfs/archive',
+  '.planfs/archive/tasks',
+  '.planfs/archive/epics'
 ];
 
 /**
@@ -64,6 +68,39 @@ export async function discoverFiles(
   return files;
 }
 
+export async function discoverArchiveFiles(
+  rootPath: string
+): Promise<DiscoveredFile[]> {
+  const archiveDir = path.join(rootPath, '.planfs', 'archive');
+  const files: DiscoveredFile[] = [];
+  const entityTypes = ['tasks', 'epics'] as const;
+
+  for (const entityType of entityTypes) {
+    const dir = path.join(archiveDir, entityType);
+
+    try {
+      const entries = await fs.readdir(dir, { withFileTypes: true });
+
+      for (const entry of entries) {
+        if (entry.isFile() && entry.name.endsWith('.md')) {
+          files.push({
+            path: path.join(dir, entry.name),
+            name: entry.name,
+            type: entityType.slice(0, -1) as 'task' | 'epic',
+            archived: true
+          });
+        }
+      }
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+        throw error;
+      }
+    }
+  }
+
+  return files;
+}
+
 /**
  * Read file content
  */
@@ -80,6 +117,10 @@ export async function writeFile(filePath: string, content: string): Promise<void
   const dir = path.dirname(filePath);
   await fs.mkdir(dir, { recursive: true });
   await fs.writeFile(filePath, content, 'utf-8');
+}
+
+export async function deleteFile(filePath: string): Promise<void> {
+  await fs.unlink(filePath);
 }
 
 /**

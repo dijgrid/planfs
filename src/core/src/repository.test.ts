@@ -14,7 +14,14 @@ import {
   createEpicTemplate,
   createMilestoneTemplate,
   getAllEntities,
-  initializeRepository
+  initializeRepository,
+  archiveEntity,
+  deleteArchivedEntity,
+  listArchivedEntities,
+  loadRepository,
+  restoreArchivedEntity,
+  saveEntity,
+  validateRepositoryState
 } from '../src/repository';
 import { Task, Epic, Milestone, Repository } from '../src/types';
 
@@ -401,7 +408,10 @@ describe('Repository', () => {
         '.planfs/epics',
         '.planfs/milestones',
         '.planfs/decisions',
-        '.planfs/filters'
+        '.planfs/filters',
+        '.planfs/archive',
+        '.planfs/archive/tasks',
+        '.planfs/archive/epics'
       ]);
 
       for (const dir of result.created) {
@@ -422,8 +432,75 @@ describe('Repository', () => {
         '.planfs/epics',
         '.planfs/milestones',
         '.planfs/decisions',
-        '.planfs/filters'
+        '.planfs/filters',
+        '.planfs/archive',
+        '.planfs/archive/tasks',
+        '.planfs/archive/epics'
       ]);
+    });
+  });
+
+  describe('archive workflows', () => {
+    let rootPath: string;
+
+    beforeEach(async () => {
+      rootPath = await fs.mkdtemp(path.join(os.tmpdir(), 'planfs-archive-'));
+      await initializeRepository(rootPath);
+    });
+
+    afterEach(async () => {
+      await fs.rm(rootPath, { recursive: true, force: true });
+    });
+
+    it('archives and restores tasks from the dedicated archive directory', async () => {
+      const task = createTaskTemplate('TASK-001', 'Archive me');
+      task.backlogOrder = 20;
+      await saveEntity(rootPath, task);
+
+      const result = await archiveEntity(rootPath, task.id, {
+        now: new Date('2026-06-21T18:44:00Z')
+      });
+
+      expect(result.archived.map(entity => entity.id)).toEqual(['TASK-001']);
+      await expect(
+        fs.stat(path.join(rootPath, '.planfs', 'tasks', 'TASK-001.md'))
+      ).rejects.toMatchObject({ code: 'ENOENT' });
+      const archivedPath = path.join(rootPath, '.planfs', 'archive', 'tasks', 'TASK-001.md');
+      await expect(fs.stat(archivedPath)).resolves.toBeDefined();
+
+      let repository = await loadRepository(rootPath);
+      expect(repository.tasks.has('TASK-001')).toBe(false);
+      expect(repository.archivedTasks?.has('TASK-001')).toBe(true);
+      expect(listArchivedEntities(repository).map(entity => entity.id)).toEqual(['TASK-001']);
+      expect(validateRepositoryState(repository).valid).toBe(true);
+
+      const restored = await restoreArchivedEntity(rootPath, 'TASK-001', {
+        now: new Date('2026-06-21T19:00:00Z')
+      });
+
+      expect(restored.archive).toBeUndefined();
+      await expect(fs.stat(archivedPath)).rejects.toMatchObject({ code: 'ENOENT' });
+      repository = await loadRepository(rootPath);
+      expect(repository.tasks.has('TASK-001')).toBe(true);
+      expect(repository.archivedTasks?.has('TASK-001')).toBe(false);
+    });
+
+    it('archives an epic with child tasks and can permanently delete archived items', async () => {
+      const epic = createEpicTemplate('EPIC-archive', 'Archive epic');
+      const child = {
+        ...createTaskTemplate('TASK-001', 'Child task'),
+        epic: epic.id
+      };
+      await saveEntity(rootPath, epic);
+      await saveEntity(rootPath, child);
+
+      const result = await archiveEntity(rootPath, epic.id, { includeChildren: true });
+      expect(result.archived.map(entity => entity.id).sort()).toEqual(['EPIC-archive', 'TASK-001']);
+
+      await deleteArchivedEntity(rootPath, 'TASK-001');
+      const repository = await loadRepository(rootPath);
+      expect(repository.archivedTasks?.has('TASK-001')).toBe(false);
+      expect(repository.archivedEpics?.has('EPIC-archive')).toBe(true);
     });
   });
 });

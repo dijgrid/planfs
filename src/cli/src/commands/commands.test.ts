@@ -65,7 +65,10 @@ describe('CLI commands', () => {
       '.planfs/epics',
       '.planfs/milestones',
       '.planfs/decisions',
-      '.planfs/filters'
+      '.planfs/filters',
+      '.planfs/archive',
+      '.planfs/archive/tasks',
+      '.planfs/archive/epics'
     ]);
 
     await expect(initCommand(rootPath, { format: 'json' })).resolves.toBe(0);
