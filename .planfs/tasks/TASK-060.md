@@ -42,15 +42,15 @@ Archived items should remain valid, searchable through a dedicated archive exper
 
 ## Questions
 
-- [ ] Should archive state be represented by a new `archived: true` field, a timestamp such as `archivedAt`, a status value, or a separate metadata object?
-- [ ] Should archiving an epic also archive its child tasks by default, ask for confirmation, or leave child tasks unchanged?
-- [ ] Should archived items still be included in validation link checks, dependency readiness checks, and project counts?
-- [ ] Should archived items be hidden from CLI output by default as well as VS Code UI output?
-- [ ] What should happen when an active task depends on an archived task?
-- [ ] Should archived items remain in their current directories or move to a dedicated archive directory?
-- [ ] Should archive actions require a reason or note for future context?
-- [ ] Should archived items be excluded from saved filters unless a filter explicitly includes them?
-- [ ] Should the archive UI support bulk restore and permanent delete, or only restore?
-- [ ] Should archive state apply to future entity types such as decisions, risks, requirements, and milestones?
-- [ ] Should archived epics still appear as grouping labels when visible non-archived tasks reference them?
-- [ ] Should archive restore preserve original ordering fields, or recalculate backlog and board ordering on restore?
+- [ ] Should archive state be represented by a new `archived: true` field, a timestamp such as `archivedAt`, a status value, or a separate metadata object? **I think a separate metadata object would be useful so someone can still review the archived tasks and things and get information about what happened.**
+- [ ] Should archiving an epic also archive its child tasks by default, ask for confirmation, or leave child tasks unchanged? **Child tasks should be archived as part of archiving an epic but there should be a confirmation about this**
+- [ ] Should archived items still be included in validation link checks, dependency readiness checks, and project counts? **I think archived items should be dropped from checks and other things that might depend upon those things being visible.  However, project stats should contain archived information as well I think**
+- [ ] Should archived items be hidden from CLI output by default as well as VS Code UI output? **Yes**
+- [ ] What should happen when an active task depends on an archived task? **I don't think archived dependencies should be considered after archival, otherwise there is no way to trim down a large project**
+- [ ] Should archived items remain in their current directories or move to a dedicated archive directory?  **Yes I think a dedicated archive directory is important here**
+- [ ] Should archive actions require a reason or note for future context? **No**
+- [ ] Should archived items be excluded from saved filters unless a filter explicitly includes them?  **Yes**
+- [ ] Should the archive UI support bulk restore and permanent delete, or only restore? **Both, but permanent delete should be blocked behind confirmation**
+- [ ] Should archive state apply to future entity types such as decisions, risks, requirements, and milestones? **Yes**
+- [ ] Should archived epics still appear as grouping labels when visible non-archived tasks reference them?  **Yes**
+- [ ] Should archive restore preserve original ordering fields, or recalculate backlog and board ordering on restore? **Recalculate**
