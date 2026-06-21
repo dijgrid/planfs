@@ -2,6 +2,22 @@
 
 PlanFS stores planning data in Markdown, so AI-assisted workflows should use small, targeted reads and safe repository APIs instead of broad file rewrites.
 
+## Initialize Agent Awareness
+
+Install or refresh repo-level agent guidance with:
+
+```sh
+node src/cli/dist/cli.js ai initialize
+```
+
+Preview the change first with:
+
+```sh
+node src/cli/dist/cli.js ai initialize --dry-run
+```
+
+The command creates or updates a marked PlanFS section in `AGENTS.md` so future AI coding agents know to start planning questions with the compact summary command.
+
 ## Review Board State
 
 Use the AI summary before recommending next work or cleanup:

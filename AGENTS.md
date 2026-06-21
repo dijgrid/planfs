@@ -69,3 +69,27 @@ For CLI or repository-format changes, also run:
 ```sh
 node src/cli/dist/cli.js validate
 ```
+
+<!-- PLANFS-AI-AWARENESS:START -->
+## AI Planning Awareness
+
+Before answering planning-status questions, recommending next work, or proposing planning updates, start with:
+
+```sh
+node src/cli/dist/cli.js ai summary
+```
+
+Use the returned IDs and file paths for targeted follow-up reads instead of scanning all of `.planfs`.
+
+Preview metadata updates before writing:
+
+```sh
+node src/cli/dist/cli.js ai update-task --id TASK-061 --status in-progress --dry-run
+```
+
+After applying AI-assisted planning updates, run:
+
+```sh
+node src/cli/dist/cli.js validate
+```
+<!-- PLANFS-AI-AWARENESS:END -->

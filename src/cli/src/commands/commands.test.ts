@@ -434,6 +434,63 @@ describe('CLI commands', () => {
     expect(taskFile).not.toContain('EPIC-missing');
   });
 
+  it('initializes agent instructions for AI planning awareness', async () => {
+    await fs.writeFile(
+      path.join(rootPath, 'AGENTS.md'),
+      [
+        '# AGENTS.md',
+        '',
+        'Existing guidance.',
+        ''
+      ].join('\n'),
+      'utf-8'
+    );
+
+    await expect(aiCommand(rootPath, 'initialize', {
+      dryRun: true,
+      format: 'json'
+    })).resolves.toBe(0);
+
+    let output = JSON.parse(
+      logSpy.mock.calls[logSpy.mock.calls.length - 1]?.[0] as string
+    );
+    expect(output).toMatchObject({
+      created: false,
+      updated: true,
+      dryRun: true
+    });
+    expect(output.content).toContain('PLANFS-AI-AWARENESS:START');
+
+    let agents = await fs.readFile(path.join(rootPath, 'AGENTS.md'), 'utf-8');
+    expect(agents).not.toContain('PLANFS-AI-AWARENESS:START');
+
+    await expect(aiCommand(rootPath, 'initialize', {
+      format: 'json'
+    })).resolves.toBe(0);
+
+    output = JSON.parse(
+      logSpy.mock.calls[logSpy.mock.calls.length - 1]?.[0] as string
+    );
+    expect(output).toMatchObject({
+      created: false,
+      updated: true,
+      dryRun: false
+    });
+
+    agents = await fs.readFile(path.join(rootPath, 'AGENTS.md'), 'utf-8');
+    expect(agents).toContain('Existing guidance.');
+    expect(agents).toContain('node src/cli/dist/cli.js ai summary');
+    expect(agents.match(/PLANFS-AI-AWARENESS:START/g)).toHaveLength(1);
+
+    await expect(aiCommand(rootPath, 'initialize', {
+      format: 'json'
+    })).resolves.toBe(0);
+    output = JSON.parse(
+      logSpy.mock.calls[logSpy.mock.calls.length - 1]?.[0] as string
+    );
+    expect(output.updated).toBe(false);
+  });
+
   it('lists pull request provider boundaries', async () => {
     await expect(
       pullRequestCommand(rootPath, 'providers', { format: 'json' })

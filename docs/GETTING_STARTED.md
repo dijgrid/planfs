@@ -119,6 +119,7 @@ planfs git commit-message
 planfs git validate-message "TASK-001: update planning docs"
 planfs pr summary
 planfs pr providers --format json
+planfs ai initialize
 planfs ai summary
 planfs ai update-task --id TASK-001 --status in-progress --dry-run
 planfs list tasks --status todo --epic EPIC-phase-2-enhanced
@@ -219,6 +220,7 @@ planfs next --include-blocked
 ### Use AI-Assisted Planning Helpers
 
 ```bash
+planfs ai initialize
 planfs ai summary
 planfs ai summary --assignee justin --limit 10
 planfs ai update-task --id TASK-001 --status in-progress --dry-run

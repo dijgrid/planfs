@@ -29,7 +29,7 @@ export async function main(): Promise<void> {
         y
           .positional('action', {
             describe: 'AI helper to run',
-            choices: ['summary', 'update-task']
+            choices: ['summary', 'update-task', 'initialize']
           })
           .option('id', {
             type: 'string',
@@ -79,7 +79,12 @@ export async function main(): Promise<void> {
           .option('dry-run', {
             type: 'boolean',
             default: false,
-            description: 'Preview task updates without writing files'
+            description: 'Preview task updates or awareness initialization without writing files'
+          })
+          .option('file', {
+            type: 'string',
+            default: 'AGENTS.md',
+            description: 'Agent instruction file to create or update'
           })
           .option('format', {
             type: 'string',
@@ -103,6 +108,7 @@ export async function main(): Promise<void> {
             tags: args.tags as string | undefined,
             limit: args.limit as number | undefined,
             dryRun: args.dryRun as boolean,
+            file: args.file as string | undefined,
             format: args.format as 'json' | 'text'
           }
         );

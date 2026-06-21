@@ -91,6 +91,7 @@ planfs git commit-message
 planfs git validate-message "TASK-001: message"
 planfs pr summary
 planfs pr providers
+planfs ai initialize
 planfs ai summary
 planfs ai update-task --id TASK-001 --status in-progress --dry-run
 ```
