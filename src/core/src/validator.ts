@@ -27,6 +27,65 @@ const schemaValidators: Record<Entity['type'], ValidateFunction> = {
   milestone: ajv.compile(milestoneSchema),
   decision: ajv.compile(decisionSchema)
 };
+const ALLOWED_METADATA_FIELDS: Record<Entity['type'], Set<string>> = {
+  task: new Set([
+    'id',
+    'title',
+    'status',
+    'priority',
+    'assignee',
+    'epic',
+    'milestone',
+    'dependsOn',
+    'tags',
+    'dueDate',
+    'estimate',
+    'refinementState',
+    'backlogOrder',
+    'links',
+    'createdAt',
+    'updatedAt'
+  ]),
+  epic: new Set([
+    'id',
+    'title',
+    'status',
+    'priority',
+    'owner',
+    'description',
+    'targetDate',
+    'tags',
+    'links',
+    'createdAt',
+    'updatedAt'
+  ]),
+  milestone: new Set([
+    'id',
+    'title',
+    'status',
+    'targetDate',
+    'description',
+    'owner',
+    'links',
+    'createdAt',
+    'updatedAt'
+  ]),
+  decision: new Set([
+    'id',
+    'title',
+    'status',
+    'date',
+    'context',
+    'decision',
+    'consequences',
+    'author',
+    'supersedes',
+    'supersededBy',
+    'createdAt',
+    'updatedAt'
+  ])
+};
+const STALE_UPDATED_AT_DAYS = 180;
 
 /**
  * Validate a single entity
@@ -38,6 +97,7 @@ export function validateEntity(entity: Entity): ValidationError[] {
   if (validateSchema && !validateSchema(entity)) {
     errors.push(...formatSchemaErrors(entity, validateSchema.errors ?? []));
   }
+  errors.push(...validateSupportedMetadata(entity));
 
   // Check required fields
   if (!entity.id) {
@@ -54,6 +114,8 @@ export function validateEntity(entity: Entity): ValidationError[] {
       severity: 'error'
     });
   }
+
+  errors.push(...validateTimestamps(entity));
 
   // Type-specific validation
   switch (entity.type) {
@@ -92,6 +154,63 @@ function formatSchemaErrors(
       severity: 'error'
     };
   });
+}
+
+function validateSupportedMetadata(entity: Entity): ValidationError[] {
+  const allowed = ALLOWED_METADATA_FIELDS[entity.type];
+  return Object.keys(entity.metadata ?? {})
+    .filter(field => !allowed.has(field))
+    .map(field => ({
+      id: entity.id,
+      path: entity.filePath,
+      message: `Unsupported ${entity.type} metadata field: ${field}`,
+      severity: 'error'
+    }));
+}
+
+function validateTimestamps(entity: Entity): ValidationError[] {
+  const errors: ValidationError[] = [];
+  const createdAt = parseDate(entity.createdAt);
+  const updatedAt = parseDate(entity.updatedAt);
+
+  if (entity.createdAt && createdAt === undefined) {
+    errors.push({
+      id: entity.id,
+      message: `Invalid createdAt format: ${entity.createdAt}. Must be ISO 8601`,
+      severity: 'warning'
+    });
+  }
+
+  if (entity.updatedAt && updatedAt === undefined) {
+    errors.push({
+      id: entity.id,
+      message: `Invalid updatedAt format: ${entity.updatedAt}. Must be ISO 8601`,
+      severity: 'warning'
+    });
+  }
+
+  if (createdAt !== undefined && updatedAt !== undefined && updatedAt < createdAt) {
+    errors.push({
+      id: entity.id,
+      message: `Stale updatedAt: ${entity.updatedAt} is earlier than createdAt ${entity.createdAt}`,
+      severity: 'warning'
+    });
+  }
+
+  if (
+    entity.type === 'task'
+    && (entity as Task).status !== 'done'
+    && entity.updatedAt
+    && isStaleDate(updatedAt, STALE_UPDATED_AT_DAYS)
+  ) {
+    errors.push({
+      id: entity.id,
+      message: `Stale updatedAt: open task has not been updated in ${STALE_UPDATED_AT_DAYS} days`,
+      severity: 'warning'
+    });
+  }
+
+  return errors;
 }
 
 function validateTask(task: Task): ValidationError[] {
@@ -302,6 +421,15 @@ function checkEntityReferences(
         message: `Referenced epic not found: ${task.epic}`,
         severity: 'error'
       });
+    } else if (task.epic) {
+      const epic = idMap.get(task.epic) as Epic;
+      if (epic.status === 'completed' || epic.status === 'archived') {
+        errors.push({
+          id: task.id,
+          message: `Task references ${epic.status} epic: ${task.epic}`,
+          severity: 'warning'
+        });
+      }
     }
 
     // Check milestone reference
@@ -311,6 +439,15 @@ function checkEntityReferences(
         message: `Referenced milestone not found: ${task.milestone}`,
         severity: 'error'
       });
+    } else if (task.milestone) {
+      const milestone = idMap.get(task.milestone) as Milestone;
+      if (milestone.status === 'completed' || milestone.status === 'delayed') {
+        errors.push({
+          id: task.id,
+          message: `Task references ${milestone.status} milestone: ${task.milestone}`,
+          severity: 'warning'
+        });
+      }
     }
 
     // Check dependencies
@@ -385,12 +522,22 @@ function findCycle(
  * Check if a string is a valid ISO 8601 date
  */
 function isValidISODate(dateString: string): boolean {
-  try {
-    const date = new Date(dateString);
-    return date instanceof Date && !isNaN(date.getTime());
-  } catch {
-    return false;
+  return parseDate(dateString) !== undefined;
+}
+
+function parseDate(dateString: string | undefined): number | undefined {
+  if (!dateString) {
+    return undefined;
   }
+  const date = new Date(dateString);
+  return isNaN(date.getTime()) ? undefined : date.getTime();
+}
+
+function isStaleDate(value: number | undefined, staleAfterDays: number): boolean {
+  if (value === undefined) {
+    return true;
+  }
+  return Date.now() - value >= staleAfterDays * 86_400_000;
 }
 
 /**

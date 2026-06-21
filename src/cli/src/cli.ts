@@ -7,6 +7,7 @@ import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 import type { PullRequestProviderId } from 'planfs-core';
 import { validateCommand } from './commands/validate';
+import { aiCommand, AiAction } from './commands/ai';
 import { initCommand } from './commands/init';
 import { listCommand } from './commands/list';
 import { nextCommand } from './commands/next';
@@ -21,6 +22,93 @@ import pkg from '../package.json';
 export async function main(): Promise<void> {
   await yargs(hideBin(process.argv))
     .version(pkg.version)
+    .command(
+      'ai <action>',
+      'AI-oriented planning summary and update helpers',
+      (y) =>
+        y
+          .positional('action', {
+            describe: 'AI helper to run',
+            choices: ['summary', 'update-task']
+          })
+          .option('id', {
+            type: 'string',
+            description: 'Task ID to update'
+          })
+          .option('assignee', {
+            type: 'string',
+            description: 'Scope summary or set task assignee'
+          })
+          .option('epic', {
+            type: 'string',
+            description: 'Scope summary or set task epic'
+          })
+          .option('milestone', {
+            type: 'string',
+            description: 'Scope summary or set task milestone'
+          })
+          .option('status', {
+            type: 'array',
+            string: true,
+            choices: ['todo', 'in-progress', 'review', 'done'],
+            description: 'Scope summary by status or set task status'
+          })
+          .option('priority', {
+            type: 'string',
+            choices: ['low', 'medium', 'high', 'critical'],
+            description: 'Set task priority'
+          })
+          .option('refinement-state', {
+            type: 'array',
+            string: true,
+            choices: ['captured', 'needs-refinement', 'ready', 'deferred', 'discarded'],
+            description: 'Scope summary by refinement state or set task refinement state'
+          })
+          .option('due-date', {
+            type: 'string',
+            description: 'Set task due date'
+          })
+          .option('tags', {
+            type: 'string',
+            description: 'Set task tags as a comma-separated list'
+          })
+          .option('limit', {
+            type: 'number',
+            description: 'Maximum number of summary items per list'
+          })
+          .option('dry-run', {
+            type: 'boolean',
+            default: false,
+            description: 'Preview task updates without writing files'
+          })
+          .option('format', {
+            type: 'string',
+            choices: ['json', 'text'],
+            default: 'json',
+            description: 'Output format'
+          }),
+      async (args) => {
+        const exitCode = await aiCommand(
+          process.cwd(),
+          args.action as AiAction,
+          {
+            id: args.id as string | undefined,
+            assignee: args.assignee as string | undefined,
+            epic: args.epic as string | undefined,
+            milestone: args.milestone as string | undefined,
+            status: args.status as string[] | undefined,
+            priority: args.priority as string | undefined,
+            refinementState: args.refinementState as string[] | undefined,
+            dueDate: args.dueDate as string | undefined,
+            tags: args.tags as string | undefined,
+            limit: args.limit as number | undefined,
+            dryRun: args.dryRun as boolean,
+            format: args.format as 'json' | 'text'
+          }
+        );
+        process.exit(exitCode);
+      }
+    )
     .command(
       'init',
       'Initialize PlanFS repository structure',

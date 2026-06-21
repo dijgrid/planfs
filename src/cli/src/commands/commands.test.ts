@@ -1,6 +1,7 @@
 import { promises as fs } from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+import { aiCommand } from './ai';
 import { createCommand } from './create';
 import { backlogCommand } from './backlog';
 import { gitCommand } from './git';
@@ -312,6 +313,125 @@ describe('CLI commands', () => {
 
     expect(logSpy).toHaveBeenCalledWith('TASK-002 Blocked task');
     expect(logSpy).toHaveBeenCalledWith('  Blocked by TASK-001');
+  });
+
+  it('emits AI-ready planning summaries', async () => {
+    await writeTask('TASK-001', [
+      'title: Done dependency',
+      'status: done',
+      'updatedAt: 2026-06-01T00:00:00Z'
+    ]);
+    await writeTask('TASK-002', [
+      'title: Ready AI task',
+      'status: todo',
+      'priority: high',
+      'assignee: justin',
+      'dependsOn:',
+      '  - TASK-001',
+      'updatedAt: 2026-06-20T00:00:00Z'
+    ]);
+    await writeTask('TASK-003', [
+      'title: Blocked AI task',
+      'status: todo',
+      'dependsOn:',
+      '  - TASK-004'
+    ]);
+    await writeTask('TASK-004', [
+      'title: Open dependency',
+      'status: todo'
+    ]);
+
+    await expect(aiCommand(rootPath, 'summary', {
+      assignee: 'justin',
+      format: 'json'
+    })).resolves.toBe(0);
+
+    const output = JSON.parse(
+      logSpy.mock.calls[logSpy.mock.calls.length - 1]?.[0] as string
+    );
+    expect(output.counts).toMatchObject({
+      tasks: 1,
+      openTasks: 1,
+      readyTasks: 1
+    });
+    expect(output.readyWork[0]).toMatchObject({
+      id: 'TASK-002',
+      filePath: expect.stringContaining('TASK-002.md')
+    });
+  });
+
+  it('previews and applies AI task updates', async () => {
+    await writeTask('TASK-001', [
+      'title: Update with AI command',
+      'status: todo',
+      'priority: medium'
+    ]);
+
+    await expect(aiCommand(rootPath, 'update-task', {
+      id: 'TASK-001',
+      status: 'review',
+      priority: 'high',
+      tags: 'ai,workflow',
+      dryRun: true,
+      format: 'json'
+    })).resolves.toBe(0);
+
+    let output = JSON.parse(
+      logSpy.mock.calls[logSpy.mock.calls.length - 1]?.[0] as string
+    );
+    expect(output.dryRun).toBe(true);
+    expect(output.changedFields).toEqual(['status', 'priority', 'tags']);
+    expect(output.preview).toContain('status: review');
+
+    let taskFile = await fs.readFile(
+      path.join(rootPath, '.planfs', 'tasks', 'TASK-001.md'),
+      'utf-8'
+    );
+    expect(taskFile).toContain('status: todo');
+
+    await expect(aiCommand(rootPath, 'update-task', {
+      id: 'TASK-001',
+      status: 'review',
+      priority: 'high',
+      tags: 'ai,workflow',
+      format: 'json'
+    })).resolves.toBe(0);
+
+    output = JSON.parse(
+      logSpy.mock.calls[logSpy.mock.calls.length - 1]?.[0] as string
+    );
+    expect(output.dryRun).toBe(false);
+    taskFile = await fs.readFile(
+      path.join(rootPath, '.planfs', 'tasks', 'TASK-001.md'),
+      'utf-8'
+    );
+    expect(taskFile).toContain('status: review');
+    expect(taskFile).toContain('priority: high');
+    expect(taskFile).toContain('tags:');
+  });
+
+  it('blocks invalid AI task updates before writing', async () => {
+    await writeTask('TASK-001', [
+      'title: Invalid AI update',
+      'status: todo',
+      'priority: medium'
+    ]);
+
+    await expect(aiCommand(rootPath, 'update-task', {
+      id: 'TASK-001',
+      epic: 'EPIC-missing',
+      format: 'json'
+    })).resolves.toBe(1);
+
+    expect(errorSpy).toHaveBeenCalledWith(
+      'Error:',
+      expect.stringContaining('Referenced epic not found')
+    );
+    const taskFile = await fs.readFile(
+      path.join(rootPath, '.planfs', 'tasks', 'TASK-001.md'),
+      'utf-8'
+    );
+    expect(taskFile).not.toContain('EPIC-missing');
   });
 
   it('lists pull request provider boundaries', async () => {
