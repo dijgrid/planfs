@@ -33,7 +33,10 @@ export function loadEntity(file: DiscoveredFile, content: string): Entity {
     metadata: normalized,
     body,
     createdAt: normalized.createdAt as string | undefined,
-    updatedAt: normalized.updatedAt as string | undefined
+    updatedAt: normalized.updatedAt as string | undefined,
+    archive: isArchiveMetadata(normalized.archive)
+      ? normalized.archive
+      : undefined
   };
 
   switch (file.type) {
@@ -50,7 +53,7 @@ export function loadEntity(file: DiscoveredFile, content: string): Entity {
   }
 }
 
-function loadTask(base: { id: string; type: EntityType; filePath: string; metadata: Record<string, unknown>; body: string; createdAt?: string; updatedAt?: string }): Task {
+function loadTask(base: { id: string; type: EntityType; filePath: string; metadata: Record<string, unknown>; body: string; createdAt?: string; updatedAt?: string; archive?: Task['archive'] }): Task {
   const metadata = base.metadata;
 
   return {
@@ -61,6 +64,7 @@ function loadTask(base: { id: string; type: EntityType; filePath: string; metada
     body: base.body,
     createdAt: base.createdAt,
     updatedAt: base.updatedAt,
+    archive: base.archive,
     title: metadata.title as string || '',
     status: (metadata.status as string || 'todo') as Task['status'],
     priority: metadata.priority as Task['priority'] | undefined,
@@ -77,7 +81,7 @@ function loadTask(base: { id: string; type: EntityType; filePath: string; metada
   };
 }
 
-function loadEpic(base: { id: string; type: EntityType; filePath: string; metadata: Record<string, unknown>; body: string; createdAt?: string; updatedAt?: string }): Epic {
+function loadEpic(base: { id: string; type: EntityType; filePath: string; metadata: Record<string, unknown>; body: string; createdAt?: string; updatedAt?: string; archive?: Epic['archive'] }): Epic {
   const metadata = base.metadata;
 
   return {
@@ -88,6 +92,7 @@ function loadEpic(base: { id: string; type: EntityType; filePath: string; metada
     body: base.body,
     createdAt: base.createdAt,
     updatedAt: base.updatedAt,
+    archive: base.archive,
     title: metadata.title as string || '',
     status: (metadata.status as string || 'active') as Epic['status'],
     priority: metadata.priority as Epic['priority'] | undefined,
@@ -99,7 +104,7 @@ function loadEpic(base: { id: string; type: EntityType; filePath: string; metada
   };
 }
 
-function loadMilestone(base: { id: string; type: EntityType; filePath: string; metadata: Record<string, unknown>; body: string; createdAt?: string; updatedAt?: string }): Milestone {
+function loadMilestone(base: { id: string; type: EntityType; filePath: string; metadata: Record<string, unknown>; body: string; createdAt?: string; updatedAt?: string; archive?: Milestone['archive'] }): Milestone {
   const metadata = base.metadata;
 
   return {
@@ -110,6 +115,7 @@ function loadMilestone(base: { id: string; type: EntityType; filePath: string; m
     body: base.body,
     createdAt: base.createdAt,
     updatedAt: base.updatedAt,
+    archive: base.archive,
     title: metadata.title as string || '',
     status: (metadata.status as string || 'active') as Milestone['status'],
     targetDate: metadata.targetDate as string || '',
@@ -119,7 +125,7 @@ function loadMilestone(base: { id: string; type: EntityType; filePath: string; m
   };
 }
 
-function loadDecision(base: { id: string; type: EntityType; filePath: string; metadata: Record<string, unknown>; body: string; createdAt?: string; updatedAt?: string }): Decision {
+function loadDecision(base: { id: string; type: EntityType; filePath: string; metadata: Record<string, unknown>; body: string; createdAt?: string; updatedAt?: string; archive?: Decision['archive'] }): Decision {
   const metadata = base.metadata;
 
   return {
@@ -130,6 +136,7 @@ function loadDecision(base: { id: string; type: EntityType; filePath: string; me
     body: base.body,
     createdAt: base.createdAt,
     updatedAt: base.updatedAt,
+    archive: base.archive,
     title: metadata.title as string || '',
     status: (metadata.status as string || 'proposed') as Decision['status'],
     date: metadata.date as string | undefined,
@@ -140,6 +147,13 @@ function loadDecision(base: { id: string; type: EntityType; filePath: string; me
     supersedes: metadata.supersedes as string | undefined,
     supersededBy: metadata.supersededBy as string | undefined
   };
+}
+
+function isArchiveMetadata(value: unknown): value is { archivedAt: string; originalPath: string } {
+  return typeof value === 'object'
+    && value !== null
+    && typeof (value as { archivedAt?: unknown }).archivedAt === 'string'
+    && typeof (value as { originalPath?: unknown }).originalPath === 'string';
 }
 
 /**

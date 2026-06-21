@@ -88,6 +88,7 @@ Tasks represent units of work.
 | `refinementState` | enum | Optional backlog refinement state: `captured`, `needs-refinement`, `ready`, `deferred`, or `discarded` |
 | `backlogOrder` | number | Optional human-editable ordering value within an epic, or globally when no epic is set |
 | `links` | object | External references |
+| `archive` | object | Archive metadata when the task has been moved to `.planfs/archive/tasks/` |
 
 ### Full Schema
 
@@ -129,6 +130,18 @@ Tasks are stored in `.planfs/tasks/`:
 
 File name must match the task ID in the frontmatter.
 
+### Archived Tasks
+
+Archived tasks are moved out of the active task directory and stored in `.planfs/archive/tasks/`. They keep their normal task metadata and body, plus an `archive` object:
+
+```yaml
+archive:
+  archivedAt: "2026-06-21T18:44:00Z"
+  originalPath: ".planfs/tasks/TASK-001.md"
+```
+
+Archived tasks are hidden from normal list, board, backlog, next-work, search, and explorer views by default. They remain readable Markdown files and can be browsed, restored, or permanently deleted through archive workflows.
+
 ---
 
 ## Epic Entity
@@ -155,6 +168,7 @@ Epics represent larger bodies of work comprising multiple tasks.
 | `updatedAt` | datetime | ISO 8601 timestamp |
 | `targetDate` | datetime | Optional target completion |
 | `links` | object | External references |
+| `archive` | object | Archive metadata when the epic has been moved to `.planfs/archive/epics/` |
 
 ### Full Schema
 
@@ -183,6 +197,10 @@ Epics are stored in `.planfs/epics/`:
 .planfs/epics/EPIC-auth-system.md
 .planfs/epics/EPIC-payment-processing.md
 ```
+
+### Archived Epics
+
+Archived epics are moved to `.planfs/archive/epics/` and use the same `archive` metadata object as archived tasks. Archiving an epic can also archive its child tasks when the user confirms that action. Archived epics are hidden from normal planning surfaces by default, but archive views can still display them for inspection, restore, or permanent deletion.
 
 ---
 

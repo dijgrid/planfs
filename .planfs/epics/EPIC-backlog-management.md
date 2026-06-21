@@ -7,7 +7,7 @@ description: Add backlog intake, refinement, ordering, and hygiene workflows for
   PlanFS tasks
 targetDate: 2026-10-16
 createdAt: 2026-06-20T00:00:00Z
-updatedAt: 2026-06-21T00:00:00Z
+updatedAt: 2026-06-21T18:44:00Z
 ---
 
 Make PlanFS useful before work is ready to start by supporting backlog intake, refinement, ordering, and cleanup.
@@ -23,6 +23,7 @@ The backlog workflow should help users capture rough work, refine it into action
 - TASK-054: Add backlog hygiene and stale-item review
 - TASK-055: Add backlog documentation and examples
 - TASK-066: Redesign backlog view around browse-and-edit workflow
+- TASK-071: Preserve backlog filters after saving edits
 
 ## Open Questions
 

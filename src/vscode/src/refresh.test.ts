@@ -3,6 +3,7 @@ import * as os from 'os';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import {
+  archiveEntity,
   createEpicTemplate,
   createTaskTemplate,
   ensurePlanfsStructure,
@@ -10,6 +11,7 @@ import {
   saveEntity
 } from 'planfs-core';
 import { BacklogProvider } from './backlog';
+import { ArchiveProvider } from './archive';
 import { BoardProvider } from './board';
 import { EntityEditorProvider } from './editor';
 import { ExplorerProvider } from './explorer';
@@ -173,6 +175,9 @@ describe('VS Code view refresh workspace selection', () => {
     expect(backlogPanel.webview.html).toContain('Captured backlog task');
     expect(backlogPanel.webview.html).toContain('captureBacklogItem');
     expect(backlogPanel.webview.html).toContain('updateBacklogTask');
+    expect(backlogPanel.webview.html).toContain('vscode.getState');
+    expect(backlogPanel.webview.html).toContain('savedFilterId');
+    expect(backlogPanel.webview.html).toContain('persistUiState');
     expect(backlogPanel.webview.html).toContain('editorPanel');
     expect(backlogPanel.webview.html).toContain('data-select-task');
     expect(backlogPanel.webview.html).toContain('Open Markdown');
@@ -201,6 +206,26 @@ describe('VS Code view refresh workspace selection', () => {
     expect(repository.tasks.get('TASK-050')?.assignee).toBe('PlanFS Test');
     expect(repository.tasks.get('TASK-050')?.tags).toEqual(['backlog', 'ux']);
     expect(repository.tasks.get('TASK-050')?.body).toContain('## Acceptance Criteria');
+  });
+
+  it('renders archived tasks and epics in a dedicated archive view', async () => {
+    const epic = createEpicTemplate('EPIC-archive', 'Archived epic');
+    await saveEntity(firstRoot, epic);
+    await saveEntity(firstRoot, {
+      ...createTaskTemplate('TASK-071', 'Archived task'),
+      epic: epic.id
+    });
+    await archiveEntity(firstRoot, epic.id, { includeChildren: true });
+
+    const archive = new ArchiveProvider(vscode.Uri.file('/extension'));
+    await archive.open();
+
+    const archivePanel = jest.mocked(vscode.window.createWebviewPanel).mock.results[0].value;
+    expect(archivePanel.webview.html).toContain('PlanFS Archive');
+    expect(archivePanel.webview.html).toContain('EPIC-archive');
+    expect(archivePanel.webview.html).toContain('TASK-071');
+    expect(archivePanel.webview.html).toContain("type: 'restore'");
+    expect(archivePanel.webview.html).toContain("type: 'delete'");
   });
 
   it('renders visual planning controls for graph and timeline insights', async () => {

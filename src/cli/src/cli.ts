@@ -14,6 +14,7 @@ import { nextCommand } from './commands/next';
 import { showCommand } from './commands/show';
 import { createCommand } from './commands/create';
 import { backlogCommand, BacklogAction } from './commands/backlog';
+import { archiveCommand, ArchiveAction } from './commands/archive';
 import { branchCommand } from './commands/branch';
 import { gitCommand, GitAction } from './commands/git';
 import { pullRequestCommand, PullRequestAction } from './commands/pr';
@@ -252,6 +253,49 @@ export async function main(): Promise<void> {
             base: args.base as string | undefined,
             provider: args.provider as PullRequestProviderId,
             format: args.format as 'markdown' | 'json'
+          }
+        );
+        process.exit(exitCode);
+      }
+    )
+    .command(
+      'archive <action>',
+      'Archive, restore, and browse hidden PlanFS tasks and epics',
+      (y) =>
+        y
+          .positional('action', {
+            describe: 'Archive workflow to run',
+            choices: ['list', 'archive', 'restore', 'delete']
+          })
+          .option('id', {
+            type: 'string',
+            description: 'Task or epic ID'
+          })
+          .option('include-children', {
+            type: 'boolean',
+            default: false,
+            description: 'When archiving an epic, also archive child tasks'
+          })
+          .option('yes', {
+            type: 'boolean',
+            default: false,
+            description: 'Confirm permanent archive deletion'
+          })
+          .option('format', {
+            type: 'string',
+            choices: ['text', 'json'],
+            default: 'text',
+            description: 'Output format'
+          }),
+      async (args) => {
+        const exitCode = await archiveCommand(
+          process.cwd(),
+          args.action as ArchiveAction,
+          {
+            id: args.id as string | undefined,
+            includeChildren: args.includeChildren as boolean,
+            yes: args.yes as boolean,
+            format: args.format as 'text' | 'json'
           }
         );
         process.exit(exitCode);

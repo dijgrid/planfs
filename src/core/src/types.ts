@@ -10,6 +10,11 @@ export type EpicStatus = 'active' | 'completed' | 'on-hold' | 'archived';
 export type MilestoneStatus = 'active' | 'completed' | 'delayed';
 export type DecisionStatus = 'proposed' | 'accepted' | 'rejected' | 'superseded';
 
+export interface ArchiveMetadata {
+  archivedAt: string;
+  originalPath: string;
+}
+
 /**
  * Base entity interface
  */
@@ -21,6 +26,7 @@ export interface BaseEntity {
   body: string;
   createdAt?: string;
   updatedAt?: string;
+  archive?: ArchiveMetadata;
 }
 
 /**
@@ -101,6 +107,8 @@ export interface Repository {
   epics: Map<string, Epic>;
   milestones: Map<string, Milestone>;
   decisions: Map<string, Decision>;
+  archivedTasks?: Map<string, Task>;
+  archivedEpics?: Map<string, Epic>;
 }
 
 /**

@@ -7,6 +7,8 @@ import * as path from 'path';
 import { stringify as stringifyYaml } from 'yaml';
 import {
   discoverFiles,
+  discoverArchiveFiles,
+  deleteFile,
   readFile,
   writeFile,
   planfsDirectoryExists,
@@ -14,7 +16,7 @@ import {
   PlanfsInitializationResult
 } from './files';
 import { loadEntity, getFilenameFromId, getEntityDirectory } from './loader';
-import { validateAll } from './validator';
+import { validateAll, validateEntity } from './validator';
 import {
   Entity,
   Repository,
@@ -42,7 +44,9 @@ export async function loadRepository(rootPath: string): Promise<Repository> {
     tasks: new Map(),
     epics: new Map(),
     milestones: new Map(),
-    decisions: new Map()
+    decisions: new Map(),
+    archivedTasks: new Map(),
+    archivedEpics: new Map()
   };
 
   // Discover and load all files
@@ -74,19 +78,44 @@ export async function loadRepository(rootPath: string): Promise<Repository> {
     }
   }
 
+  const archivedFiles = await discoverArchiveFiles(rootPath);
+  for (const file of archivedFiles) {
+    try {
+      const content = await readFile(file.path);
+      const entity = loadEntity(file, content);
+
+      if (entity.type === 'task') {
+        repository.archivedTasks?.set(entity.id, entity as Task);
+      } else if (entity.type === 'epic') {
+        repository.archivedEpics?.set(entity.id, entity as Epic);
+      }
+    } catch (error) {
+      console.error(
+        `Failed to load archived entity from ${file.path}: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+  }
+
   return repository;
 }
 
 /**
  * Get all entities from a repository
  */
-export function getAllEntities(repository: Repository): Entity[] {
+export function getAllEntities(
+  repository: Repository,
+  options: { includeArchived?: boolean } = {}
+): Entity[] {
   const entities: Entity[] = [];
 
   entities.push(...Array.from(repository.tasks.values()));
   entities.push(...Array.from(repository.epics.values()));
   entities.push(...Array.from(repository.milestones.values()));
   entities.push(...Array.from(repository.decisions.values()));
+  if (options.includeArchived) {
+    entities.push(...Array.from(repository.archivedTasks?.values() ?? []));
+    entities.push(...Array.from(repository.archivedEpics?.values() ?? []));
+  }
 
   return entities;
 }
@@ -96,7 +125,13 @@ export function getAllEntities(repository: Repository): Entity[] {
  */
 export function validateRepositoryState(repository: Repository): ValidationResult {
   const entities = getAllEntities(repository);
-  return validateAll(entities);
+  const result = validateAll(entities);
+  const archivedErrors = listArchivedEntities(repository).flatMap(entity => validateEntity(entity));
+  const errors = [...result.errors, ...archivedErrors];
+  return {
+    valid: !errors.some(error => error.severity === 'error'),
+    errors
+  };
 }
 
 /**
@@ -106,7 +141,9 @@ export async function saveEntity(
   rootPath: string,
   entity: Entity
 ): Promise<void> {
-  const dir = getEntityDirectory(entity.type);
+  const dir = entity.archive && (entity.type === 'task' || entity.type === 'epic')
+    ? path.join('archive', getEntityDirectory(entity.type))
+    : getEntityDirectory(entity.type);
   const filename = getFilenameFromId(entity.id);
   const filePath = path.join(rootPath, '.planfs', dir, filename);
 
@@ -123,6 +160,7 @@ export function generateEntityContent(entity: Entity): string {
   metadata.id = entity.id;
   metadata.title = entity.title || '';
   metadata.status = entity.status || '';
+  if (entity.archive) metadata.archive = entity.archive;
 
   // Add type-specific metadata
   switch (entity.type) {
@@ -176,6 +214,131 @@ export function generateEntityContent(entity: Entity): string {
   if (entity.updatedAt) metadata.updatedAt = entity.updatedAt;
 
   return `---\n${stringifyYaml(metadata).trimEnd()}\n---\n\n${entity.body}`;
+}
+
+export interface ArchiveEntityOptions {
+  includeChildren?: boolean;
+  now?: Date;
+}
+
+export interface ArchiveEntityResult {
+  archived: Entity[];
+}
+
+export function isArchivedEntity(entity: Entity): boolean {
+  return Boolean(entity.archive);
+}
+
+export function listArchivedEntities(repository: Repository): Entity[] {
+  return [
+    ...Array.from(repository.archivedTasks?.values() ?? []),
+    ...Array.from(repository.archivedEpics?.values() ?? [])
+  ];
+}
+
+export async function archiveEntity(
+  rootPath: string,
+  entityId: string,
+  options: ArchiveEntityOptions = {}
+): Promise<ArchiveEntityResult> {
+  const repository = await loadRepository(rootPath);
+  const entity = repository.tasks.get(entityId) ?? repository.epics.get(entityId);
+  if (!entity) {
+    throw new Error(`Active task or epic not found: ${entityId}`);
+  }
+
+  const toArchive: Entity[] = [entity];
+  if (entity.type === 'epic' && options.includeChildren) {
+    toArchive.push(
+      ...Array.from(repository.tasks.values()).filter(task => task.epic === entity.id)
+    );
+  }
+
+  const archived: Entity[] = [];
+  const archivedAt = (options.now ?? new Date()).toISOString();
+  for (const current of toArchive) {
+    const originalPath = path.relative(rootPath, current.filePath);
+    const archive = { archivedAt, originalPath };
+    const archivedEntity = {
+      ...current,
+      archive,
+      updatedAt: archivedAt,
+      metadata: {
+        ...current.metadata,
+        archive,
+        updatedAt: archivedAt
+      }
+    } as Entity;
+    await saveEntity(rootPath, archivedEntity);
+    await deleteFile(current.filePath);
+    archived.push(archivedEntity);
+  }
+
+  return { archived };
+}
+
+export interface RestoreArchivedEntityOptions {
+  now?: Date;
+  recalculateBacklogOrder?: boolean;
+}
+
+export async function restoreArchivedEntity(
+  rootPath: string,
+  entityId: string,
+  options: RestoreArchivedEntityOptions = {}
+): Promise<Entity> {
+  const repository = await loadRepository(rootPath);
+  const entity = repository.archivedTasks?.get(entityId) ?? repository.archivedEpics?.get(entityId);
+  if (!entity) {
+    throw new Error(`Archived task or epic not found: ${entityId}`);
+  }
+
+  const restoredAt = (options.now ?? new Date()).toISOString();
+  const restored = removeArchiveMetadata({
+    ...entity,
+    updatedAt: restoredAt,
+    metadata: {
+      ...entity.metadata,
+      updatedAt: restoredAt
+    }
+  } as Entity);
+
+  if (restored.type === 'task' && options.recalculateBacklogOrder !== false) {
+    restored.backlogOrder = nextBacklogOrder(repository, restored);
+  }
+
+  await saveEntity(rootPath, restored);
+  await deleteFile(entity.filePath);
+  return restored;
+}
+
+export async function deleteArchivedEntity(
+  rootPath: string,
+  entityId: string
+): Promise<Entity> {
+  const repository = await loadRepository(rootPath);
+  const entity = repository.archivedTasks?.get(entityId) ?? repository.archivedEpics?.get(entityId);
+  if (!entity) {
+    throw new Error(`Archived task or epic not found: ${entityId}`);
+  }
+  await deleteFile(entity.filePath);
+  return entity;
+}
+
+function removeArchiveMetadata<T extends Entity>(entity: T): T {
+  const copy = { ...entity, metadata: { ...entity.metadata } } as T & { archive?: unknown };
+  delete copy.archive;
+  delete (copy.metadata as Record<string, unknown>).archive;
+  return copy;
+}
+
+function nextBacklogOrder(repository: Repository, task: Task): number {
+  const scope = task.epic ?? 'global';
+  const orders = Array.from(repository.tasks.values())
+    .filter(candidate => (candidate.epic ?? 'global') === scope)
+    .map(candidate => candidate.backlogOrder)
+    .filter((value): value is number => typeof value === 'number');
+  return orders.length > 0 ? Math.max(...orders) + 10 : 10;
 }
 
 /**

@@ -45,11 +45,13 @@
     "onCommand:planfs.openBoard",
     "onCommand:planfs.openNextWorkBoard",
     "onCommand:planfs.openBacklog",
+    "onCommand:planfs.openArchive",
     "onCommand:planfs.openInsights",
     "onCommand:planfs.createTask",
     "onCommand:planfs.createEpic",
     "onCommand:planfs.createMilestone",
     "onCommand:planfs.openTask",
+    "onCommand:planfs.archiveItem",
     "onCommand:planfs.openEditor",
     "onCommand:planfs.applySavedFilter",
     "onCommand:planfs.clearSavedFilter",
@@ -75,6 +77,10 @@
         "title": "PlanFS: Open Backlog"
       },
       {
+        "command": "planfs.openArchive",
+        "title": "PlanFS: Open Archive"
+      },
+      {
         "command": "planfs.openInsights",
         "title": "PlanFS: Open Insights"
       },
@@ -93,6 +99,10 @@
       {
         "command": "planfs.openTask",
         "title": "PlanFS: Open Task"
+      },
+      {
+        "command": "planfs.archiveItem",
+        "title": "PlanFS: Archive Item"
       },
       {
         "command": "planfs.openEditor",
@@ -125,6 +135,11 @@
         {
           "command": "planfs.openEditor",
           "when": "view == planfs-explorer && viewItem =~ /^(task|epic|milestone)$/",
+          "group": "inline"
+        },
+        {
+          "command": "planfs.archiveItem",
+          "when": "view == planfs-explorer && viewItem =~ /^(task|epic)$/",
           "group": "inline"
         }
       ]
