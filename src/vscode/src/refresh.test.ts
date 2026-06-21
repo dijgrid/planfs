@@ -143,7 +143,7 @@ describe('VS Code view refresh workspace selection', () => {
       ...createTaskTemplate('TASK-050', 'Captured backlog task'),
       refinementState: 'captured',
       priority: 'high',
-      body: 'Needs later refinement.'
+      body: 'Needs later refinement.\n\n## Acceptance Criteria\n\n- [ ] Refine the task'
     });
 
     const backlog = new BacklogProvider(vscode.Uri.file('/extension'));
@@ -153,17 +153,33 @@ describe('VS Code view refresh workspace selection', () => {
     expect(backlogPanel.webview.html).toContain('PlanFS Backlog');
     expect(backlogPanel.webview.html).toContain('Captured backlog task');
     expect(backlogPanel.webview.html).toContain('captureBacklogItem');
-    expect(backlogPanel.webview.html).toContain('updateRefinementState');
+    expect(backlogPanel.webview.html).toContain('updateBacklogTask');
+    expect(backlogPanel.webview.html).toContain('editorPanel');
+    expect(backlogPanel.webview.html).toContain('data-select-task');
+    expect(backlogPanel.webview.html).toContain('Open Markdown');
+    expect(backlogPanel.webview.html).toContain('Acceptance Criteria');
     expect(backlogPanel.webview.html).toContain('Group by refinement');
 
     await backlogPanel.webview.postMessage({
-      type: 'updateRefinementState',
-      taskId: 'TASK-050',
-      refinementState: 'ready'
+      type: 'updateBacklogTask',
+      task: {
+        id: 'TASK-050',
+        title: 'Refined backlog task',
+        status: 'todo',
+        refinementState: 'ready',
+        priority: 'critical',
+        assignee: 'PlanFS Test',
+        tags: ['backlog', 'ux']
+      }
     });
 
     const repository = await loadRepository(firstRoot);
+    expect(repository.tasks.get('TASK-050')?.title).toBe('Refined backlog task');
     expect(repository.tasks.get('TASK-050')?.refinementState).toBe('ready');
+    expect(repository.tasks.get('TASK-050')?.priority).toBe('critical');
+    expect(repository.tasks.get('TASK-050')?.assignee).toBe('PlanFS Test');
+    expect(repository.tasks.get('TASK-050')?.tags).toEqual(['backlog', 'ux']);
+    expect(repository.tasks.get('TASK-050')?.body).toContain('## Acceptance Criteria');
   });
 
   it('renders visual planning controls for graph and timeline insights', async () => {
@@ -586,5 +602,52 @@ describe('VS Code view refresh workspace selection', () => {
     });
     await editor.refresh();
     expect(editorPanel.webview.html).toContain('Newly refreshed task');
+  });
+
+  it('renders common Markdown sections instead of a raw body field in the structured editor', async () => {
+    selectPlanFSWorkspaceFolder(firstFolder);
+
+    await saveEntity(firstRoot, {
+      ...createTaskTemplate('TASK-020', 'Structured body task'),
+      priority: 'high',
+      body: [
+        'Body intro.',
+        '',
+        '## Acceptance Criteria',
+        '',
+        '- [ ] Keep the body in Markdown',
+        '- [x] Render common sections',
+        '',
+        '## Questions',
+        '',
+        '- [ ] Should this be editable later?'
+      ].join('\n')
+    });
+
+    const editor = new EntityEditorProvider(vscode.Uri.file('/extension'));
+    await editor.open('TASK-020');
+
+    const editorPanel = jest.mocked(vscode.window.createWebviewPanel).mock.results[0].value;
+    expect(editorPanel.webview.html).not.toContain('Markdown Body');
+    expect(editorPanel.webview.html).toContain('Markdown Sections');
+    expect(editorPanel.webview.html).toContain('Acceptance Criteria');
+    expect(editorPanel.webview.html).toContain('Keep the body in Markdown');
+    expect(editorPanel.webview.html).toContain('Questions');
+    expect(editorPanel.webview.html).toContain('Open Markdown');
+
+    await editorPanel.webview.postMessage({
+      type: 'save',
+      entity: {
+        id: 'TASK-020',
+        type: 'task',
+        title: 'Structured body task edited',
+        status: 'todo',
+        priority: 'high'
+      }
+    });
+
+    const repository = await loadRepository(firstRoot);
+    expect(repository.tasks.get('TASK-020')?.title).toBe('Structured body task edited');
+    expect(repository.tasks.get('TASK-020')?.body).toContain('## Acceptance Criteria');
   });
 });

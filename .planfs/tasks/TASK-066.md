@@ -1,7 +1,7 @@
 ---
 id: TASK-066
 title: Redesign backlog view around browse-and-edit workflow
-status: todo
+status: done
 priority: high
 assignee: justin
 epic: EPIC-backlog-management
@@ -17,7 +17,7 @@ tags:
   - ux
 dueDate: 2026-09-14
 createdAt: 2026-06-21T00:00:00Z
-updatedAt: 2026-06-21T00:00:00Z
+updatedAt: 2026-06-21T12:00:00Z
 refinementState: ready
 backlogOrder: 45
 ---
@@ -28,15 +28,15 @@ The view should help users scan a sorted, filtered list of backlog items while e
 
 ## Acceptance Criteria
 
-- [ ] Backlog view uses a two-panel layout with a selected-item editor on the left and backlog card list on the right
-- [ ] The right panel presents backlog items as cards sorted and filtered by the existing backlog settings
-- [ ] Selecting a backlog card updates the editor panel without navigating away from the backlog view
-- [ ] Editor panel supports common task metadata edits including title, status, priority, assignee, refinement state, epic, milestone, tags, and due date
-- [ ] Editor panel follows the PlanFS Editor direction: structured fields first, with Markdown body editing handled by opening the Markdown file
-- [ ] Acceptance Criteria and Questions are rendered when present so users can refine task details while browsing
-- [ ] Unsaved edits, validation errors, and file refreshes are handled clearly
-- [ ] Empty, no-selection, and filtered-empty states are useful without adding visual clutter
-- [ ] Tests or extension coverage verify selection, sorting/filtering behavior, editor saves, validation failures, and refresh behavior
+- [x] Backlog view uses a two-panel layout with a selected-item editor on the left and backlog card list on the right
+- [x] The right panel presents backlog items as cards sorted and filtered by the existing backlog settings
+- [x] Selecting a backlog card updates the editor panel without navigating away from the backlog view
+- [x] Editor panel supports common task metadata edits including title, status, priority, assignee, refinement state, epic, milestone, tags, and due date
+- [x] Editor panel follows the PlanFS Editor direction: structured fields first, with Markdown body editing handled by opening the Markdown file
+- [x] Acceptance Criteria and Questions are rendered when present so users can refine task details while browsing
+- [x] Unsaved edits, validation errors, and file refreshes are handled clearly
+- [x] Empty, no-selection, and filtered-empty states are useful without adding visual clutter
+- [x] Tests or extension coverage verify selection, sorting/filtering behavior, editor saves, validation failures, and refresh behavior
 
 ## Questions
 

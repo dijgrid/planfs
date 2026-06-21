@@ -5,6 +5,7 @@
 import * as vscode from 'vscode';
 import {
   createTaskTemplate,
+  getRepositoryDevelopers,
   getNextTaskId,
   listBacklogTasks,
   loadRepository,
@@ -12,9 +13,11 @@ import {
   RefinementState,
   reviewBacklog,
   saveEntity,
+  Task,
   TaskPriority,
   validateRepositoryState
 } from 'planfs-core';
+import { extractMarkdownSections, MarkdownSection } from './markdownSections';
 import { getPlanFSWorkspaceFolder } from './workspace';
 
 const REFINEMENT_STATES: RefinementState[] = [
@@ -67,6 +70,12 @@ export class BacklogProvider {
           message.refinementState as RefinementState
         );
       }
+      if (message?.type === 'updateBacklogTask') {
+        await this.updateBacklogTask(message.task as BacklogTaskUpdate);
+      }
+      if (message?.type === 'openRaw') {
+        await this.openRawTask(String(message.taskId));
+      }
     });
 
     await this.render();
@@ -86,6 +95,13 @@ export class BacklogProvider {
 
     const repository = await loadRepository(workspaceFolder.uri.fsPath);
     const savedFilters = await loadSavedFilters(workspaceFolder.uri.fsPath);
+    const developers = await getRepositoryDevelopers(repository.root);
+    const tags = new Set<string>();
+    for (const task of repository.tasks.values()) {
+      for (const tag of task.tags ?? []) {
+        tags.add(tag);
+      }
+    }
     const reviewItems = reviewBacklog(repository);
     const reviewIds = new Set(reviewItems.map(item => item.task.id));
     const tasks = listBacklogTasks(repository, { includeDone: true }).map(task => ({
@@ -100,11 +116,24 @@ export class BacklogProvider {
       tags: task.tags,
       dueDate: task.dueDate,
       body: task.body,
+      sections: extractMarkdownSections(task.body, ['Acceptance Criteria', 'Questions']),
       needsReview: reviewIds.has(task.id)
     }));
 
     this.panel.webview.html = renderBacklogHtml({
       tasks,
+      options: {
+        epics: Array.from(repository.epics.values()).map(epic => ({
+          id: epic.id,
+          title: epic.title
+        })),
+        milestones: Array.from(repository.milestones.values()).map(milestone => ({
+          id: milestone.id,
+          title: milestone.title
+        })),
+        tags: Array.from(tags).sort(),
+        developers: developers.map(developer => developer.label)
+      },
       savedFilters: savedFilters.map(filter => ({
         id: filter.id,
         name: filter.name,
@@ -158,6 +187,77 @@ export class BacklogProvider {
     await saveEntity(workspaceFolder.uri.fsPath, task);
     await this.render();
   }
+
+  private async updateBacklogTask(edited: BacklogTaskUpdate): Promise<void> {
+    const workspaceFolder = getPlanFSWorkspaceFolder();
+    if (!workspaceFolder) {
+      return;
+    }
+
+    const repository = await loadRepository(workspaceFolder.uri.fsPath);
+    const current = repository.tasks.get(String(edited.id));
+    if (!current) {
+      vscode.window.showErrorMessage(`Task not found: ${String(edited.id)}`);
+      return;
+    }
+
+    const task = removeEmptyTaskFields({
+      ...current,
+      title: String(edited.title ?? current.title),
+      status: normalizeTaskStatus(edited.status, current.status),
+      priority: normalizePriority(edited.priority),
+      assignee: normalizeOptionalString(edited.assignee),
+      refinementState: normalizeRefinementState(edited.refinementState, current.refinementState ?? 'ready'),
+      epic: normalizeOptionalString(edited.epic),
+      milestone: normalizeOptionalString(edited.milestone),
+      tags: normalizeTags(edited.tags),
+      dueDate: normalizeOptionalString(edited.dueDate),
+      updatedAt: new Date().toISOString()
+    });
+
+    const validationRepository = {
+      ...repository,
+      tasks: new Map(repository.tasks).set(task.id, task)
+    };
+    const errors = validateRepositoryState(validationRepository).errors.filter(error => error.severity === 'error');
+    if (errors.length > 0) {
+      vscode.window.showErrorMessage(`Backlog update blocked by validation: ${errors[0].message}`);
+      return;
+    }
+
+    await saveEntity(workspaceFolder.uri.fsPath, task);
+    await this.render();
+  }
+
+  private async openRawTask(taskId: string): Promise<void> {
+    const workspaceFolder = getPlanFSWorkspaceFolder();
+    if (!workspaceFolder) {
+      return;
+    }
+
+    const repository = await loadRepository(workspaceFolder.uri.fsPath);
+    const task = repository.tasks.get(taskId);
+    if (!task) {
+      vscode.window.showErrorMessage(`Task not found: ${taskId}`);
+      return;
+    }
+
+    const document = await vscode.workspace.openTextDocument(task.filePath);
+    await vscode.window.showTextDocument(document, { preview: false });
+  }
+}
+
+interface BacklogTaskUpdate {
+  id: string;
+  title?: string;
+  status?: string;
+  priority?: string;
+  assignee?: string;
+  refinementState?: string;
+  epic?: string;
+  milestone?: string;
+  tags?: string[] | string;
+  dueDate?: string;
 }
 
 interface BacklogHtmlPayload {
@@ -173,8 +273,15 @@ interface BacklogHtmlPayload {
     tags?: string[];
     dueDate?: string;
     body: string;
+    sections: MarkdownSection[];
     needsReview: boolean;
   }>;
+  options: {
+    epics: Array<{ id: string; title: string }>;
+    milestones: Array<{ id: string; title: string }>;
+    tags: string[];
+    developers: string[];
+  };
   savedFilters: Array<{
     id: string;
     name: string;
@@ -199,19 +306,44 @@ function renderBacklogHtml(payload: BacklogHtmlPayload): string {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>PlanFS Backlog</title>
   <style>
-    body { margin: 0; color: var(--vscode-foreground); background: var(--vscode-editor-background); font-family: var(--vscode-font-family); }
+    * { box-sizing: border-box; }
+    body { margin: 0; color: var(--vscode-foreground); background: var(--vscode-editor-background); font-family: var(--vscode-font-family); font-size: var(--vscode-font-size); }
     .toolbar { display: flex; gap: 8px; align-items: center; padding: 12px; border-bottom: 1px solid var(--vscode-panel-border); flex-wrap: wrap; }
     input, select, button { color: var(--vscode-input-foreground); background: var(--vscode-input-background); border: 1px solid var(--vscode-input-border); padding: 6px 8px; border-radius: 4px; }
     button { cursor: pointer; color: var(--vscode-button-foreground); background: var(--vscode-button-background); border-color: var(--vscode-button-background); }
-    main { padding: 12px; }
+    button.secondary { color: var(--vscode-button-secondaryForeground); background: var(--vscode-button-secondaryBackground); border-color: var(--vscode-button-secondaryBackground); }
+    main { display: grid; grid-template-columns: minmax(320px, 0.95fr) minmax(320px, 1.05fr); gap: 12px; padding: 12px; min-height: calc(100vh - 58px); }
+    .editorPanel, .listPanel { min-width: 0; border: 1px solid var(--vscode-panel-border); border-radius: 6px; background: var(--vscode-editorWidget-background); }
+    .editorPanel { padding: 12px; align-self: start; position: sticky; top: 12px; }
+    .listPanel { padding: 10px; }
+    main.swapped .editorPanel { order: 2; }
+    main.swapped .listPanel { order: 1; }
     .swimlane { margin-bottom: 20px; }
     .swimlane h2 { font-size: 14px; margin: 0 0 8px; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px; }
-    .card { border: 1px solid var(--vscode-panel-border); border-radius: 6px; padding: 10px; background: var(--vscode-editorWidget-background); }
+    .grid { display: grid; gap: 8px; }
+    .card { width: 100%; border: 1px solid var(--vscode-panel-border); border-radius: 6px; padding: 10px; color: var(--vscode-foreground); background: var(--vscode-input-background); text-align: left; }
+    .card.selected { border-color: var(--vscode-focusBorder); outline: 1px solid var(--vscode-focusBorder); }
     .card.review { border-color: var(--vscode-editorWarning-foreground); }
     .title { font-weight: 600; margin-bottom: 6px; }
     .meta { color: var(--vscode-descriptionForeground); font-size: 12px; line-height: 1.5; }
     .empty { color: var(--vscode-descriptionForeground); }
+    .editorHead { display: flex; justify-content: space-between; gap: 10px; align-items: start; margin-bottom: 10px; }
+    .editorTitle { margin: 0; font-size: 18px; overflow-wrap: anywhere; }
+    .editorSub { color: var(--vscode-descriptionForeground); font-size: 12px; }
+    .formGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+    label { display: grid; gap: 4px; color: var(--vscode-descriptionForeground); }
+    label.full, .full { grid-column: 1 / -1; }
+    .editorActions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+    .sections { display: grid; gap: 10px; margin-top: 12px; }
+    .sectionCard { border: 1px solid var(--vscode-panel-border); border-radius: 6px; padding: 10px; background: var(--vscode-editor-background); }
+    .sectionCard h3 { margin: 0 0 8px; font-size: 13px; }
+    .sectionItem { display: flex; gap: 8px; align-items: flex-start; padding: 6px 0; color: var(--vscode-foreground); }
+    .sectionItem.done { color: var(--vscode-descriptionForeground); }
+    .sectionText { line-height: 1.35; overflow-wrap: anywhere; }
+    @media (max-width: 820px) {
+      main { grid-template-columns: 1fr; }
+      .editorPanel { position: static; }
+    }
   </style>
 </head>
 <body>
@@ -221,21 +353,29 @@ function renderBacklogHtml(payload: BacklogHtmlPayload): string {
     <input id="filter" type="search" placeholder="Filter backlog" aria-label="Filter backlog">
     <select id="savedFilter" aria-label="Saved filter"></select>
     <select id="groupBy" aria-label="Group backlog">
+      <option value="">Backlog order</option>
       <option value="refinementState">Group by refinement</option>
       <option value="epic">Group by epic</option>
       <option value="milestone">Group by milestone</option>
       <option value="assignee">Group by assignee</option>
       <option value="priority">Group by priority</option>
     </select>
+    <button type="button" id="swapPanels" class="secondary">Swap panels</button>
   </div>
-  <main id="content"></main>
+  <main id="layout">
+    <section id="editor" class="editorPanel"></section>
+    <section id="content" class="listPanel"></section>
+  </main>
   <script>
     const vscode = acquireVsCodeApi();
     const payload = ${json};
     let query = '';
     let savedFilterId = '';
-    let groupBy = 'refinementState';
+    let groupBy = '';
+    let selectedTaskId = payload.tasks[0]?.id || '';
     const content = document.getElementById('content');
+    const editor = document.getElementById('editor');
+    const layout = document.getElementById('layout');
     const filter = document.getElementById('filter');
     const savedFilter = document.getElementById('savedFilter');
     const groupByInput = document.getElementById('groupBy');
@@ -250,35 +390,125 @@ function renderBacklogHtml(payload: BacklogHtmlPayload): string {
     filter.addEventListener('input', () => { query = filter.value.toLowerCase(); render(); });
     savedFilter.addEventListener('change', () => { savedFilterId = savedFilter.value; render(); });
     groupByInput.addEventListener('change', () => { groupBy = groupByInput.value; render(); });
+    document.getElementById('swapPanels').addEventListener('click', () => {
+      layout.classList.toggle('swapped');
+    });
 
     function render() {
       const saved = payload.savedFilters.find(filter => filter.id === savedFilterId);
       const visible = payload.tasks.filter(task => matchesQuery(task) && matchesSavedFilter(task, saved?.criteria || {}));
-      const groups = new Map();
-      for (const task of visible) {
-        const key = task[groupBy] || 'None';
-        if (!groups.has(key)) groups.set(key, []);
-        groups.get(key).push(task);
+      if (!visible.some(task => task.id === selectedTaskId)) {
+        selectedTaskId = visible[0]?.id || '';
       }
+      renderEditor(visible.find(task => task.id === selectedTaskId));
       if (visible.length === 0) {
         content.innerHTML = '<p class="empty">No backlog items found</p>';
         return;
       }
-      content.innerHTML = Array.from(groups.entries()).map(([name, tasks]) => '<section class="swimlane"><h2>' + escapeHtml(name) + ' (' + tasks.length + ')</h2><div class="grid">' + tasks.map(renderCard).join('') + '</div></section>').join('');
-      content.querySelectorAll('[data-state]').forEach(select => {
-        select.addEventListener('change', () => {
-          vscode.postMessage({ type: 'updateRefinementState', taskId: select.dataset.taskId, refinementState: select.value });
+      if (!groupBy) {
+        content.innerHTML = '<section class="swimlane"><h2>Backlog order (' + visible.length + ')</h2><div class="grid">' + visible.map(renderCard).join('') + '</div></section>';
+      } else {
+        const groups = new Map();
+        for (const task of visible) {
+          const key = task[groupBy] || 'None';
+          if (!groups.has(key)) groups.set(key, []);
+          groups.get(key).push(task);
+        }
+        content.innerHTML = Array.from(groups.entries()).map(([name, tasks]) => '<section class="swimlane"><h2>' + escapeHtml(name) + ' (' + tasks.length + ')</h2><div class="grid">' + tasks.map(renderCard).join('') + '</div></section>').join('');
+      }
+      content.querySelectorAll('[data-select-task]').forEach(card => {
+        card.addEventListener('click', () => {
+          selectedTaskId = card.dataset.selectTask;
+          render();
+        });
+        card.addEventListener('focus', () => {
+          if (selectedTaskId !== card.dataset.selectTask) {
+            selectedTaskId = card.dataset.selectTask;
+            render();
+          }
         });
       });
     }
 
     function renderCard(task) {
-      return '<article class="card ' + (task.needsReview ? 'review' : '') + '">' +
+      return '<button type="button" data-select-task="' + escapeHtml(task.id) + '" class="card ' + (task.needsReview ? 'review ' : '') + (task.id === selectedTaskId ? 'selected' : '') + '">' +
         '<div class="title">' + escapeHtml(task.id) + ' ' + escapeHtml(task.title) + '</div>' +
         '<div class="meta">' + [task.status, task.priority || 'no priority', task.assignee ? '@' + task.assignee : 'unassigned', task.epic, task.milestone, task.dueDate ? 'due ' + task.dueDate : ''].filter(Boolean).map(escapeHtml).join(' | ') + '</div>' +
-        '<select data-state data-task-id="' + escapeHtml(task.id) + '">' + ${JSON.stringify(REFINEMENT_STATES)}.map(state => '<option value="' + state + '"' + (state === task.refinementState ? ' selected' : '') + '>' + state + '</option>').join('') + '</select>' +
+        '<div class="meta">' + escapeHtml(task.refinementState) + '</div>' +
         (task.needsReview ? '<div class="meta">Needs review</div>' : '') +
-      '</article>';
+      '</button>';
+    }
+
+    function renderEditor(task) {
+      if (!task) {
+        editor.innerHTML = '<p class="empty">Select a backlog item to edit it.</p>';
+        return;
+      }
+
+      editor.innerHTML = '<div class="editorHead">' +
+        '<div><h2 class="editorTitle">' + escapeHtml(task.title) + '</h2><div class="editorSub">' + escapeHtml(task.id) + '</div></div>' +
+        '<button type="button" id="openRaw" class="secondary">Open Markdown</button>' +
+        '</div>' +
+        '<form id="editorForm" class="formGrid">' +
+        input('Title', 'title', task.title, 'text', 'full') +
+        select('Status', 'status', task.status, ['todo', 'in-progress', 'review', 'done']) +
+        select('Priority', 'priority', task.priority || '', ['', 'low', 'medium', 'high', 'critical']) +
+        input('Assignee', 'assignee', task.assignee || '', 'text', '', 'developer-options') +
+        selectWithOptions('Refinement', 'refinementState', task.refinementState, ${JSON.stringify(REFINEMENT_STATES)}.map(state => ({ id: state, title: state }))) +
+        selectWithOptions('Epic', 'epic', task.epic || '', payload.options.epics) +
+        selectWithOptions('Milestone', 'milestone', task.milestone || '', payload.options.milestones) +
+        input('Due Date', 'dueDate', String(task.dueDate || '').slice(0, 10), 'date') +
+        input('Tags', 'tags', (task.tags || []).join(', '), 'text', 'full', 'tag-options') +
+        '</form>' +
+        '<datalist id="developer-options">' + payload.options.developers.map(value => '<option value="' + escapeHtml(value) + '"></option>').join('') + '</datalist>' +
+        '<datalist id="tag-options">' + payload.options.tags.map(value => '<option value="' + escapeHtml(value) + '"></option>').join('') + '</datalist>' +
+        renderSections(task) +
+        '<div class="editorActions"><button type="button" id="saveTask" disabled>Save Changes</button></div>';
+
+      const form = document.getElementById('editorForm');
+      const save = document.getElementById('saveTask');
+      form.addEventListener('input', () => {
+        save.disabled = false;
+      });
+      document.getElementById('saveTask').addEventListener('click', () => {
+        const edited = { id: task.id };
+        for (const element of form.elements) {
+          if (element.name) {
+            edited[element.name] = element.value;
+          }
+        }
+        edited.tags = splitList(edited.tags);
+        vscode.postMessage({ type: 'updateBacklogTask', task: edited });
+      });
+      document.getElementById('openRaw').addEventListener('click', () => {
+        vscode.postMessage({ type: 'openRaw', taskId: task.id });
+      });
+    }
+
+    function renderSections(task) {
+      if (!task.sections || task.sections.length === 0) {
+        return '<div class="sections"><p class="empty">No Acceptance Criteria or Questions sections found. Use Open Markdown for full body editing.</p></div>';
+      }
+      return '<div class="sections">' + task.sections.map(section => '<section class="sectionCard"><h3>' + escapeHtml(section.title) + '</h3>' +
+        section.paragraphs.map(paragraph => '<p class="meta">' + escapeHtml(paragraph) + '</p>').join('') +
+        (section.items.length ? section.items.map(item => '<div class="sectionItem ' + (item.checked ? 'done' : '') + '"><input type="checkbox" disabled' + (item.checked ? ' checked' : '') + '><span class="sectionText">' + escapeHtml(item.text) + '</span></div>').join('') : '') +
+        '</section>').join('') + '</div>';
+    }
+
+    function input(label, name, value, type = 'text', className = '', list = '') {
+      return '<label class="' + escapeHtml(className) + '">' + escapeHtml(label) + '<input name="' + escapeHtml(name) + '" type="' + escapeHtml(type) + '" value="' + escapeHtml(value) + '"' + (list ? ' list="' + escapeHtml(list) + '"' : '') + '></label>';
+    }
+
+    function select(label, name, value, options) {
+      return '<label>' + escapeHtml(label) + '<select name="' + escapeHtml(name) + '">' + options.map(option => '<option value="' + escapeHtml(option) + '"' + (option === value ? ' selected' : '') + '>' + escapeHtml(option || 'None') + '</option>').join('') + '</select></label>';
+    }
+
+    function selectWithOptions(label, name, value, options) {
+      return '<label>' + escapeHtml(label) + '<select name="' + escapeHtml(name) + '"><option value="">None</option>' + options.map(option => '<option value="' + escapeHtml(option.id) + '"' + (option.id === value ? ' selected' : '') + '>' + escapeHtml(option.title ? option.id + ': ' + option.title : option.id) + '</option>').join('') + '</select></label>';
+    }
+
+    function splitList(value) {
+      return String(value || '').split(',').map(item => item.trim()).filter(Boolean);
     }
 
     function matchesQuery(task) {
@@ -305,6 +535,51 @@ function renderBacklogHtml(payload: BacklogHtmlPayload): string {
   </script>
 </body>
 </html>`;
+}
+
+function normalizeTaskStatus(value: unknown, fallback: Task['status']): Task['status'] {
+  return ['todo', 'in-progress', 'review', 'done'].includes(String(value))
+    ? String(value) as Task['status']
+    : fallback;
+}
+
+function normalizePriority(value: unknown): TaskPriority | undefined {
+  return ['low', 'medium', 'high', 'critical'].includes(String(value))
+    ? String(value) as TaskPriority
+    : undefined;
+}
+
+function normalizeRefinementState(value: unknown, fallback: RefinementState): RefinementState {
+  return REFINEMENT_STATES.includes(String(value) as RefinementState)
+    ? String(value) as RefinementState
+    : fallback;
+}
+
+function normalizeOptionalString(value: unknown): string | undefined {
+  const text = String(value ?? '').trim();
+  return text || undefined;
+}
+
+function normalizeTags(value: string[] | string | undefined): string[] | undefined {
+  const tags = Array.isArray(value)
+    ? value
+    : String(value ?? '').split(',');
+  const normalized = tags.map(tag => tag.trim()).filter(Boolean);
+  return normalized.length > 0 ? normalized : undefined;
+}
+
+function removeEmptyTaskFields(task: Task): Task {
+  const copy = { ...task } as Record<string, unknown>;
+  for (const [key, value] of Object.entries(copy)) {
+    if (
+      value === '' ||
+      (Array.isArray(value) && value.length === 0) ||
+      (typeof value === 'object' && value !== null && Object.keys(value).length === 0)
+    ) {
+      delete copy[key];
+    }
+  }
+  return copy as unknown as Task;
 }
 
 function escapeScriptJson(json: string): string {

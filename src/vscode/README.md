@@ -54,13 +54,13 @@ Each command writes a clean Markdown file with YAML frontmatter to the matching 
 
 Use `PlanFS: Open Board` to work with tasks in a board view. Status Board mode lets you drag cards between status columns, group tasks into swimlanes, create tasks from the current column or group context, and bulk update selected cards. Done columns show a small preview by default and can be expanded when completed work needs inspection. Next Work mode groups visible tasks into Ready Now, In Progress, Needs Review, Blocked, and Later, using the shared PlanFS next-work ranking rules. Saved filters and free-text filtering apply in both modes. Select a card to inspect it in the board details drawer; use Open Markdown when you want to read or edit the task body.
 
-Use `PlanFS: Open Backlog` to capture rough work, filter and group backlog items, review stale or incomplete items, and update refinement state before tasks enter Next Work.
+Use `PlanFS: Open Backlog` to capture rough work, browse the backlog as a sorted card list, and edit the selected item in a side panel before tasks enter Next Work. The backlog editor uses structured metadata fields and renders common Markdown sections such as Acceptance Criteria and Questions, while full body editing stays in the Markdown file.
 
 Use `PlanFS: Open Insights` to inspect dependency graphs, roadmap timing, and summary reports.
 
 ### Structured Editor
 
-Click a planning item in the explorer to open the Markdown file directly, or run `PlanFS: Open Structured Editor` to edit task, epic, and milestone metadata through a form. The structured editor keeps Markdown body content editable, offers assisted inputs for related PlanFS entities, and blocks invalid saves with validation feedback.
+Click a planning item in the explorer to open the Markdown file directly, or run `PlanFS: Open Structured Editor` to edit task, epic, and milestone metadata through a form. The structured editor renders common Markdown sections such as Acceptance Criteria and Questions for quick review, keeps full Markdown body editing in the Markdown file through Open Markdown, offers assisted inputs for related PlanFS entities, and blocks invalid saves with validation feedback.
 
 ### Refreshing
 

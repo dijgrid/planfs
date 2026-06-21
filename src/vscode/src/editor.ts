@@ -14,6 +14,7 @@ import {
   Task,
   validateEntity
 } from 'planfs-core';
+import { extractMarkdownSections, MarkdownSection } from './markdownSections';
 import { getPlanFSWorkspaceFolder } from './workspace';
 
 interface EditorPayload {
@@ -545,6 +546,30 @@ function renderEditor(webview: vscode.Webview, payload: EditorPayload): string {
       line-height: 1.35;
     }
 
+    .sectionList {
+      display: grid;
+      gap: 8px;
+    }
+
+    .sectionItem {
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+      padding: 7px 8px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: var(--vscode-input-background);
+    }
+
+    .sectionItem.done {
+      color: var(--muted);
+    }
+
+    .sectionText {
+      line-height: 1.35;
+      overflow-wrap: anywhere;
+    }
+
     .emptyColumn {
       padding: 8px;
       color: var(--muted);
@@ -682,8 +707,7 @@ function renderEntityFields(payload: EditorPayload): string {
   const entity = payload.entity;
   const common = [
     input('ID', 'id', entity.id, 'text', true),
-    input('Title', 'title', entity.title),
-    bodyField(entity.body)
+    input('Title', 'title', entity.title)
   ];
 
   if (entity.type === 'task') {
@@ -703,7 +727,7 @@ function renderEntityFields(payload: EditorPayload): string {
       datalist('tag-options', payload.options.tags),
       dependencyChecks(task, payload.options.tasks),
       textarea('Links JSON', 'links', formatJson(task.links), 'full'),
-      bodyField(task.body)
+      renderBodySections(task.body)
     ].join('');
   }
 
@@ -721,7 +745,7 @@ function renderEntityFields(payload: EditorPayload): string {
       textarea('Description', 'description', epic.description ?? '', 'full'),
       textarea('Links JSON', 'links', formatJson(epic.links), 'full'),
       renderEpicBoard(payload),
-      common[2]
+      renderBodySections(epic.body)
     ].join('');
   }
 
@@ -735,7 +759,7 @@ function renderEntityFields(payload: EditorPayload): string {
     datalist('developer-options', payload.options.developers),
     textarea('Description', 'description', milestone.description ?? '', 'full'),
     textarea('Links JSON', 'links', formatJson(milestone.links), 'full'),
-    common[2]
+    renderBodySections(milestone.body)
   ].join('');
 }
 
@@ -815,8 +839,40 @@ function textarea(label: string, name: string, value: string, className = ''): s
   return `<label class="${className}">${escapeHtml(label)}<textarea name="${name}">${escapeHtml(value)}</textarea></label>`;
 }
 
-function bodyField(value: string): string {
-  return textarea('Markdown Body', 'body', value, 'full');
+function renderBodySections(body: string): string {
+  const sections = extractMarkdownSections(body, ['Acceptance Criteria', 'Questions']);
+
+  return [
+    '<section class="card full">',
+    '<h2>Markdown Sections</h2>',
+    '<p class="subtle">Use Open Markdown for full body editing. Common planning sections are shown here for quick review.</p>',
+    sections.length === 0
+      ? '<p class="subtle">No Acceptance Criteria or Questions sections found.</p>'
+      : '<div class="sectionList">' + sections.map(renderMarkdownSection).join('') + '</div>',
+    '</section>'
+  ].join('');
+}
+
+function renderMarkdownSection(section: MarkdownSection): string {
+  const checklist = section.items.length > 0
+    ? section.items.map(item => [
+      '<div class="sectionItem' + (item.checked ? ' done' : '') + '">',
+      '<input type="checkbox" disabled' + (item.checked ? ' checked' : '') + '>',
+      '<span class="sectionText">' + escapeHtml(item.text) + '</span>',
+      '</div>'
+    ].join('')).join('')
+    : '';
+  const paragraphs = section.paragraphs
+    .map(paragraph => '<p class="subtle">' + escapeHtml(paragraph) + '</p>')
+    .join('');
+
+  return [
+    '<section>',
+    '<h2>' + escapeHtml(section.title) + '</h2>',
+    paragraphs,
+    checklist || (paragraphs ? '' : '<p class="subtle">Section is empty.</p>'),
+    '</section>'
+  ].join('');
 }
 
 function dependencyChecks(

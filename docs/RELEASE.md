@@ -102,7 +102,7 @@ Then open a repository with `.planfs/` and verify:
 
 - The PlanFS activity bar view appears.
 - `PlanFS: Initialize Repository` is available.
-- `PlanFS: Open Backlog` opens the backlog view, supports capture, filtering, grouping, and refinement-state changes.
+- `PlanFS: Open Backlog` opens the backlog view, supports capture, filtering, grouping, ordered card browsing, and selected-item editing.
 - `PlanFS: Open Board` opens the board.
 - The board supports Status Board and Next Work modes. Status Board supports swimlane grouping, contextual task creation, bulk updates, and collapsed Done columns; Next Work groups ready, active, review, blocked, and later tasks with ranking reason badges.
 - Selecting a board card opens its details drawer with planning metadata and context, while Markdown body editing remains in the task file through Open Markdown.
@@ -110,7 +110,7 @@ Then open a repository with `.planfs/` and verify:
 - The Insights dependency graph renders task nodes by epic lane, supports filters, zoom controls, and dependency highlighting.
 - The Insights timeline shows a now marker with dated tasks, epics, and milestones placed on the time axis.
 - `PlanFS: Create Task`, `PlanFS: Create Epic`, and `PlanFS: Create Milestone` work.
-- `PlanFS: Open Structured Editor` shows an epic-scoped task board for epics.
+- `PlanFS: Open Structured Editor` shows an epic-scoped task board for epics, renders common Markdown sections, and keeps full body editing in the Markdown file through Open Markdown.
 - Assignee and owner inputs still accept arbitrary text while offering Git-derived developer suggestions when available.
 - `planfs next` lists ranked next-work candidates and can include blocked work with explanations.
 - `planfs backlog list`, `planfs backlog capture`, `planfs backlog set-state`, and `planfs backlog review` work.

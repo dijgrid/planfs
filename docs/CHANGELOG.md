@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- VS Code backlog view now supports a browse-and-edit workflow with a selected-item editor, ordered card list, grouping/filter controls, and Markdown section rendering.
+- VS Code structured editors no longer expose a raw Markdown body textarea; full body editing stays in Markdown files while common sections render in the editor.
+
 ## [0.7.0] - 2026-06-20
 
 ### Added
