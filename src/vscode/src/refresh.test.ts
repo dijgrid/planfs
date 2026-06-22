@@ -937,6 +937,12 @@ describe('VS Code view refresh workspace selection', () => {
     expect(editorPanel.webview.html).toContain('Review task');
     expect(editorPanel.webview.html).toContain('developer-options');
     expect(editorPanel.webview.html).toContain('data-open-entity="TASK-010"');
+    expect(editorPanel.webview.html).toContain('class="card full compactMeta"');
+    expect(editorPanel.webview.html).toContain('class="compactField" data-field="id"');
+    expect(editorPanel.webview.html).toContain('class="compactField" data-field="status"');
+    expect(editorPanel.webview.html).toContain('class="compactField" data-field="targetDate"');
+    expect(editorPanel.webview.html).toContain('name="owner"');
+    expect(editorPanel.webview.html).toContain('name="tags"');
 
     await saveEntity(firstRoot, {
       ...createTaskTemplate('TASK-012', 'Newly refreshed task'),
@@ -974,6 +980,15 @@ describe('VS Code view refresh workspace selection', () => {
     expect(editorPanel.webview.html).not.toContain('Markdown Body');
     expect(editorPanel.webview.html).toContain('Markdown Sections');
     expect(editorPanel.webview.html).toContain('Archive Task');
+    expect(editorPanel.webview.html).toContain('class="card full compactMeta"');
+    expect(editorPanel.webview.html).toContain('class="compactField" data-field="id"');
+    expect(editorPanel.webview.html).toContain('class="compactField" data-field="status"');
+    expect(editorPanel.webview.html).toContain('class="compactField" data-field="priority"');
+    expect(editorPanel.webview.html).toContain('class="compactField" data-field="dueDate"');
+    expect(editorPanel.webview.html).toContain('class="compactField" data-field="estimate"');
+    expect(editorPanel.webview.html).toContain('name="title"');
+    expect(editorPanel.webview.html).toContain('name="assignee"');
+    expect(editorPanel.webview.html).toContain('name="epic"');
     expect(editorPanel.webview.html).toContain('Acceptance Criteria');
     expect(editorPanel.webview.html).toContain('Keep the body in Markdown');
     expect(editorPanel.webview.html).toContain('Questions');

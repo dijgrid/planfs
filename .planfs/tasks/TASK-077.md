@@ -1,7 +1,7 @@
 ---
 id: TASK-077
 title: Compact fixed-width fields in the PlanFS editor
-status: todo
+status: done
 priority: medium
 assignee: justin
 epic: EPIC-phase-5-advanced
@@ -14,7 +14,7 @@ tags:
 dueDate: 2026-09-19
 refinementState: ready
 createdAt: 2026-06-22T06:19:08Z
-updatedAt: 2026-06-22T06:19:08Z
+updatedAt: 2026-06-22T06:22:33.224Z
 ---
 
 Make the PlanFS structured editor more compact by inlining labels with fixed-width metadata controls where the label and input are both short and predictable.

@@ -519,6 +519,48 @@ function renderEditor(webview: vscode.Webview, payload: EditorPayload): string {
       margin: 2px 0 0;
     }
 
+    .compactMeta {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, max-content));
+      gap: 8px 12px;
+      align-items: end;
+    }
+
+    .compactField {
+      display: grid;
+      grid-template-columns: max-content minmax(82px, var(--field-width, 130px));
+      gap: 6px;
+      align-items: center;
+      margin: 0;
+      white-space: nowrap;
+    }
+
+    .compactField input,
+    .compactField select {
+      min-width: 0;
+    }
+
+    .compactField[data-field="id"] {
+      --field-width: 112px;
+    }
+
+    .compactField[data-field="status"] {
+      --field-width: 132px;
+    }
+
+    .compactField[data-field="priority"] {
+      --field-width: 116px;
+    }
+
+    .compactField[data-field="dueDate"],
+    .compactField[data-field="targetDate"] {
+      --field-width: 138px;
+    }
+
+    .compactField[data-field="estimate"] {
+      --field-width: 96px;
+    }
+
     .actions {
       display: flex;
       gap: 8px;
@@ -678,6 +720,16 @@ function renderEditor(webview: vscode.Webview, payload: EditorPayload): string {
       .epicBoard {
         grid-template-columns: 1fr;
       }
+
+      .compactMeta {
+        grid-template-columns: 1fr;
+      }
+
+      .compactField {
+        grid-template-columns: 1fr;
+        gap: 5px;
+        white-space: normal;
+      }
     }
   </style>
 </head>
@@ -806,23 +858,25 @@ function renderEditor(webview: vscode.Webview, payload: EditorPayload): string {
 function renderEntityFields(payload: EditorPayload): string {
   const entity = payload.entity;
   const common = [
-    input('ID', 'id', entity.id, 'text', true),
+    compactInput('ID', 'id', entity.id, 'text', true),
     input('Title', 'title', entity.title)
   ];
 
   if (entity.type === 'task') {
     const task = entity as Task;
     return [
-      input('ID', 'id', task.id, 'text', true),
+      compactMeta([
+        compactInput('ID', 'id', task.id, 'text', true),
+        compactSelect('Status', 'status', task.status, ['todo', 'in-progress', 'review', 'done']),
+        compactSelect('Priority', 'priority', task.priority ?? '', ['', 'low', 'medium', 'high', 'critical']),
+        compactInput('Due Date', 'dueDate', toDateInput(task.dueDate), 'date'),
+        compactInput('Estimate', 'estimate', task.estimate ?? '')
+      ]),
       input('Title', 'title', task.title),
-      select('Status', 'status', task.status, ['todo', 'in-progress', 'review', 'done']),
-      select('Priority', 'priority', task.priority ?? '', ['', 'low', 'medium', 'high', 'critical']),
       input('Assignee', 'assignee', task.assignee ?? '', 'text', false, 'developer-options'),
       datalist('developer-options', payload.options.developers),
       selectWithOptions('Epic', 'epic', task.epic ?? '', payload.options.epics),
       selectWithOptions('Milestone', 'milestone', task.milestone ?? '', payload.options.milestones),
-      input('Due Date', 'dueDate', toDateInput(task.dueDate), 'date'),
-      input('Estimate', 'estimate', task.estimate ?? ''),
       input('Tags', 'tags', (task.tags ?? []).join(', '), 'text', false, 'tag-options'),
       datalist('tag-options', payload.options.tags),
       renderBacklogReadiness(payload),
@@ -835,12 +889,14 @@ function renderEntityFields(payload: EditorPayload): string {
   if (entity.type === 'epic') {
     const epic = entity as Epic;
     return [
-      common[0],
+      compactMeta([
+        common[0],
+        compactSelect('Status', 'status', epic.status, ['active', 'completed', 'on-hold', 'archived']),
+        compactInput('Target Date', 'targetDate', toDateInput(epic.targetDate), 'date')
+      ]),
       common[1],
-      select('Status', 'status', epic.status, ['active', 'completed', 'on-hold', 'archived']),
       input('Owner', 'owner', epic.owner ?? '', 'text', false, 'developer-options'),
       datalist('developer-options', payload.options.developers),
-      input('Target Date', 'targetDate', toDateInput(epic.targetDate), 'date'),
       input('Tags', 'tags', (epic.tags ?? []).join(', '), 'text', false, 'tag-options'),
       datalist('tag-options', payload.options.tags),
       textarea('Description', 'description', epic.description ?? '', 'full'),
@@ -852,16 +908,22 @@ function renderEntityFields(payload: EditorPayload): string {
 
   const milestone = entity as Milestone;
   return [
-    common[0],
+    compactMeta([
+      common[0],
+      compactSelect('Status', 'status', milestone.status, ['active', 'completed', 'delayed']),
+      compactInput('Target Date', 'targetDate', toDateInput(milestone.targetDate), 'date')
+    ]),
     common[1],
-    select('Status', 'status', milestone.status, ['active', 'completed', 'delayed']),
-    input('Target Date', 'targetDate', toDateInput(milestone.targetDate), 'date'),
     input('Owner', 'owner', milestone.owner ?? '', 'text', false, 'developer-options'),
     datalist('developer-options', payload.options.developers),
     textarea('Description', 'description', milestone.description ?? '', 'full'),
     textarea('Links JSON', 'links', formatJson(milestone.links), 'full'),
     renderBodySections(milestone.body)
   ].join('');
+}
+
+function compactMeta(fields: string[]): string {
+  return '<div class="card full compactMeta">' + fields.join('') + '</div>';
 }
 
 function renderBacklogReadiness(payload: EditorPayload): string {
@@ -945,8 +1007,18 @@ function input(
   return `<label>${escapeHtml(label)}<input name="${name}" type="${type}" value="${escapeHtml(value)}"${readonly ? ' readonly' : ''}${list ? ` list="${list}"` : ''}></label>`;
 }
 
-function select(label: string, name: string, value: string, options: string[]): string {
-  return `<label>${escapeHtml(label)}<select name="${name}">${options.map(option => `<option value="${escapeHtml(option)}"${option === value ? ' selected' : ''}>${escapeHtml(option || 'None')}</option>`).join('')}</select></label>`;
+function compactInput(
+  label: string,
+  name: string,
+  value: string,
+  type = 'text',
+  readonly = false
+): string {
+  return `<label class="compactField" data-field="${escapeHtml(name)}">${escapeHtml(label)}<input name="${name}" type="${type}" value="${escapeHtml(value)}"${readonly ? ' readonly' : ''}></label>`;
+}
+
+function compactSelect(label: string, name: string, value: string, options: string[]): string {
+  return `<label class="compactField" data-field="${escapeHtml(name)}">${escapeHtml(label)}<select name="${name}">${options.map(option => `<option value="${escapeHtml(option)}"${option === value ? ' selected' : ''}>${escapeHtml(option || 'None')}</option>`).join('')}</select></label>`;
 }
 
 function selectWithOptions(
