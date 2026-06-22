@@ -24,6 +24,7 @@ The backlog workflow should help users capture rough work, refine it into action
 - TASK-055: Add backlog documentation and examples
 - TASK-066: Redesign backlog view around browse-and-edit workflow
 - TASK-071: Preserve backlog filters after saving edits
+- TASK-076: Add backlog quick view to the PlanFS explorer
 
 ## Open Questions
 
