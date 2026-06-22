@@ -442,6 +442,105 @@ describe('VS Code view refresh workspace selection', () => {
     );
   });
 
+  it('shows backlog tasks and full backlog entry point in the explorer', async () => {
+    selectPlanFSWorkspaceFolder(firstFolder);
+
+    const repository = await loadRepository(firstRoot);
+    const existing = repository.tasks.get('TASK-001');
+    expect(existing).toBeDefined();
+    existing!.status = 'done';
+    await saveEntity(firstRoot, existing!);
+
+    await saveEntity(firstRoot, {
+      ...createTaskTemplate('TASK-044', 'Rough backlog task'),
+      status: 'todo',
+      refinementState: 'captured',
+      backlogOrder: 10
+    });
+    await saveEntity(firstRoot, {
+      ...createTaskTemplate('TASK-045', 'Ready backlog task'),
+      status: 'todo',
+      priority: 'high',
+      body: 'Ready backlog body.',
+      dueDate: '2026-09-18',
+      refinementState: 'ready',
+      backlogOrder: 20
+    });
+    await saveEntity(firstRoot, {
+      ...createTaskTemplate('TASK-046', 'Discarded backlog task'),
+      status: 'todo',
+      refinementState: 'discarded',
+      backlogOrder: 30
+    });
+    await saveEntity(firstRoot, {
+      ...createTaskTemplate('TASK-047', 'Done backlog task'),
+      status: 'done',
+      refinementState: 'captured',
+      backlogOrder: 40
+    });
+
+    const explorer = new ExplorerProvider();
+    await explorer.refresh();
+
+    const rootItems = await explorer.getChildren();
+    const backlogSection = rootItems.find(item => item.type === 'backlog');
+    expect(backlogSection).toBeDefined();
+    expect(backlogSection?.label).toBe('Backlog');
+    expect(backlogSection?.description).toBe('2 items | 1 need review');
+
+    const backlogItems = backlogSection ? await explorer.getChildren(backlogSection) : [];
+    expect(backlogItems.map(item => item.id)).toEqual(['TASK-044', 'TASK-045', undefined]);
+    expect(backlogItems[0].label).toContain('Rough backlog task');
+    expect(backlogItems[0].description).toContain('needs review');
+    expect(backlogItems[0].tooltip).toContain('Missing body');
+    expect(backlogItems[0].tooltip).toContain('Missing priority');
+    expect(backlogItems[0].command).toEqual({
+      command: 'planfs.openEditor',
+      title: 'Open',
+      arguments: [backlogItems[0]]
+    });
+    expect(backlogItems[1].description).toContain('ready');
+    expect(backlogItems[1].description).toContain('high');
+    expect(backlogItems[1].description).toContain('due 2026-09-18');
+    expect(backlogItems[2].label).toBe('Open Full Backlog');
+    expect(backlogItems[2].command).toEqual({
+      command: 'planfs.openBacklog',
+      title: 'Open Full Backlog'
+    });
+  });
+
+  it('refreshes and omits the backlog explorer section when no active backlog tasks remain', async () => {
+    selectPlanFSWorkspaceFolder(firstFolder);
+
+    const repository = await loadRepository(firstRoot);
+    const existing = repository.tasks.get('TASK-001');
+    expect(existing).toBeDefined();
+    existing!.status = 'done';
+    await saveEntity(firstRoot, existing!);
+
+    await saveEntity(firstRoot, {
+      ...createTaskTemplate('TASK-044', 'Refresh backlog task'),
+      status: 'todo',
+      refinementState: 'captured',
+      backlogOrder: 10
+    });
+
+    const explorer = new ExplorerProvider();
+    await explorer.refresh();
+    let rootItems = await explorer.getChildren();
+    expect(rootItems.find(item => item.type === 'backlog')).toBeDefined();
+
+    const refreshed = await loadRepository(firstRoot);
+    const task = refreshed.tasks.get('TASK-044');
+    expect(task).toBeDefined();
+    task!.refinementState = 'discarded';
+    await saveEntity(firstRoot, task!);
+
+    await explorer.refresh();
+    rootItems = await explorer.getChildren();
+    expect(rootItems.find(item => item.type === 'backlog')).toBeUndefined();
+  });
+
   it('omits current work when no active tasks match the current git user', async () => {
     selectPlanFSWorkspaceFolder(firstFolder);
     await initializeGitIdentity(firstRoot);

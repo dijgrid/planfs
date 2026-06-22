@@ -1,7 +1,7 @@
 ---
 id: TASK-076
 title: Add backlog quick view to the PlanFS explorer
-status: todo
+status: done
 priority: medium
 assignee: justin
 epic: EPIC-backlog-management
@@ -14,7 +14,7 @@ tags:
 dueDate: 2026-09-18
 refinementState: needs-refinement
 createdAt: 2026-06-22T06:10:56Z
-updatedAt: 2026-06-22T06:10:56Z
+updatedAt: 2026-06-22T06:17:03.321Z
 ---
 
 Add a compact Backlog quick view to the PlanFS Explorer so users can see backlog items without opening the full backlog webview.

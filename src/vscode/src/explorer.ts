@@ -6,9 +6,11 @@ import * as vscode from 'vscode';
 import {
   getCurrentRepositoryUser,
   getNextWorkCandidates,
+  listBacklogTasks,
   loadRepository,
   getAllEntities,
   loadSavedFilters,
+  reviewBacklog,
   searchEntities
 } from 'planfs-core';
 import {
@@ -17,6 +19,7 @@ import {
   Epic,
   Milestone,
   NextWorkCandidate,
+  RefinementState,
   Repository,
   SavedFilter,
   Task,
@@ -36,6 +39,7 @@ export class ExplorerProvider implements vscode.TreeDataProvider<TreeItem> {
   private activeFilter: SavedFilter | null = null;
   private nextWorkCandidates: NextWorkCandidate[] = [];
   private currentWorkTasks: Task[] = [];
+  private backlogTasks: BacklogQuickTask[] = [];
 
   async refresh(): Promise<void> {
     try {
@@ -45,6 +49,7 @@ export class ExplorerProvider implements vscode.TreeDataProvider<TreeItem> {
         this.entities = [];
         this.nextWorkCandidates = [];
         this.currentWorkTasks = [];
+        this.backlogTasks = [];
       } else {
         this.repository = await loadRepository(workspaceFolder.uri.fsPath);
         this.savedFilters = await loadSavedFilters(workspaceFolder.uri.fsPath);
@@ -58,6 +63,7 @@ export class ExplorerProvider implements vscode.TreeDataProvider<TreeItem> {
           this.repository,
           workspaceFolder.uri.fsPath
         );
+        this.backlogTasks = getBacklogQuickTasks(this.repository);
       }
     } catch (error) {
       console.error('Failed to load repository:', error);
@@ -65,6 +71,7 @@ export class ExplorerProvider implements vscode.TreeDataProvider<TreeItem> {
       this.entities = [];
       this.nextWorkCandidates = [];
       this.currentWorkTasks = [];
+      this.backlogTasks = [];
     }
 
     this._onDidChangeTreeData.fire(null);
@@ -145,6 +152,21 @@ export class ExplorerProvider implements vscode.TreeDataProvider<TreeItem> {
         rootItems.push(section);
       }
 
+      if (this.backlogTasks.length > 0) {
+        const reviewCount = this.backlogTasks.filter(item => item.needsReview).length;
+        const section = new TreeItem(
+          'Backlog',
+          vscode.TreeItemCollapsibleState.Expanded,
+          'backlog',
+          'backlog'
+        );
+        section.description = reviewCount > 0
+          ? `${this.backlogTasks.length} items | ${reviewCount} need review`
+          : `${this.backlogTasks.length} items`;
+        section.iconPath = new vscode.ThemeIcon('inbox');
+        rootItems.push(section);
+      }
+
       rootItems.push(
         new TreeItem('Tasks', vscode.TreeItemCollapsibleState.Collapsed, 'tasks', 'tasks'),
         new TreeItem('Epics', vscode.TreeItemCollapsibleState.Collapsed, 'epics', 'epics'),
@@ -153,6 +175,14 @@ export class ExplorerProvider implements vscode.TreeDataProvider<TreeItem> {
       );
 
       return Promise.resolve(rootItems);
+    }
+
+    if (element.type === 'backlog') {
+      const taskItems = this.backlogTasks.map((item, index) =>
+        createBacklogTaskItem(item, index)
+      );
+      taskItems.push(createOpenBacklogItem());
+      return Promise.resolve(taskItems);
     }
 
     if (element.type === 'next-work') {
@@ -224,6 +254,36 @@ export class ExplorerProvider implements vscode.TreeDataProvider<TreeItem> {
 
     return Promise.resolve([]);
   }
+}
+
+interface BacklogQuickTask {
+  task: Task;
+  needsReview: boolean;
+  reasons: string[];
+}
+
+const EXPLORER_BACKLOG_STATES: RefinementState[] = [
+  'captured',
+  'needs-refinement',
+  'deferred',
+  'ready'
+];
+
+function getBacklogQuickTasks(repository: Repository): BacklogQuickTask[] {
+  const reviewItems = new Map(
+    reviewBacklog(repository).map(item => [item.task.id, item])
+  );
+
+  return listBacklogTasks(repository, {
+    refinementState: EXPLORER_BACKLOG_STATES
+  }).map(task => {
+    const reviewItem = reviewItems.get(task.id);
+    return {
+      task,
+      needsReview: Boolean(reviewItem),
+      reasons: reviewItem?.reasons ?? []
+    };
+  });
 }
 
 async function getCurrentWorkTasks(
@@ -337,6 +397,51 @@ function createNextWorkTaskItem(
   item.iconPath = index === 0
     ? new vscode.ThemeIcon('star-full', new vscode.ThemeColor('charts.yellow'))
     : new vscode.ThemeIcon('circle-filled', new vscode.ThemeColor('descriptionForeground'));
+  return item;
+}
+
+function createBacklogTaskItem(
+  backlogTask: BacklogQuickTask,
+  index: number
+): TreeItem {
+  const task = backlogTask.task;
+  const refinementState = task.refinementState ?? 'ready';
+  const item = new TreeItem(
+    `${index + 1}. ${task.id}: ${task.title}`,
+    vscode.TreeItemCollapsibleState.None,
+    'backlog-task',
+    task.id,
+    task
+  );
+  const context = task.dueDate ? `due ${task.dueDate}` : task.milestone ?? task.epic;
+  item.description = [
+    backlogTask.needsReview ? 'needs review' : refinementState,
+    task.priority,
+    context
+  ].filter(Boolean).join(' | ');
+  item.tooltip = [
+    `${task.id}: ${task.title}`,
+    `Backlog: ${refinementState}`,
+    ...backlogTask.reasons.slice(0, 3)
+  ].join('\n');
+  item.iconPath = backlogTask.needsReview
+    ? new vscode.ThemeIcon('warning', new vscode.ThemeColor('list.warningForeground'))
+    : new vscode.ThemeIcon('inbox', new vscode.ThemeColor('descriptionForeground'));
+  return item;
+}
+
+function createOpenBacklogItem(): TreeItem {
+  const item = new TreeItem(
+    'Open Full Backlog',
+    vscode.TreeItemCollapsibleState.None,
+    'backlog-view'
+  );
+  item.description = 'browse and refine';
+  item.iconPath = new vscode.ThemeIcon('layout');
+  item.command = {
+    command: 'planfs.openBacklog',
+    title: 'Open Full Backlog'
+  };
   return item;
 }
 
