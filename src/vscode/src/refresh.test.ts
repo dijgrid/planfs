@@ -212,6 +212,36 @@ describe('VS Code view refresh workspace selection', () => {
     expect(repository.tasks.get('TASK-050')?.body).toContain('## Acceptance Criteria');
   });
 
+  it('updates backlog task assignee without being blocked by unrelated invalid task status', async () => {
+    await saveEntity(firstRoot, createTaskTemplate('TASK-050', 'Editable backlog task'));
+    await saveEntity(firstRoot, {
+      ...createTaskTemplate('TASK-051', 'Legacy status task'),
+      status: 'active' as never
+    });
+
+    const backlog = new BacklogProvider(vscode.Uri.file('/extension'), new PlanFSUiPreferences(new TestMemento()));
+    await backlog.open();
+    const backlogPanel = jest.mocked(vscode.window.createWebviewPanel).mock.results[0].value;
+
+    await backlogPanel.webview.postMessage({
+      type: 'updateBacklogTask',
+      task: {
+        id: 'TASK-050',
+        title: 'Editable backlog task',
+        assignee: 'PlanFS Test',
+        dueDate: '2026-09-01'
+      }
+    });
+
+    const repository = await loadRepository(firstRoot);
+    expect(repository.tasks.get('TASK-050')?.assignee).toBe('PlanFS Test');
+    expect(repository.tasks.get('TASK-050')?.dueDate).toBe('2026-09-01T00:00:00.000Z');
+    expect(repository.tasks.get('TASK-051')?.status).toBe('active');
+    expect(vscode.window.showErrorMessage).not.toHaveBeenCalledWith(
+      expect.stringContaining('Schema validation failed for status')
+    );
+  });
+
   it('renders archived tasks and epics in a dedicated archive view', async () => {
     const epic = createEpicTemplate('EPIC-archive', 'Archived epic');
     await saveEntity(firstRoot, epic);
@@ -347,7 +377,7 @@ describe('VS Code view refresh workspace selection', () => {
     expect(quickItems[0].description).toContain('todo');
     expect(quickItems[0].description).toContain('due 2026-09-01');
     expect(quickItems[0].command).toEqual({
-      command: 'planfs.openTask',
+      command: 'planfs.openEditor',
       title: 'Open',
       arguments: [quickItems[0]]
     });
@@ -403,7 +433,7 @@ describe('VS Code view refresh workspace selection', () => {
     expect(currentItems[0].description).toContain('review');
     expect(currentItems[0].description).toContain('critical');
     expect(currentItems[0].command).toEqual({
-      command: 'planfs.openTask',
+      command: 'planfs.openEditor',
       title: 'Open',
       arguments: [currentItems[0]]
     });
@@ -844,6 +874,7 @@ describe('VS Code view refresh workspace selection', () => {
     const editorPanel = jest.mocked(vscode.window.createWebviewPanel).mock.results[0].value;
     expect(editorPanel.webview.html).not.toContain('Markdown Body');
     expect(editorPanel.webview.html).toContain('Markdown Sections');
+    expect(editorPanel.webview.html).toContain('Archive Task');
     expect(editorPanel.webview.html).toContain('Acceptance Criteria');
     expect(editorPanel.webview.html).toContain('Keep the body in Markdown');
     expect(editorPanel.webview.html).toContain('Questions');
@@ -863,6 +894,30 @@ describe('VS Code view refresh workspace selection', () => {
     const repository = await loadRepository(firstRoot);
     expect(repository.tasks.get('TASK-020')?.title).toBe('Structured body task edited');
     expect(repository.tasks.get('TASK-020')?.body).toContain('## Acceptance Criteria');
+  });
+
+  it('archives tasks from the structured editor', async () => {
+    selectPlanFSWorkspaceFolder(firstFolder);
+
+    await saveEntity(firstRoot, createTaskTemplate('TASK-030', 'Editor archived task'));
+
+    const editor = new EntityEditorProvider(vscode.Uri.file('/extension'));
+    await editor.open('TASK-030');
+
+    const editorPanel = jest.mocked(vscode.window.createWebviewPanel).mock.results[0].value;
+    expect(editorPanel.webview.html).toContain('Archive Task');
+    jest.mocked(vscode.window.showWarningMessage).mockResolvedValueOnce('Archive' as never);
+
+    await editorPanel.webview.postMessage({
+      type: 'archiveTask'
+    });
+
+    const repository = await loadRepository(firstRoot);
+    expect(repository.tasks.has('TASK-030')).toBe(false);
+    expect(repository.archivedTasks?.has('TASK-030')).toBe(true);
+    expect(editorPanel.webview.html).toContain('Archived TASK-030');
+    expect(vscode.window.showInformationMessage).toHaveBeenCalledWith('Archived TASK-030');
+    expect(vscode.commands.executeCommand).toHaveBeenCalledWith('planfs.refreshExplorer');
   });
 });
 

@@ -135,11 +135,11 @@
         {
           "command": "planfs.openEditor",
           "when": "view == planfs-explorer && viewItem =~ /^(task|epic|milestone)$/",
-          "group": "inline"
+          "group": "navigation"
         },
         {
           "command": "planfs.archiveItem",
-          "when": "view == planfs-explorer && viewItem =~ /^(task|epic)$/",
+          "when": "view == planfs-explorer && viewItem == epic",
           "group": "inline"
         }
       ]

@@ -54,7 +54,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand('planfs.createEpic', () => createEpicCommand()),
     vscode.commands.registerCommand('planfs.createMilestone', () => createMilestoneCommand()),
     vscode.commands.registerCommand('planfs.openTask', (item) => openTaskCommand(item)),
-    vscode.commands.registerCommand('planfs.openEditor', (item) => editorProvider.open(item?.entity?.id)),
+    vscode.commands.registerCommand('planfs.openEditor', (item) => editorProvider.open(resolveEditorEntityId(item))),
     vscode.commands.registerCommand('planfs.applySavedFilter', () => explorerProvider.applySavedFilter()),
     vscode.commands.registerCommand('planfs.clearSavedFilter', () => explorerProvider.clearSavedFilter()),
     vscode.commands.registerCommand('planfs.refreshExplorer', () => refreshViews())
@@ -99,4 +99,18 @@ function queueRefreshViews(changedUri?: vscode.Uri): void {
 
 export function deactivate(): void {
   console.log('PlanFS extension deactivated');
+}
+
+function resolveEditorEntityId(item: unknown): string | undefined {
+  if (typeof item === 'string') {
+    return item;
+  }
+
+  if (item && typeof item === 'object') {
+    const candidate = item as { entity?: { id?: unknown }; id?: unknown };
+    const id = candidate.entity?.id ?? candidate.id;
+    return typeof id === 'string' ? id : undefined;
+  }
+
+  return undefined;
 }
