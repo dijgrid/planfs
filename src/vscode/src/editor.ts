@@ -4,6 +4,7 @@
 
 import * as vscode from 'vscode';
 import {
+  archiveEntity,
   Entity,
   Epic,
   getRepositoryDevelopers,
@@ -102,6 +103,10 @@ export class EntityEditorProvider {
         if (message?.type === 'openEntity') {
           await this.open(String(message.entityId));
         }
+
+        if (message?.type === 'archiveTask') {
+          await this.archiveTask(String(entity.id), panel);
+        }
       });
       panel.webview.html = renderEditor(panel.webview, await createPayload(repository, entity));
     } catch (error) {
@@ -187,6 +192,49 @@ export class EntityEditorProvider {
       const message = error instanceof Error ? error.message : String(error);
       panel.webview.postMessage({ type: 'validation', errors: [message] });
       vscode.window.showErrorMessage(`Failed to save entity: ${message}`);
+    }
+  }
+
+  private async archiveTask(
+    entityId: string,
+    panel: vscode.WebviewPanel
+  ): Promise<void> {
+    const workspaceFolder = getPlanFSWorkspaceFolder();
+    if (!workspaceFolder) {
+      vscode.window.showErrorMessage('No workspace folder open');
+      return;
+    }
+
+    try {
+      const repository = await loadRepository(workspaceFolder.uri.fsPath);
+      const entity = findEditableEntity(repository, entityId);
+      if (!entity) {
+        vscode.window.showErrorMessage(`Entity not found: ${entityId}`);
+        return;
+      }
+
+      if (entity.type !== 'task') {
+        vscode.window.showErrorMessage('Only tasks can be archived from the PlanFS editor.');
+        return;
+      }
+
+      const answer = await vscode.window.showWarningMessage(
+        `Archive ${entity.id}?`,
+        { modal: true },
+        'Archive'
+      );
+      if (answer !== 'Archive') {
+        return;
+      }
+
+      await archiveEntity(workspaceFolder.uri.fsPath, entity.id);
+      panel.webview.html = renderMessage(`Archived ${entity.id}`);
+      vscode.window.showInformationMessage(`Archived ${entity.id}`);
+      await vscode.commands.executeCommand('planfs.refreshExplorer');
+    } catch (error) {
+      vscode.window.showErrorMessage(
+        `Failed to archive task: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
 }
@@ -602,6 +650,7 @@ function renderEditor(webview: vscode.Webview, payload: EditorPayload): string {
       <div class="actions">
         <button id="save">Save</button>
         <button id="openRaw" class="secondary">Open Markdown</button>
+        ${payload.entity.type === 'task' ? '<button id="archiveTask" class="secondary" type="button">Archive Task</button>' : ''}
       </div>
     </header>
     <div id="errors" class="errors"></div>
@@ -623,6 +672,9 @@ function renderEditor(webview: vscode.Webview, payload: EditorPayload): string {
     });
     document.getElementById('openRaw').addEventListener('click', () => {
       vscode.postMessage({ type: 'openRaw' });
+    });
+    document.getElementById('archiveTask')?.addEventListener('click', () => {
+      vscode.postMessage({ type: 'archiveTask' });
     });
     document.querySelectorAll('[data-open-entity]').forEach(button => {
       button.addEventListener('click', () => {

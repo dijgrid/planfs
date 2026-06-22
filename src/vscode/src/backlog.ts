@@ -191,9 +191,9 @@ export class BacklogProvider {
       ...repository,
       tasks: new Map(repository.tasks).set(task.id, task)
     };
-    const errors = validateRepositoryState(validationRepository).errors.filter(error => error.severity === 'error');
-    if (errors.length > 0) {
-      vscode.window.showErrorMessage(`Backlog update blocked by validation: ${errors[0].message}`);
+    const error = getBlockingTaskValidationError(validationRepository, task.id);
+    if (error) {
+      vscode.window.showErrorMessage(`Backlog update blocked by validation: ${error.message}`);
       return;
     }
 
@@ -224,7 +224,7 @@ export class BacklogProvider {
       epic: normalizeOptionalString(edited.epic),
       milestone: normalizeOptionalString(edited.milestone),
       tags: normalizeTags(edited.tags),
-      dueDate: normalizeOptionalString(edited.dueDate),
+      dueDate: normalizeDueDate(edited.dueDate),
       updatedAt: new Date().toISOString()
     });
 
@@ -232,9 +232,9 @@ export class BacklogProvider {
       ...repository,
       tasks: new Map(repository.tasks).set(task.id, task)
     };
-    const errors = validateRepositoryState(validationRepository).errors.filter(error => error.severity === 'error');
-    if (errors.length > 0) {
-      vscode.window.showErrorMessage(`Backlog update blocked by validation: ${errors[0].message}`);
+    const error = getBlockingTaskValidationError(validationRepository, task.id);
+    if (error) {
+      vscode.window.showErrorMessage(`Backlog update blocked by validation: ${error.message}`);
       return;
     }
 
@@ -601,9 +601,26 @@ function renderBacklogHtml(payload: BacklogHtmlPayload): string {
 }
 
 function normalizeTaskStatus(value: unknown, fallback: Task['status']): Task['status'] {
-  return ['todo', 'in-progress', 'review', 'done'].includes(String(value))
-    ? String(value) as Task['status']
-    : fallback;
+  const status = normalizeStatusValue(value);
+  if (status) {
+    return status;
+  }
+
+  return normalizeStatusValue(fallback) ?? 'todo';
+}
+
+function normalizeStatusValue(value: unknown): Task['status'] | undefined {
+  const text = String(value ?? '').trim().toLowerCase();
+  const aliases: Record<string, Task['status']> = {
+    todo: 'todo',
+    'to do': 'todo',
+    'in-progress': 'in-progress',
+    'in progress': 'in-progress',
+    review: 'review',
+    done: 'done',
+    completed: 'done'
+  };
+  return aliases[text];
 }
 
 function normalizePriority(value: unknown): TaskPriority | undefined {
@@ -621,6 +638,29 @@ function normalizeRefinementState(value: unknown, fallback: RefinementState): Re
 function normalizeOptionalString(value: unknown): string | undefined {
   const text = String(value ?? '').trim();
   return text || undefined;
+}
+
+function normalizeDueDate(value: unknown): string | undefined {
+  const text = normalizeOptionalString(value);
+  if (!text) {
+    return undefined;
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(text)) {
+    return `${text}T00:00:00.000Z`;
+  }
+
+  const date = new Date(text);
+  return Number.isNaN(date.getTime()) ? text : date.toISOString();
+}
+
+function getBlockingTaskValidationError(
+  repository: Parameters<typeof validateRepositoryState>[0],
+  taskId: string
+) {
+  return validateRepositoryState(repository).errors.find(error =>
+    error.severity === 'error' && error.id === taskId
+  );
 }
 
 function normalizeTags(value: string[] | string | undefined): string[] | undefined {
