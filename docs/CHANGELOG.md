@@ -7,9 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-06-22
+
+### Added
+- VS Code Explorer now includes compact Current Work and Backlog quick views for active assigned work and backlog triage.
+- VS Code structured task editor now shows backlog readiness information grounded in the same review logic as the backlog view.
+- Archive workflows can move old epics and their child tasks out of active planning views while preserving readable Markdown in `.planfs/archive/`.
+
 ### Changed
 - VS Code backlog view now supports a browse-and-edit workflow with a selected-item editor, ordered card list, grouping/filter controls, and Markdown section rendering.
 - VS Code structured editors no longer expose a raw Markdown body textarea; full body editing stays in Markdown files while common sections render in the editor.
+- VS Code structured editor metadata fields now use a compact fixed-width layout for short values such as ID, status, priority, due dates, target dates, and estimates.
 
 ## [0.8.0] - 2026-06-21
 
