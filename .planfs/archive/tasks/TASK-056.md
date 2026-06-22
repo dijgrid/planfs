@@ -2,6 +2,9 @@
 id: TASK-056
 title: Remove Markdown body preview from board details drawer
 status: done
+archive:
+  archivedAt: 2026-06-22T06:08:51.853Z
+  originalPath: .planfs/tasks/TASK-056.md
 priority: medium
 assignee: justin
 epic: EPIC-board-workbench
@@ -13,10 +16,10 @@ tags:
   - board
   - editor
 dueDate: 2026-08-22
-createdAt: 2026-06-20T00:00:00Z
-updatedAt: 2026-06-20T00:00:00Z
 refinementState: ready
 backlogOrder: 60
+createdAt: 2026-06-20T00:00:00Z
+updatedAt: 2026-06-22T06:08:51.853Z
 ---
 
 Simplify the board details drawer by removing the Markdown body preview. Users who want to read or edit the Markdown body should use the existing Open Markdown action instead.

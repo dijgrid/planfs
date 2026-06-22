@@ -2,11 +2,15 @@
 id: EPIC-board-workbench
 title: Board Planning Workbench
 status: active
+archive:
+  archivedAt: 2026-06-22T06:08:51.853Z
+  originalPath: .planfs/epics/EPIC-board-workbench.md
 owner: justin
-description: Turn the VS Code board into an action-oriented planning surface beyond status drag and drop
+description: Turn the VS Code board into an action-oriented planning surface
+  beyond status drag and drop
 targetDate: 2026-09-18
 createdAt: 2026-06-20T00:00:00Z
-updatedAt: 2026-06-21T18:59:38Z
+updatedAt: 2026-06-22T06:08:51.853Z
 ---
 
 Expand the PlanFS board from a status overview into a day-to-day planning workbench where users can inspect, create, group, and update planning items without bouncing between many Markdown files.

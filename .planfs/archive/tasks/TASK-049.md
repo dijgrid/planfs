@@ -2,6 +2,9 @@
 id: TASK-049
 title: Add board bulk selection and action surface
 status: done
+archive:
+  archivedAt: 2026-06-22T06:08:51.853Z
+  originalPath: .planfs/tasks/TASK-049.md
 priority: medium
 assignee: justin
 epic: EPIC-board-workbench
@@ -14,10 +17,10 @@ tags:
   - board
   - bulk
 dueDate: 2026-09-18
-createdAt: 2026-06-20T00:00:00Z
-updatedAt: 2026-06-20T00:00:00Z
 refinementState: ready
 backlogOrder: 50
+createdAt: 2026-06-20T00:00:00Z
+updatedAt: 2026-06-22T06:08:51.853Z
 ---
 
 Expose bulk task updates on the board once shared bulk update behavior exists, so users can change groups of visible tasks without editing many files one by one.

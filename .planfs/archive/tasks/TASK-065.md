@@ -2,6 +2,9 @@
 id: TASK-065
 title: Replace Markdown body editing with structured sections in PlanFS editors
 status: done
+archive:
+  archivedAt: 2026-06-22T06:08:51.853Z
+  originalPath: .planfs/tasks/TASK-065.md
 priority: high
 assignee: justin
 epic: EPIC-board-workbench
@@ -15,10 +18,10 @@ tags:
   - markdown
   - ux
 dueDate: 2026-09-07
-createdAt: 2026-06-21T00:00:00Z
-updatedAt: 2026-06-21T12:00:00Z
 refinementState: ready
 backlogOrder: 86
+createdAt: 2026-06-21T00:00:00Z
+updatedAt: 2026-06-22T06:08:51.853Z
 ---
 
 Remove the raw Markdown body input from PlanFS structured editors and make the full Markdown document the canonical place for body editing.

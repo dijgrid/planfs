@@ -2,6 +2,9 @@
 id: TASK-064
 title: Add next-work quick view to the PlanFS explorer
 status: done
+archive:
+  archivedAt: 2026-06-22T06:08:51.853Z
+  originalPath: .planfs/tasks/TASK-064.md
 priority: high
 assignee: justin
 epic: EPIC-board-workbench
@@ -16,10 +19,10 @@ tags:
   - next-work
   - ux
 dueDate: 2026-09-06
-createdAt: 2026-06-21T00:00:00Z
-updatedAt: 2026-06-21T17:07:18Z
 refinementState: ready
 backlogOrder: 85
+createdAt: 2026-06-21T00:00:00Z
+updatedAt: 2026-06-22T06:08:51.853Z
 ---
 
 Add a compact Next Work quick view to the PlanFS Explorer so users can see the best next task without opening the full board.

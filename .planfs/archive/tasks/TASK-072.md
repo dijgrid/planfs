@@ -2,6 +2,9 @@
 id: TASK-072
 title: Resolve VS Code extension install deprecation warning
 status: done
+archive:
+  archivedAt: 2026-06-22T06:08:55.554Z
+  originalPath: .planfs/tasks/TASK-072.md
 priority: medium
 assignee: justin
 epic: EPIC-lifecycle-integration-testing
@@ -17,7 +20,7 @@ dueDate: 2026-10-05
 refinementState: ready
 backlogOrder: 65
 createdAt: 2026-06-21T18:56:42Z
-updatedAt: 2026-06-21T19:39:44.824Z
+updatedAt: 2026-06-22T06:08:55.554Z
 ---
 
 Investigate and resolve the repeated Node deprecation warning emitted when installing the packaged VS Code extension with `code --install-extension`.
