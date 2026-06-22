@@ -2,6 +2,9 @@
 id: TASK-069
 title: Add real VS Code extension-host smoke tests
 status: todo
+archive:
+  archivedAt: 2026-06-22T06:08:55.554Z
+  originalPath: .planfs/tasks/TASK-069.md
 priority: medium
 assignee: justin
 epic: EPIC-lifecycle-integration-testing
@@ -14,10 +17,10 @@ tags:
   - extension-host
   - lifecycle
 dueDate: 2026-10-04
-createdAt: 2026-06-21T18:04:42Z
-updatedAt: 2026-06-21T18:04:42Z
 refinementState: needs-refinement
 backlogOrder: 82
+createdAt: 2026-06-21T18:04:42Z
+updatedAt: 2026-06-22T06:08:55.554Z
 ---
 
 Add a real VS Code extension-host smoke test layer that launches the PlanFS extension in an actual VS Code test environment and verifies the core extension commands work against a temporary PlanFS workspace.

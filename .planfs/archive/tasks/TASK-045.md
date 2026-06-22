@@ -2,6 +2,9 @@
 id: TASK-045
 title: Add board task details drawer
 status: done
+archive:
+  archivedAt: 2026-06-22T06:08:51.853Z
+  originalPath: .planfs/tasks/TASK-045.md
 priority: high
 assignee: justin
 epic: EPIC-board-workbench
@@ -14,10 +17,10 @@ tags:
   - board
   - editor
 dueDate: 2026-08-21
-createdAt: 2026-06-20T00:00:00Z
-updatedAt: 2026-06-20T00:00:00Z
 refinementState: ready
 backlogOrder: 10
+createdAt: 2026-06-20T00:00:00Z
+updatedAt: 2026-06-22T06:08:51.853Z
 ---
 
 Add a board-side details drawer so selecting a task reveals enough context to decide and act without immediately opening the Markdown file.

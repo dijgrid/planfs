@@ -2,6 +2,9 @@
 id: TASK-057
 title: Make board view switching more prominent
 status: done
+archive:
+  archivedAt: 2026-06-22T06:08:51.853Z
+  originalPath: .planfs/tasks/TASK-057.md
 priority: high
 assignee: justin
 epic: EPIC-board-workbench
@@ -13,10 +16,10 @@ tags:
   - board
   - ux
 dueDate: 2026-08-23
-createdAt: 2026-06-20T00:00:00Z
-updatedAt: 2026-06-20T00:00:00Z
 refinementState: ready
 backlogOrder: 70
+createdAt: 2026-06-20T00:00:00Z
+updatedAt: 2026-06-22T06:08:51.853Z
 ---
 
 Improve the PlanFS board UI so switching between board modes is obvious and intentional. The current dropdown is too easy to miss now that Status Board and Next Work represent meaningfully different workflows.

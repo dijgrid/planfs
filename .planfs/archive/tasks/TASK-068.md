@@ -2,6 +2,9 @@
 id: TASK-068
 title: Add VS Code lifecycle integration test suite
 status: done
+archive:
+  archivedAt: 2026-06-22T06:08:55.554Z
+  originalPath: .planfs/tasks/TASK-068.md
 priority: medium
 assignee: justin
 epic: EPIC-lifecycle-integration-testing
@@ -14,10 +17,10 @@ tags:
   - vscode
   - lifecycle
 dueDate: 2026-09-27
-createdAt: 2026-06-21T17:49:55Z
-updatedAt: 2026-06-21T18:10:15Z
 refinementState: ready
 backlogOrder: 81
+createdAt: 2026-06-21T17:49:55Z
+updatedAt: 2026-06-22T06:08:55.554Z
 ---
 
 Add a VS Code-focused lifecycle integration test suite that exercises PlanFS extension surfaces after the CLI/core lifecycle suite has established the canonical repository workflow.

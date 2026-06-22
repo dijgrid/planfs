@@ -896,6 +896,60 @@ describe('VS Code view refresh workspace selection', () => {
     expect(repository.tasks.get('TASK-020')?.body).toContain('## Acceptance Criteria');
   });
 
+  it('renders backlog readiness blockers and refreshes them after saving task metadata', async () => {
+    selectPlanFSWorkspaceFolder(firstFolder);
+
+    await saveEntity(firstRoot, {
+      ...createTaskTemplate('TASK-021', 'Needs backlog review'),
+      body: 'This task has enough detail.',
+      updatedAt: '2026-01-01T00:00:00Z'
+    });
+
+    const editor = new EntityEditorProvider(vscode.Uri.file('/extension'));
+    await editor.open('TASK-021');
+
+    const editorPanel = jest.mocked(vscode.window.createWebviewPanel).mock.results[0].value;
+    expect(editorPanel.webview.html).toContain('Backlog Readiness');
+    expect(editorPanel.webview.html).toContain('Missing priority');
+    expect(editorPanel.webview.html).toContain('No updates in 60 days');
+    expect(editorPanel.webview.html).toContain('Backlog readiness is separate from workflow status');
+    expect(editorPanel.webview.html).toContain('todo, in-progress, review, or done');
+
+    await editorPanel.webview.postMessage({
+      type: 'save',
+      entity: {
+        id: 'TASK-021',
+        type: 'task',
+        title: 'Needs backlog review',
+        status: 'todo',
+        priority: 'high'
+      }
+    });
+
+    expect(editorPanel.webview.html).toContain('No backlog review blockers remain.');
+    expect(editorPanel.webview.html).not.toContain('Missing priority');
+    expect(editorPanel.webview.html).not.toContain('No updates in 60 days');
+  });
+
+  it('renders a clear backlog readiness message for fully ready tasks', async () => {
+    selectPlanFSWorkspaceFolder(firstFolder);
+
+    await saveEntity(firstRoot, {
+      ...createTaskTemplate('TASK-022', 'Ready backlog task'),
+      priority: 'medium',
+      body: 'Ready body content.',
+      updatedAt: '2026-06-20T00:00:00Z'
+    });
+
+    const editor = new EntityEditorProvider(vscode.Uri.file('/extension'));
+    await editor.open('TASK-022');
+
+    const editorPanel = jest.mocked(vscode.window.createWebviewPanel).mock.results[0].value;
+    expect(editorPanel.webview.html).toContain('Backlog Readiness');
+    expect(editorPanel.webview.html).toContain('No backlog review blockers remain.');
+    expect(editorPanel.webview.html).toContain('Needs review can come from missing body content');
+  });
+
   it('archives tasks from the structured editor', async () => {
     selectPlanFSWorkspaceFolder(firstFolder);
 

@@ -2,6 +2,9 @@
 id: TASK-048
 title: Add contextual task creation from board views
 status: done
+archive:
+  archivedAt: 2026-06-22T06:08:51.853Z
+  originalPath: .planfs/tasks/TASK-048.md
 priority: high
 assignee: justin
 epic: EPIC-board-workbench
@@ -15,10 +18,10 @@ tags:
   - board
   - create
 dueDate: 2026-09-11
-createdAt: 2026-06-20T00:00:00Z
-updatedAt: 2026-06-20T00:00:00Z
 refinementState: ready
 backlogOrder: 40
+createdAt: 2026-06-20T00:00:00Z
+updatedAt: 2026-06-22T06:08:51.853Z
 ---
 
 Let users create tasks directly from the board with metadata prefilled from the current column, swimlane, and filter context.

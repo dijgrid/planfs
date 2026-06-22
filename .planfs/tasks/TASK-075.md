@@ -1,7 +1,7 @@
 ---
 id: TASK-075
 title: Add backlog readiness information box to task view
-status: todo
+status: done
 priority: medium
 assignee: justin
 epic: EPIC-backlog-management
@@ -14,7 +14,7 @@ tags:
 dueDate: 2026-09-17
 refinementState: ready
 createdAt: 2026-06-22T05:55:00Z
-updatedAt: 2026-06-22T05:55:00Z
+updatedAt: 2026-06-22T06:07:14.658Z
 ---
 
 Add an information box to the VS Code task view that explains what the current task needs in order to leave the backlog `Needs review` state and become fully ready.

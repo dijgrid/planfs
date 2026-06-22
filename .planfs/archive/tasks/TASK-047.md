@@ -2,6 +2,9 @@
 id: TASK-047
 title: Add board swimlanes and grouping modes
 status: done
+archive:
+  archivedAt: 2026-06-22T06:08:51.853Z
+  originalPath: .planfs/tasks/TASK-047.md
 priority: high
 assignee: justin
 epic: EPIC-board-workbench
@@ -14,10 +17,10 @@ tags:
   - board
   - grouping
 dueDate: 2026-09-04
-createdAt: 2026-06-20T00:00:00Z
-updatedAt: 2026-06-20T00:00:00Z
 refinementState: ready
 backlogOrder: 30
+createdAt: 2026-06-20T00:00:00Z
+updatedAt: 2026-06-22T06:08:51.853Z
 ---
 
 Add board grouping modes so the same task set can be scanned by ownership, delivery structure, or priority while retaining status context.

@@ -2,6 +2,9 @@
 id: TASK-060
 title: Add archive workflow for epics and tasks
 status: done
+archive:
+  archivedAt: 2026-06-22T06:08:51.853Z
+  originalPath: .planfs/tasks/TASK-060.md
 priority: high
 assignee: justin
 epic: EPIC-board-workbench
@@ -21,7 +24,7 @@ dueDate: 2026-09-13
 refinementState: ready
 backlogOrder: 90
 createdAt: 2026-06-20T00:00:00Z
-updatedAt: 2026-06-21T18:51:34.253Z
+updatedAt: 2026-06-22T06:08:51.853Z
 ---
 
 Add an archive workflow that can be applied to tasks and epics so old or inactive planning artifacts are completely hidden from normal PlanFS UI surfaces.

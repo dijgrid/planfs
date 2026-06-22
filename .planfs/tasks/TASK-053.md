@@ -7,8 +7,6 @@ assignee: justin
 epic: EPIC-backlog-management
 milestone: MILESTONE-phase-5
 dependsOn:
-  - TASK-045
-  - TASK-047
   - TASK-051
 tags:
   - vscode
@@ -16,7 +14,7 @@ tags:
   - board
 dueDate: 2026-10-16
 createdAt: 2026-06-20T00:00:00Z
-updatedAt: 2026-06-20T00:00:00Z
+updatedAt: 2026-06-22T06:09:22Z
 refinementState: captured
 backlogOrder: 40
 ---

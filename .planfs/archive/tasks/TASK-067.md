@@ -2,6 +2,9 @@
 id: TASK-067
 title: Add persistent VS Code UI state preferences
 status: done
+archive:
+  archivedAt: 2026-06-22T06:08:51.853Z
+  originalPath: .planfs/tasks/TASK-067.md
 priority: medium
 assignee: justin
 epic: EPIC-board-workbench
@@ -16,10 +19,10 @@ tags:
   - ui-state
   - ux
 dueDate: 2026-09-21
-createdAt: 2026-06-21T00:00:00Z
-updatedAt: 2026-06-21T00:00:00Z
 refinementState: ready
 backlogOrder: 87
+createdAt: 2026-06-21T00:00:00Z
+updatedAt: 2026-06-22T06:08:51.853Z
 ---
 
 Add a shared persistence layer for VS Code UI state preferences used by PlanFS webviews and explorer surfaces.

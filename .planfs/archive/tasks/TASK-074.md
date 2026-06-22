@@ -2,6 +2,9 @@
 id: TASK-074
 title: Add current-work quick view to the PlanFS explorer
 status: done
+archive:
+  archivedAt: 2026-06-22T06:08:51.853Z
+  originalPath: .planfs/tasks/TASK-074.md
 priority: high
 assignee: justin
 epic: EPIC-board-workbench
@@ -18,7 +21,7 @@ dueDate: 2026-09-16
 refinementState: ready
 backlogOrder: 86
 createdAt: 2026-06-21T18:59:38Z
-updatedAt: 2026-06-21T19:29:51.271Z
+updatedAt: 2026-06-22T06:08:51.853Z
 ---
 
 Add a compact Current Work quick view to the PlanFS Explorer so users can see work already assigned to them and actively underway.

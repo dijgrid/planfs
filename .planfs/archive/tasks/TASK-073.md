@@ -2,6 +2,9 @@
 id: TASK-073
 title: Review and update project dependencies
 status: done
+archive:
+  archivedAt: 2026-06-22T06:08:55.554Z
+  originalPath: .planfs/tasks/TASK-073.md
 priority: medium
 assignee: justin
 epic: EPIC-lifecycle-integration-testing
@@ -17,7 +20,7 @@ dueDate: 2026-10-06
 refinementState: ready
 backlogOrder: 66
 createdAt: 2026-06-21T18:56:42Z
-updatedAt: 2026-06-21T19:40:20Z
+updatedAt: 2026-06-22T06:08:55.554Z
 ---
 
 Perform a dependency review across the PlanFS workspaces and update packages where doing so is safe.

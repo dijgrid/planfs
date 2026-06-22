@@ -2,6 +2,9 @@
 id: TASK-046
 title: Add board card quick actions
 status: done
+archive:
+  archivedAt: 2026-06-22T06:08:51.853Z
+  originalPath: .planfs/tasks/TASK-046.md
 priority: medium
 assignee: justin
 epic: EPIC-board-workbench
@@ -14,10 +17,10 @@ tags:
   - board
   - actions
 dueDate: 2026-08-28
-createdAt: 2026-06-20T00:00:00Z
-updatedAt: 2026-06-20T00:00:00Z
 refinementState: ready
 backlogOrder: 20
+createdAt: 2026-06-20T00:00:00Z
+updatedAt: 2026-06-22T06:08:51.853Z
 ---
 
 Add focused card actions for common board workflows so users do not need to manually edit files for simple transitions.

@@ -11,6 +11,7 @@ import {
   loadRepository,
   Milestone,
   Repository,
+  reviewBacklog,
   saveEntity,
   Task,
   validateEntity
@@ -28,6 +29,7 @@ interface EditorPayload {
     developers: string[];
   };
   epicBoard?: EpicBoardColumn[];
+  backlogReadiness?: BacklogReadinessInfo;
 }
 
 type EditableEntity = Task | Epic | Milestone;
@@ -45,6 +47,11 @@ interface EpicBoardTask {
 interface EpicBoardColumn {
   status: Task['status'];
   tasks: EpicBoardTask[];
+}
+
+interface BacklogReadinessInfo {
+  needsReview: boolean;
+  reasons: string[];
 }
 
 export class EntityEditorProvider {
@@ -345,7 +352,22 @@ async function createPayload(repository: Repository, entity: EditableEntity): Pr
     payload.epicBoard = createEpicBoard(repository, entity.id);
   }
 
+  if (entity.type === 'task') {
+    payload.backlogReadiness = createBacklogReadinessInfo(repository, entity.id);
+  }
+
   return payload;
+}
+
+function createBacklogReadinessInfo(
+  repository: Repository,
+  taskId: string
+): BacklogReadinessInfo {
+  const reviewItem = reviewBacklog(repository).find(item => item.task.id === taskId);
+  return {
+    needsReview: Boolean(reviewItem),
+    reasons: reviewItem?.reasons ?? []
+  };
 }
 
 function createEpicBoard(repository: Repository, epicId: string): EpicBoardColumn[] {
@@ -625,6 +647,25 @@ function renderEditor(webview: vscode.Webview, payload: EditorPayload): string {
       overflow-wrap: anywhere;
     }
 
+    .infoBox {
+      display: grid;
+      gap: 8px;
+      border-color: var(--vscode-inputValidation-infoBorder, var(--border));
+    }
+
+    .infoBox.warning {
+      border-color: var(--vscode-inputValidation-warningBorder, var(--border));
+    }
+
+    .reasonList {
+      margin: 0;
+      padding-left: 18px;
+    }
+
+    .reasonList li {
+      margin: 3px 0;
+    }
+
     .emptyColumn {
       padding: 8px;
       color: var(--muted);
@@ -784,6 +825,7 @@ function renderEntityFields(payload: EditorPayload): string {
       input('Estimate', 'estimate', task.estimate ?? ''),
       input('Tags', 'tags', (task.tags ?? []).join(', '), 'text', false, 'tag-options'),
       datalist('tag-options', payload.options.tags),
+      renderBacklogReadiness(payload),
       dependencyChecks(task, payload.options.tasks),
       textarea('Links JSON', 'links', formatJson(task.links), 'full'),
       renderBodySections(task.body)
@@ -819,6 +861,28 @@ function renderEntityFields(payload: EditorPayload): string {
     textarea('Description', 'description', milestone.description ?? '', 'full'),
     textarea('Links JSON', 'links', formatJson(milestone.links), 'full'),
     renderBodySections(milestone.body)
+  ].join('');
+}
+
+function renderBacklogReadiness(payload: EditorPayload): string {
+  const readiness = payload.backlogReadiness;
+  if (!readiness) {
+    return '';
+  }
+
+  const reasons = readiness.reasons.length > 0
+    ? '<ul class="reasonList">' + readiness.reasons
+      .map(reason => '<li>' + escapeHtml(reason) + '</li>')
+      .join('') + '</ul>'
+    : '<p class="subtle">No backlog review blockers remain.</p>';
+
+  return [
+    '<section class="card full infoBox' + (readiness.needsReview ? ' warning' : '') + '">',
+    '<h2>Backlog Readiness</h2>',
+    '<p class="subtle">Backlog readiness is separate from workflow status. A task can be todo, in-progress, review, or done while still needing backlog review.</p>',
+    '<p class="subtle">Needs review can come from missing body content, missing priority, blocking dependencies, missing dependency IDs, or stale update metadata.</p>',
+    reasons,
+    '</section>'
   ].join('');
 }
 
