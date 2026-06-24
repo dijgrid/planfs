@@ -308,13 +308,19 @@ node src/cli/dist/cli.js ai summary
 
 Use the returned IDs and file paths for targeted follow-up reads instead of scanning all of \`.planfs\`.
 
-Preview metadata updates before writing:
+Preview metadata updates before writing. Use \`update-task\` for one task:
 
 \`\`\`sh
 node src/cli/dist/cli.js ai update-task --id TASK-061 --status in-progress --dry-run
 \`\`\`
 
-After applying AI-assisted planning updates, run:
+Use \`bulk-update-tasks\` when applying the same bounded metadata change to multiple tasks:
+
+\`\`\`sh
+node src/cli/dist/cli.js ai bulk-update-tasks --ids TASK-061,TASK-062 --status review --dry-run
+\`\`\`
+
+Prefer these preview/apply helpers over editing task frontmatter directly for status, priority, assignee, milestone, estimate, due date, tags, or refinement-state updates. After applying AI-assisted planning updates, run:
 
 \`\`\`sh
 node src/cli/dist/cli.js validate

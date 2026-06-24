@@ -576,6 +576,8 @@ describe('CLI commands', () => {
     agents = await fs.readFile(path.join(rootPath, 'AGENTS.md'), 'utf-8');
     expect(agents).toContain('Existing guidance.');
     expect(agents).toContain('node src/cli/dist/cli.js ai summary');
+    expect(agents).toContain('node src/cli/dist/cli.js ai bulk-update-tasks --ids TASK-061,TASK-062 --status review --dry-run');
+    expect(agents).toContain('Prefer these preview/apply helpers over editing task frontmatter directly');
     expect(agents.match(/PLANFS-AI-AWARENESS:START/g)).toHaveLength(1);
 
     await expect(aiCommand(rootPath, 'initialize', {
