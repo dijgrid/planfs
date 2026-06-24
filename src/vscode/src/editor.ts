@@ -949,7 +949,7 @@ function compactMeta(fields: string[]): string {
 
 function renderBacklogReadiness(payload: EditorPayload): string {
   const readiness = payload.backlogReadiness;
-  if (!readiness) {
+  if (!readiness || !readiness.needsReview) {
     return '';
   }
 
@@ -957,13 +957,11 @@ function renderBacklogReadiness(payload: EditorPayload): string {
     ? '<ul class="reasonList">' + readiness.reasons
       .map(reason => '<li>' + escapeHtml(reason) + '</li>')
       .join('') + '</ul>'
-    : '<p class="subtle">No backlog review blockers remain.</p>';
+    : '<p class="subtle">Needs backlog review.</p>';
 
   return [
-    '<section class="card full infoBox' + (readiness.needsReview ? ' warning' : '') + '">',
+    '<section class="card full infoBox warning">',
     '<h2>Backlog Readiness</h2>',
-    '<p class="subtle">Backlog readiness is separate from workflow status. A task can be todo, in-progress, review, or done while still needing backlog review.</p>',
-    '<p class="subtle">Needs review can come from missing body content, missing priority, blocking dependencies, missing dependency IDs, or stale update metadata.</p>',
     reasons,
     '</section>'
   ].join('');

@@ -111,7 +111,7 @@ export class BacklogProvider {
     }
     const reviewItems = reviewBacklog(repository);
     const reviewIds = new Set(reviewItems.map(item => item.task.id));
-    const tasks = listBacklogTasks(repository, { includeDone: true }).map(task => ({
+    const tasks = listBacklogTasks(repository).map(task => ({
       id: task.id,
       title: task.title,
       status: task.status,

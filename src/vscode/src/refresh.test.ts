@@ -167,6 +167,11 @@ describe('VS Code view refresh workspace selection', () => {
       priority: 'high',
       body: 'Needs later refinement.\n\n## Acceptance Criteria\n\n- [ ] Refine the task'
     });
+    await saveEntity(firstRoot, {
+      ...createTaskTemplate('TASK-051', 'Completed captured backlog task'),
+      status: 'done',
+      refinementState: 'captured'
+    });
 
     const uiPreferences = new PlanFSUiPreferences(new TestMemento());
     await uiPreferences.set(UI_PREFERENCES.backlogPanelsSwapped, true, firstFolder);
@@ -177,6 +182,7 @@ describe('VS Code view refresh workspace selection', () => {
 
     expect(backlogPanel.webview.html).toContain('PlanFS Backlog');
     expect(backlogPanel.webview.html).toContain('Captured backlog task');
+    expect(backlogPanel.webview.html).not.toContain('Completed captured backlog task');
     expect(backlogPanel.webview.html).toContain('captureBacklogItem');
     expect(backlogPanel.webview.html).toContain('updateBacklogTask');
     expect(backlogPanel.webview.html).toContain('vscode.getState');
@@ -1077,8 +1083,8 @@ describe('VS Code view refresh workspace selection', () => {
     expect(editorPanel.webview.html).toContain('Backlog Readiness');
     expect(editorPanel.webview.html).toContain('Missing priority');
     expect(editorPanel.webview.html).toContain('No updates in 60 days');
-    expect(editorPanel.webview.html).toContain('Backlog readiness is separate from workflow status');
-    expect(editorPanel.webview.html).toContain('todo, in-progress, review, or done');
+    expect(editorPanel.webview.html).not.toContain('Backlog readiness is separate from workflow status');
+    expect(editorPanel.webview.html).not.toContain('todo, in-progress, review, or done');
 
     await editorPanel.webview.postMessage({
       type: 'save',
@@ -1091,12 +1097,12 @@ describe('VS Code view refresh workspace selection', () => {
       }
     });
 
-    expect(editorPanel.webview.html).toContain('No backlog review blockers remain.');
+    expect(editorPanel.webview.html).not.toContain('Backlog Readiness');
     expect(editorPanel.webview.html).not.toContain('Missing priority');
     expect(editorPanel.webview.html).not.toContain('No updates in 60 days');
   });
 
-  it('renders a clear backlog readiness message for fully ready tasks', async () => {
+  it('hides backlog readiness details for fully ready tasks', async () => {
     selectPlanFSWorkspaceFolder(firstFolder);
 
     await saveEntity(firstRoot, {
@@ -1110,9 +1116,9 @@ describe('VS Code view refresh workspace selection', () => {
     await editor.open('TASK-022');
 
     const editorPanel = jest.mocked(vscode.window.createWebviewPanel).mock.results[0].value;
-    expect(editorPanel.webview.html).toContain('Backlog Readiness');
-    expect(editorPanel.webview.html).toContain('No backlog review blockers remain.');
-    expect(editorPanel.webview.html).toContain('Needs review can come from missing body content');
+    expect(editorPanel.webview.html).not.toContain('Backlog Readiness');
+    expect(editorPanel.webview.html).not.toContain('No backlog review blockers remain.');
+    expect(editorPanel.webview.html).not.toContain('Needs review can come from missing body content');
   });
 
   it('archives tasks from the structured editor', async () => {
