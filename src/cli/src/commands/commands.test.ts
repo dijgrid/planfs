@@ -2,6 +2,7 @@ import { promises as fs } from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { aiCommand } from './ai';
+import { archiveCommand } from './archive';
 import { createCommand } from './create';
 import { backlogCommand } from './backlog';
 import { gitCommand } from './git';
@@ -134,6 +135,39 @@ describe('CLI commands', () => {
     expect(logSpy).toHaveBeenCalledWith(
       '✓ Created milestone: MILESTONE-phase-6-polish'
     );
+  });
+
+  it('previews entity creation without writing files', async () => {
+    await expect(
+      createCommand(rootPath, 'task', {
+        title: 'Preview task',
+        priority: 'high',
+        assignee: 'justin',
+        dryRun: true,
+        format: 'json'
+      })
+    ).resolves.toBe(0);
+
+    const output = JSON.parse(
+      logSpy.mock.calls[logSpy.mock.calls.length - 1]?.[0] as string
+    );
+    expect(output).toMatchObject({
+      type: 'task',
+      id: 'TASK-001',
+      dryRun: true,
+      entity: {
+        title: 'Preview task',
+        priority: 'high',
+        assignee: 'justin'
+      }
+    });
+    expect(output.preview).toContain('title: Preview task');
+    await expect(
+      fs.stat(path.join(rootPath, '.planfs'))
+    ).rejects.toMatchObject({ code: 'ENOENT' });
+    await expect(
+      fs.stat(path.join(rootPath, '.planfs', 'tasks', 'TASK-001.md'))
+    ).rejects.toMatchObject({ code: 'ENOENT' });
   });
 
   it('requires target date when creating milestones', async () => {
@@ -296,6 +330,65 @@ describe('CLI commands', () => {
 
     expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('BACKLOG REVIEW'));
     expect(logSpy).toHaveBeenCalledWith('TASK-001 Thin backlog item');
+  });
+
+  it('previews archive changes without moving files', async () => {
+    await writeTask('TASK-001', [
+      'title: Archive preview',
+      'status: todo',
+      'updatedAt: 2026-06-20T00:00:00.000Z'
+    ]);
+
+    await expect(archiveCommand(rootPath, 'archive', {
+      id: 'TASK-001',
+      dryRun: true,
+      expectedUpdatedAt: '2026-06-20T00:00:00.000Z',
+      format: 'json'
+    })).resolves.toBe(0);
+
+    const output = JSON.parse(
+      logSpy.mock.calls[logSpy.mock.calls.length - 1]?.[0] as string
+    );
+    expect(output).toMatchObject({
+      dryRun: true,
+      archived: [
+        {
+          id: 'TASK-001',
+          archive: {
+            originalPath: '.planfs/tasks/TASK-001.md'
+          }
+        }
+      ]
+    });
+    expect(output.previews[0].preview).toContain('archive:');
+    await expect(
+      fs.stat(path.join(rootPath, '.planfs', 'tasks', 'TASK-001.md'))
+    ).resolves.toBeDefined();
+    await expect(
+      fs.stat(path.join(rootPath, '.planfs', 'archive', 'tasks', 'TASK-001.md'))
+    ).rejects.toMatchObject({ code: 'ENOENT' });
+  });
+
+  it('refuses archive when the target changed since preview', async () => {
+    await writeTask('TASK-001', [
+      'title: Archive conflict',
+      'status: todo',
+      'updatedAt: 2026-06-20T00:00:00.000Z'
+    ]);
+
+    await expect(archiveCommand(rootPath, 'archive', {
+      id: 'TASK-001',
+      expectedUpdatedAt: '2026-06-19T00:00:00.000Z',
+      format: 'json'
+    })).resolves.toBe(1);
+
+    expect(errorSpy).toHaveBeenCalledWith(
+      'Error:',
+      'Archive conflict: TASK-001 changed since preview'
+    );
+    await expect(
+      fs.stat(path.join(rootPath, '.planfs', 'tasks', 'TASK-001.md'))
+    ).resolves.toBeDefined();
   });
 
   it('can include blocked next-work candidates with explanations', async () => {

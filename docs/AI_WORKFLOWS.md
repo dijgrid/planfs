@@ -97,6 +97,26 @@ node src/cli/dist/cli.js ai bulk-update-tasks \
 
 Supported bulk fields are `status`, `priority`, `assignee`, `milestone`, and `estimate`. Bulk updates validate the full repository before writing and roll back task files if a later write in the batch fails.
 
+## Preview Create And Archive Workflows
+
+Existing create and archive commands also support preview/apply workflows for AI-assisted changes:
+
+```sh
+node src/cli/dist/cli.js create task \
+  --title "Draft rollout notes" \
+  --assignee justin \
+  --dry-run \
+  --format json
+
+node src/cli/dist/cli.js archive archive \
+  --id TASK-061 \
+  --expected-updated-at 2026-06-20T00:00:00.000Z \
+  --dry-run \
+  --format json
+```
+
+Create previews show the Markdown that would be written. Archive previews show the archived entities and Markdown output without moving files. Pass `--expected-updated-at` to archive when replaying a preview so changed files are refused instead of overwritten.
+
 ## Validate AI Changes
 
 After any AI-assisted update, run:

@@ -1,7 +1,7 @@
 ---
 id: TASK-082
 title: Expand safe AI planning update commands
-status: todo
+status: done
 priority: high
 assignee: justin
 epic: EPIC-ai-integration
@@ -14,7 +14,7 @@ tags:
 dueDate: 2026-10-18
 refinementState: ready
 createdAt: 2026-06-23T00:00:00Z
-updatedAt: 2026-06-24T03:53:18.564Z
+updatedAt: 2026-06-24T03:59:59.181Z
 ---
 
 Expand AI-friendly planning updates beyond task metadata changes while keeping Markdown as the source of truth.
@@ -23,13 +23,13 @@ This task should wire AI-friendly preview/apply behavior into existing CLI surfa
 
 ## Acceptance Criteria
 
-- [ ] Existing CLI create workflows support AI-friendly preview/apply output for tasks, epics, and milestones using existing serializer behavior
-- [ ] Existing archive workflows support AI-friendly preview/apply output for tasks and epics
-- [ ] Task assignment remains available through the safe task update workflow
-- [ ] Commands prefer existing CLI groups where that is clearer than a standalone AI-only surface
-- [ ] Commands can be run without mandatory dry-run mode, while still supporting previews for cautious workflows
-- [ ] Commands detect stale input or changed files and refuse to overwrite newer human edits
-- [ ] Tests cover successful updates and conflict refusal
+- [x] Existing CLI create workflows support AI-friendly preview/apply output for tasks, epics, and milestones using existing serializer behavior
+- [x] Existing archive workflows support AI-friendly preview/apply output for tasks and epics
+- [x] Task assignment remains available through the safe task update workflow
+- [x] Commands prefer existing CLI groups where that is clearer than a standalone AI-only surface
+- [x] Commands can be run without mandatory dry-run mode, while still supporting previews for cautious workflows
+- [x] Commands detect stale input or changed files and refuse to overwrite newer human edits
+- [x] Tests cover successful updates and conflict refusal
 
 ## Questions
 
