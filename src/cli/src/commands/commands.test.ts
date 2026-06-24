@@ -413,6 +413,99 @@ describe('CLI commands', () => {
     expect(taskFile).toContain('tags:');
   });
 
+  it('previews and applies transactional AI bulk task updates', async () => {
+    await writeTask('TASK-001', [
+      'title: First bulk task',
+      'status: todo'
+    ]);
+    await writeTask('TASK-002', [
+      'title: Second bulk task',
+      'status: todo'
+    ]);
+
+    await expect(aiCommand(rootPath, 'bulk-update-tasks', {
+      ids: 'TASK-001,TASK-002',
+      status: 'review',
+      assignee: 'justin',
+      estimate: '2d',
+      dryRun: true,
+      format: 'json'
+    })).resolves.toBe(0);
+
+    let output = JSON.parse(
+      logSpy.mock.calls[logSpy.mock.calls.length - 1]?.[0] as string
+    );
+    expect(output.dryRun).toBe(true);
+    expect(output.taskIds).toEqual(['TASK-001', 'TASK-002']);
+    expect(output.changedFields).toEqual(['status', 'assignee', 'estimate']);
+    expect(output.changedTasks[0].preview).toContain('estimate: 2d');
+
+    let firstTask = await fs.readFile(
+      path.join(rootPath, '.planfs', 'tasks', 'TASK-001.md'),
+      'utf-8'
+    );
+    expect(firstTask).toContain('status: todo');
+    expect(firstTask).not.toContain('estimate: 2d');
+
+    await expect(aiCommand(rootPath, 'bulk-update-tasks', {
+      ids: ['TASK-001', 'TASK-002'],
+      status: 'review',
+      assignee: 'justin',
+      estimate: '2d',
+      format: 'json'
+    })).resolves.toBe(0);
+
+    output = JSON.parse(
+      logSpy.mock.calls[logSpy.mock.calls.length - 1]?.[0] as string
+    );
+    expect(output.dryRun).toBe(false);
+    firstTask = await fs.readFile(
+      path.join(rootPath, '.planfs', 'tasks', 'TASK-001.md'),
+      'utf-8'
+    );
+    const secondTask = await fs.readFile(
+      path.join(rootPath, '.planfs', 'tasks', 'TASK-002.md'),
+      'utf-8'
+    );
+    expect(firstTask).toContain('status: review');
+    expect(firstTask).toContain('assignee: justin');
+    expect(firstTask).toContain('estimate: 2d');
+    expect(secondTask).toContain('status: review');
+    expect(secondTask).toContain('estimate: 2d');
+  });
+
+  it('blocks invalid AI bulk task updates before writing', async () => {
+    await writeTask('TASK-001', [
+      'title: First invalid bulk task',
+      'status: todo'
+    ]);
+    await writeTask('TASK-002', [
+      'title: Second invalid bulk task',
+      'status: todo'
+    ]);
+
+    await expect(aiCommand(rootPath, 'bulk-update-tasks', {
+      ids: 'TASK-001,TASK-002',
+      milestone: 'MILESTONE-missing',
+      format: 'json'
+    })).resolves.toBe(1);
+
+    expect(errorSpy).toHaveBeenCalledWith(
+      'Error:',
+      expect.stringContaining('Referenced milestone not found')
+    );
+    const firstTask = await fs.readFile(
+      path.join(rootPath, '.planfs', 'tasks', 'TASK-001.md'),
+      'utf-8'
+    );
+    const secondTask = await fs.readFile(
+      path.join(rootPath, '.planfs', 'tasks', 'TASK-002.md'),
+      'utf-8'
+    );
+    expect(firstTask).not.toContain('MILESTONE-missing');
+    expect(secondTask).not.toContain('MILESTONE-missing');
+  });
+
   it('blocks invalid AI task updates before writing', async () => {
     await writeTask('TASK-001', [
       'title: Invalid AI update',

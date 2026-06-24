@@ -81,11 +81,12 @@ export type TaskUpdateField =
   | 'dueDate'
   | 'epic'
   | 'milestone'
-  | 'tags';
+  | 'tags'
+  | 'estimate';
 
 export type TaskUpdatePatch = Partial<Pick<
   Task,
-  'status' | 'priority' | 'assignee' | 'refinementState' | 'dueDate' | 'epic' | 'milestone' | 'tags'
+  'status' | 'priority' | 'assignee' | 'refinementState' | 'dueDate' | 'epic' | 'milestone' | 'tags' | 'estimate'
 >>;
 
 export interface TaskUpdateOptions {
@@ -254,6 +255,7 @@ export function parseTaskUpdatePatch(values: Record<string, unknown>): TaskUpdat
       case 'dueDate':
       case 'epic':
       case 'milestone':
+      case 'estimate':
         patch[field] = parseOptionalString(value);
         break;
       case 'tags':

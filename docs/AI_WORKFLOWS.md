@@ -78,8 +78,24 @@ Supported fields are:
 - `epic`
 - `milestone`
 - `tags`
+- `estimate`
 
 Applied updates set `updatedAt` and validate the repository before writing. Invalid references, unsupported metadata fields, and broken task metadata fail before partial writes.
+
+## Preview Bulk Task Updates
+
+Use `ai bulk-update-tasks` when the same bounded metadata change should apply to several existing tasks:
+
+```sh
+node src/cli/dist/cli.js ai bulk-update-tasks \
+  --ids TASK-061,TASK-062 \
+  --status review \
+  --estimate 2d \
+  --dry-run \
+  --format json
+```
+
+Supported bulk fields are `status`, `priority`, `assignee`, `milestone`, and `estimate`. Bulk updates validate the full repository before writing and roll back task files if a later write in the batch fails.
 
 ## Validate AI Changes
 

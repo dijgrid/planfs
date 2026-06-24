@@ -695,7 +695,7 @@ describe('VS Code view refresh workspace selection', () => {
     expect(repository.tasks.get('TASK-033')?.status).toBe('done');
   });
 
-  it('renders bulk selection controls and applies validated bulk updates', async () => {
+  it('renders bulk selection controls and applies transactional bulk updates', async () => {
     selectPlanFSWorkspaceFolder(firstFolder);
 
     await saveEntity(firstRoot, {
@@ -717,20 +717,20 @@ describe('VS Code view refresh workspace selection', () => {
     expect(boardPanel.webview.html).toContain('selectedBulkTaskIds');
     expect(boardPanel.webview.html).toContain('clearSelection');
 
-    jest.mocked(vscode.window.showInputBox).mockResolvedValueOnce('review');
+    jest.mocked(vscode.window.showInputBox).mockResolvedValueOnce('2d');
     jest.mocked(vscode.window.showInformationMessage).mockResolvedValueOnce('Apply' as never);
 
     await boardPanel.webview.postMessage({
       type: 'bulkUpdateTasks',
       taskIds: ['TASK-034', 'TASK-035'],
-      action: 'status'
+      action: 'estimate'
     });
 
     const repository = await loadRepository(firstRoot);
-    expect(repository.tasks.get('TASK-034')?.status).toBe('review');
-    expect(repository.tasks.get('TASK-035')?.status).toBe('review');
+    expect(repository.tasks.get('TASK-034')?.estimate).toBe('2d');
+    expect(repository.tasks.get('TASK-035')?.estimate).toBe('2d');
     expect(vscode.window.showInformationMessage).toHaveBeenCalledWith(
-      'Apply Set status to 2 tasks?',
+      'Apply Set estimate to 2 tasks?',
       { modal: true },
       'Apply'
     );
@@ -748,20 +748,52 @@ describe('VS Code view refresh workspace selection', () => {
     await board.open();
     const boardPanel = jest.mocked(vscode.window.createWebviewPanel).mock.results[0].value;
 
-    jest.mocked(vscode.window.showInputBox).mockResolvedValueOnce('EPIC-missing');
+    jest.mocked(vscode.window.showInputBox).mockResolvedValueOnce('MILESTONE-missing');
     jest.mocked(vscode.window.showInformationMessage).mockResolvedValueOnce('Apply' as never);
 
     await boardPanel.webview.postMessage({
       type: 'bulkUpdateTasks',
       taskIds: ['TASK-036'],
-      action: 'epic'
+      action: 'milestone'
     });
 
     expect(vscode.window.showErrorMessage).toHaveBeenCalledWith(
       expect.stringContaining('Bulk update blocked by validation:')
     );
     const repository = await loadRepository(firstRoot);
-    expect(repository.tasks.get('TASK-036')?.epic).toBeUndefined();
+    expect(repository.tasks.get('TASK-036')?.milestone).toBeUndefined();
+  });
+
+  it('blocks stale board bulk updates before writing task files', async () => {
+    selectPlanFSWorkspaceFolder(firstFolder);
+
+    await saveEntity(firstRoot, {
+      ...createTaskTemplate('TASK-037', 'Stale bulk target'),
+      status: 'todo',
+      updatedAt: '2026-06-20T00:00:00.000Z'
+    });
+
+    const board = new BoardProvider(vscode.Uri.file('/extension'));
+    await board.open();
+    const boardPanel = jest.mocked(vscode.window.createWebviewPanel).mock.results[0].value;
+
+    jest.mocked(vscode.window.showInputBox).mockResolvedValueOnce('review');
+    jest.mocked(vscode.window.showInformationMessage).mockResolvedValueOnce('Apply' as never);
+
+    await boardPanel.webview.postMessage({
+      type: 'bulkUpdateTasks',
+      taskIds: ['TASK-037'],
+      action: 'status',
+      expectedUpdatedAtByTaskId: {
+        'TASK-037': '2026-06-19T00:00:00.000Z'
+      }
+    });
+
+    expect(vscode.window.showErrorMessage).toHaveBeenCalledWith(
+      expect.stringContaining('Task changed since preview: TASK-037')
+    );
+    const repository = await loadRepository(firstRoot);
+    expect(repository.tasks.get('TASK-037')?.status).toBe('todo');
   });
 
   it('renders board grouping controls and keeps saved filters in the grouping pipeline', async () => {
