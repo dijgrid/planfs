@@ -141,11 +141,6 @@
           "command": "planfs.openTask",
           "when": "view == planfs-explorer && viewItem == task",
           "group": "navigation@2"
-        },
-        {
-          "command": "planfs.archiveItem",
-          "when": "view == planfs-explorer && viewItem == epic",
-          "group": "inline"
         }
       ]
     },

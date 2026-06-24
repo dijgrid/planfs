@@ -188,7 +188,8 @@ describe('VS Code view refresh workspace selection', () => {
     expect(backlogPanel.webview.html).toContain('Acceptance Criteria');
     expect(backlogPanel.webview.html).toContain('Group by refinement');
     expect(backlogPanel.webview.html).toContain('"backlogPanelsSwapped":true');
-    expect(backlogPanel.webview.html).toContain('updateUiPreference');
+    expect(backlogPanel.webview.html).not.toContain('swapPanels');
+    expect(backlogPanel.webview.html).not.toContain('Swap panels');
 
     await backlogPanel.webview.postMessage({
       type: 'updateBacklogTask',
@@ -275,6 +276,10 @@ describe('VS Code view refresh workspace selection', () => {
     expect(insightsPanel.webview.html).toContain('renderGraphLegend');
     expect(insightsPanel.webview.html).toContain('timelineWindow');
     expect(insightsPanel.webview.html).toContain('timelineGroup');
+    expect(insightsPanel.webview.html).toContain('timelineDensity');
+    expect(insightsPanel.webview.html).toContain('<button class="tab active" data-tab="timeline">Timeline</button>');
+    expect(insightsPanel.webview.html).toContain('Use the window and card density controls');
+    expect(insightsPanel.webview.html).toContain('Trace prerequisite flow');
     expect(insightsPanel.webview.html).toContain('renderTimelineDetails');
   });
 
@@ -943,6 +948,7 @@ describe('VS Code view refresh workspace selection', () => {
     expect(editorPanel.webview.html).toContain('class="compactField" data-field="targetDate"');
     expect(editorPanel.webview.html).toContain('name="owner"');
     expect(editorPanel.webview.html).toContain('name="tags"');
+    expect(editorPanel.webview.html).toContain('Archive Epic');
 
     await saveEntity(firstRoot, {
       ...createTaskTemplate('TASK-012', 'Newly refreshed task'),
@@ -951,6 +957,51 @@ describe('VS Code view refresh workspace selection', () => {
     });
     await editor.refresh();
     expect(editorPanel.webview.html).toContain('Newly refreshed task');
+  });
+
+  it('renders epic planning sections and archives epics from the structured editor', async () => {
+    selectPlanFSWorkspaceFolder(firstFolder);
+
+    await saveEntity(firstRoot, {
+      ...createEpicTemplate('EPIC-editor-archive', 'Editor archive epic'),
+      body: [
+        'Epic body.',
+        '',
+        '## Acceptance Criteria',
+        '',
+        '- [ ] Render criteria in the epic editor',
+        '',
+        '## Questions',
+        '',
+        '- [x] Should epics support archive here? Yes'
+      ].join('\n')
+    });
+    await saveEntity(firstRoot, {
+      ...createTaskTemplate('TASK-031', 'Epic child task'),
+      epic: 'EPIC-editor-archive'
+    });
+
+    const editor = new EntityEditorProvider(vscode.Uri.file('/extension'));
+    await editor.open('EPIC-editor-archive');
+
+    const editorPanel = jest.mocked(vscode.window.createWebviewPanel).mock.results[0].value;
+    expect(editorPanel.webview.html).toContain('Epic Planning Notes');
+    expect(editorPanel.webview.html).toContain('Acceptance Criteria');
+    expect(editorPanel.webview.html).toContain('Render criteria in the epic editor');
+    expect(editorPanel.webview.html).toContain('Questions');
+    expect(editorPanel.webview.html).toContain('Archive Epic');
+    jest.mocked(vscode.window.showWarningMessage).mockResolvedValueOnce('Archive epic only' as never);
+
+    await editorPanel.webview.postMessage({
+      type: 'archiveEntity'
+    });
+
+    const repository = await loadRepository(firstRoot);
+    expect(repository.epics.has('EPIC-editor-archive')).toBe(false);
+    expect(repository.archivedEpics?.has('EPIC-editor-archive')).toBe(true);
+    expect(repository.tasks.has('TASK-031')).toBe(true);
+    expect(vscode.window.showInformationMessage).toHaveBeenCalledWith('Archived EPIC-editor-archive');
+    expect(vscode.commands.executeCommand).toHaveBeenCalledWith('planfs.refreshExplorer');
   });
 
   it('renders common Markdown sections instead of a raw body field in the structured editor', async () => {
@@ -1077,7 +1128,7 @@ describe('VS Code view refresh workspace selection', () => {
     jest.mocked(vscode.window.showWarningMessage).mockResolvedValueOnce('Archive' as never);
 
     await editorPanel.webview.postMessage({
-      type: 'archiveTask'
+      type: 'archiveEntity'
     });
 
     const repository = await loadRepository(firstRoot);

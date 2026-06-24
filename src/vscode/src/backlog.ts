@@ -396,7 +396,6 @@ function renderBacklogHtml(payload: BacklogHtmlPayload): string {
       <option value="assignee">Group by assignee</option>
       <option value="priority">Group by priority</option>
     </select>
-    <button type="button" id="swapPanels" class="secondary">Swap panels</button>
   </div>
   <main id="layout">
     <section id="content" class="listPanel"></section>
@@ -436,13 +435,6 @@ function renderBacklogHtml(payload: BacklogHtmlPayload): string {
     filter.addEventListener('input', () => { query = filter.value.toLowerCase(); persistUiState(); render(); });
     savedFilter.addEventListener('change', () => { savedFilterId = savedFilter.value; persistUiState(); render(); });
     groupByInput.addEventListener('change', () => { groupBy = groupByInput.value; persistUiState(); render(); });
-    document.getElementById('swapPanels').addEventListener('click', () => {
-      panelsSwapped = !panelsSwapped;
-      layout.classList.toggle('swapped', panelsSwapped);
-      persistUiState();
-      vscode.postMessage({ type: 'updateUiPreference', key: 'backlog.panelsSwapped', value: panelsSwapped });
-    });
-
     function persistUiState() {
       vscode.setState?.({
         query,
