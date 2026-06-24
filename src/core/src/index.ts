@@ -8,6 +8,7 @@ export * from './files';
 export * from './loader';
 export * from './validator';
 export * from './repository';
+export * from './references';
 export * from './graph';
 export * from './git';
 export * from './search';
