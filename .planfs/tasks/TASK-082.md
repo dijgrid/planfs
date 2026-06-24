@@ -12,26 +12,26 @@ tags:
   - automation
   - planning
 dueDate: 2026-10-18
-refinementState: captured
+refinementState: ready
 createdAt: 2026-06-23T00:00:00Z
-updatedAt: 2026-06-23T00:00:00Z
+updatedAt: 2026-06-24T03:53:18.564Z
 ---
 
 Expand AI-friendly planning updates beyond task metadata changes while keeping Markdown as the source of truth.
 
-The AI epic questions indicate first-class commands should cover state transitions, task/epic/milestone creation, archive, and task assignment. These commands should generate or update Markdown directly, avoid cache files as a source of truth, and lose safely when files changed underneath an agent during a session.
+This task should wire AI-friendly preview/apply behavior into existing CLI surfaces where possible instead of creating a parallel AI-only command family. Cover the next narrow slice of planning operations: task/epic/milestone creation, task assignment, and task/epic archive. These commands should generate or update Markdown directly, avoid cache files as a source of truth, and lose safely when files changed underneath an agent during a session.
 
 ## Acceptance Criteria
 
-- [ ] AI-oriented update commands can create tasks, epics, and milestones using existing serializer behavior
-- [ ] AI-oriented update commands can archive tasks and epics
-- [ ] AI-oriented update commands can assign tasks
-- [ ] Commands integrate with existing CLI groups where that is clearer than a standalone AI-only surface
+- [ ] Existing CLI create workflows support AI-friendly preview/apply output for tasks, epics, and milestones using existing serializer behavior
+- [ ] Existing archive workflows support AI-friendly preview/apply output for tasks and epics
+- [ ] Task assignment remains available through the safe task update workflow
+- [ ] Commands prefer existing CLI groups where that is clearer than a standalone AI-only surface
 - [ ] Commands can be run without mandatory dry-run mode, while still supporting previews for cautious workflows
 - [ ] Commands detect stale input or changed files and refuse to overwrite newer human edits
 - [ ] Tests cover successful updates and conflict refusal
 
 ## Questions
 
-- [ ] What metadata, if any, should mark an AI-assisted planning update without adding noisy churn? **Hmmm, probably just a note in the markdown?**
-- [ ] Which command names best fit existing CLI conventions? **Hmmm, this should not involve new commands I think just wiring existing commands into something AI can easily utilize**
+- [x] What metadata, if any, should mark an AI-assisted planning update without adding noisy churn? **Do not add default AI-specific metadata. Add a short Markdown note only when explicitly requested.**
+- [x] Which command names best fit existing CLI conventions? **Prefer wiring existing CLI commands into AI-friendly preview/apply workflows rather than adding a parallel AI-only command family.**
