@@ -11,6 +11,15 @@ import {
   loadRepository,
   restoreArchivedEntity
 } from 'planfs-core';
+import {
+  createHelpTopics,
+  handleHelpMessage,
+  HELP_SCRIPT,
+  HELP_STYLES,
+  HelpTopic,
+  renderHelpButton,
+  renderHelpPanel
+} from './help';
 import { getPlanFSWorkspaceFolder } from './workspace';
 
 interface ArchivePayload {
@@ -23,6 +32,7 @@ interface ArchivePayload {
     originalPath?: string;
     body: string;
   }>;
+  helpTopics: HelpTopic[];
 }
 
 export class ArchiveProvider {
@@ -65,6 +75,7 @@ export class ArchiveProvider {
       if (message?.type === 'openRaw') {
         await this.openRaw(String(message.id));
       }
+      await handleHelpMessage(this.extensionUri, message);
     });
 
     await this.render();
@@ -93,7 +104,10 @@ export class ArchiveProvider {
       body: entity.body
     }));
 
-    this.panel.webview.html = renderArchiveHtml({ items });
+    this.panel.webview.html = renderArchiveHtml({
+      items,
+      helpTopics: createHelpTopics(this.extensionUri, ['archive'])
+    });
   }
 
   private async restore(id: string): Promise<void> {
@@ -207,6 +221,8 @@ function renderArchiveHtml(payload: ArchivePayload): string {
     .meta { color: var(--vscode-descriptionForeground); font-size: 12px; line-height: 1.5; }
     .actions { display: flex; gap: 8px; flex-wrap: wrap; }
     .empty { color: var(--vscode-descriptionForeground); }
+    .toolbarSpacer { flex: 1 1 auto; }
+    ${HELP_STYLES}
   </style>
 </head>
 <body>
@@ -217,8 +233,11 @@ function renderArchiveHtml(payload: ArchivePayload): string {
       <option value="task">Tasks</option>
       <option value="epic">Epics</option>
     </select>
+    <span class="toolbarSpacer"></span>
+    ${renderHelpButton('archive', 'Show help for the archive')}
   </div>
   <main id="content"></main>
+  ${renderHelpPanel()}
   <script>
     const vscode = acquireVsCodeApi();
     const payload = ${json};
@@ -267,6 +286,7 @@ function renderArchiveHtml(payload: ArchivePayload): string {
     }
 
     render();
+    ${HELP_SCRIPT}
   </script>
 </body>
 </html>`;

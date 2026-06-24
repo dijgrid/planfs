@@ -15,6 +15,7 @@ import {
 import { BacklogProvider } from './backlog';
 import { ArchiveProvider } from './archive';
 import { BoardProvider } from './board';
+import { createEpicCommand, createMilestoneCommand } from './commands/create';
 import { EntityEditorProvider } from './editor';
 import { ExplorerProvider } from './explorer';
 import { InsightsProvider } from './insights';
@@ -128,6 +129,8 @@ describe('VS Code view refresh workspace selection', () => {
     expect(boardPanel.webview.html).toContain('id="details"');
     expect(boardPanel.webview.html).toContain('renderDetails');
     expect(boardPanel.webview.html).toContain('selectTask(task.id)');
+    expect(boardPanel.webview.html).toContain('data-help-context="board"');
+    expect(boardPanel.webview.html).toContain('Use the board to move active tasks');
     expect(boardPanel.webview.html).toContain('data-open-entity');
     expect(boardPanel.webview.html).toContain('Open Markdown');
     expect(boardPanel.webview.html).toContain('Copy ID');
@@ -158,6 +161,24 @@ describe('VS Code view refresh workspace selection', () => {
     const insightsPanel = jest.mocked(vscode.window.createWebviewPanel).mock.results[1].value;
     expect(insightsPanel.webview.html).toContain('TASK-002');
     expect(insightsPanel.webview.html).not.toContain('TASK-001');
+  });
+
+  it('creates epics and milestones from VS Code commands', async () => {
+    const explorer = new ExplorerProvider();
+    jest.mocked(vscode.window.showInputBox)
+      .mockResolvedValueOnce('Launch Work')
+      .mockResolvedValueOnce('Beta Release')
+      .mockResolvedValueOnce('2026-09-30');
+
+    await createEpicCommand(explorer);
+    await createMilestoneCommand(explorer);
+
+    const repository = await loadRepository(firstRoot);
+    expect(Array.from(repository.epics.values()).map(epic => epic.title)).toContain('Launch Work');
+    expect(Array.from(repository.milestones.values()).map(milestone => milestone.title)).toContain('Beta Release');
+    expect(Array.from(repository.milestones.values()).map(milestone => milestone.targetDate)).toContain('2026-09-30');
+    expect(vscode.window.showInformationMessage).toHaveBeenCalledWith(expect.stringMatching(/^Created epic: EPIC-/));
+    expect(vscode.window.showInformationMessage).toHaveBeenCalledWith(expect.stringMatching(/^Created milestone: MILESTONE-/));
   });
 
   it('renders and updates the backlog view as a separate command surface', async () => {
@@ -269,6 +290,8 @@ describe('VS Code view refresh workspace selection', () => {
     expect(archivePanel.webview.html).toContain('TASK-071');
     expect(archivePanel.webview.html).toContain("type: 'restore'");
     expect(archivePanel.webview.html).toContain("type: 'delete'");
+    expect(archivePanel.webview.html).toContain('data-help-context="archive"');
+    expect(archivePanel.webview.html).toContain('Use the archive to inspect');
   });
 
   it('renders visual planning controls for graph and timeline insights', async () => {

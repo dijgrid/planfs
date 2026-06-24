@@ -17,15 +17,16 @@ import {
   validateEntity
 } from 'planfs-core';
 import {
+  createHelpTopics,
+  handleHelpMessage,
   HELP_SCRIPT,
   HELP_STYLES,
   HelpTopic,
-  loadHelpTopics,
-  openHelpDocument,
   renderHelpButton,
   renderHelpPanel
 } from './help';
 import { extractMarkdownSections, MarkdownSection } from './markdownSections';
+import { escapeHtml, getNonce, renderMessageDocument } from './webview';
 import { getPlanFSWorkspaceFolder } from './workspace';
 
 interface EditorPayload {
@@ -125,9 +126,7 @@ export class EntityEditorProvider {
           await this.archiveEditableEntity(String(entity.id), panel);
         }
 
-        if (message?.type === 'openHelpDocument') {
-          await openHelpDocument(this.extensionUri, 'editor');
-        }
+        await handleHelpMessage(this.extensionUri, message);
       });
       panel.webview.html = renderEditor(panel.webview, await createPayload(repository, entity, this.extensionUri));
     } catch (error) {
@@ -276,17 +275,7 @@ export class EntityEditorProvider {
 }
 
 function renderMessage(message: string): string {
-  return `<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PlanFS Entity Editor</title>
-</head>
-<body>
-  <p>${escapeHtml(message)}</p>
-</body>
-</html>`;
+  return renderMessageDocument('PlanFS Entity Editor', message);
 }
 
 async function openRawFile(entityId: string): Promise<void> {
@@ -379,7 +368,7 @@ async function createPayload(
       tags: Array.from(tags).sort(),
       developers: developers.map(developer => developer.label)
     },
-    helpTopics: loadHelpTopics(extensionUri, ['editor'])
+    helpTopics: createHelpTopics(extensionUri, ['editor'])
   };
 
   if (entity.type === 'epic') {
@@ -1143,24 +1132,4 @@ function toDateInput(value?: string): string {
 
 function titleCase(value: string): string {
   return value.charAt(0).toUpperCase() + value.slice(1);
-}
-
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-
-function getNonce(): string {
-  let text = '';
-  const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-
-  for (let i = 0; i < 32; i++) {
-    text += possible.charAt(Math.floor(Math.random() * possible.length));
-  }
-
-  return text;
 }

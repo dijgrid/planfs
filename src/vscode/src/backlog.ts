@@ -18,11 +18,11 @@ import {
   validateRepositoryState
 } from 'planfs-core';
 import {
+  createHelpTopics,
+  handleHelpMessage,
   HELP_SCRIPT,
   HELP_STYLES,
   HelpTopic,
-  loadHelpTopics,
-  openHelpDocument,
   renderHelpButton,
   renderHelpPanel
 } from './help';
@@ -92,9 +92,7 @@ export class BacklogProvider {
       if (message?.type === 'updateUiPreference') {
         await this.updateUiPreference(String(message.key), message.value);
       }
-      if (message?.type === 'openHelpDocument') {
-        await openHelpDocument(this.extensionUri, 'backlog');
-      }
+      await handleHelpMessage(this.extensionUri, message);
     });
 
     await this.render();
@@ -164,7 +162,7 @@ export class BacklogProvider {
           workspaceFolder
         )
       },
-      helpTopics: loadHelpTopics(this.extensionUri, ['backlog'])
+      helpTopics: createHelpTopics(this.extensionUri, ['backlog'])
     });
   }
 

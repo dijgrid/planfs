@@ -17,6 +17,16 @@ import {
   TaskStatus,
   validateRepositoryState
 } from 'planfs-core';
+import {
+  createHelpTopics,
+  handleHelpMessage,
+  HELP_SCRIPT,
+  HELP_STYLES,
+  HelpTopic,
+  renderHelpButton,
+  renderHelpPanel
+} from './help';
+import { getNonce, renderMessageDocument } from './webview';
 import { getPlanFSWorkspaceFolder } from './workspace';
 
 const TASK_STATUSES: TaskStatus[] = ['todo', 'in-progress', 'review', 'done'];
@@ -56,6 +66,7 @@ interface BoardPayload {
   tasks: BoardTask[];
   statuses: TaskStatus[];
   savedFilters: SavedFilter[];
+  helpTopics: HelpTopic[];
 }
 
 interface CreateTaskContext {
@@ -146,6 +157,8 @@ export class BoardProvider {
       if (message?.type === 'bulkUpdateTasks') {
         await this.bulkUpdateTasks(message as Partial<BulkUpdateRequest>);
       }
+
+      await handleHelpMessage(this.extensionUri, message);
     });
 
     await this.render({ replaceHtml: true });
@@ -170,7 +183,10 @@ export class BoardProvider {
     }
 
     try {
-      const payload = await loadBoardPayload(workspaceFolder.uri.fsPath);
+      const payload = {
+        ...await loadBoardPayload(workspaceFolder.uri.fsPath),
+        helpTopics: createHelpTopics(this.extensionUri, ['board'])
+      };
 
       if (!options.replaceHtml && this.hasRenderedBoard) {
         const didPost = await this.panel.webview.postMessage({
@@ -482,7 +498,7 @@ export class BoardProvider {
   }
 }
 
-async function loadBoardPayload(rootPath: string): Promise<BoardPayload> {
+async function loadBoardPayload(rootPath: string): Promise<Omit<BoardPayload, 'helpTopics'>> {
   const repository = await loadRepository(rootPath);
   const nextWorkCandidates = getNextWorkCandidates(repository, {
     includeBlocked: true
@@ -553,17 +569,7 @@ function toBoardTask(
 }
 
 function renderMessage(message: string): string {
-  return `<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PlanFS Board</title>
-</head>
-<body>
-  <p>${escapeHtml(message)}</p>
-</body>
-</html>`;
+  return renderMessageDocument('PlanFS Board', message);
 }
 
 function toBoardSavedFilter(filter: SavedFilter): SavedFilter {
@@ -1236,6 +1242,8 @@ function renderBoard(
       justify-self: start;
     }
 
+    ${HELP_STYLES}
+
     @media (max-width: 980px) {
       .content {
         grid-template-columns: 1fr;
@@ -1254,6 +1262,7 @@ function renderBoard(
         <h1>PlanFS Board</h1>
         <div class="subtle">Drag cards between statuses. Changes are saved to .planfs task files.</div>
       </div>
+      ${renderHelpButton('board', 'Show help for the board')}
     </header>
     <div class="toolbar">
       <input id="filter" type="search" placeholder="Filter by ID, title, assignee, epic, milestone, or tag" aria-label="Filter tasks">
@@ -1298,6 +1307,7 @@ function renderBoard(
       <aside id="details" class="detailsDrawer" aria-live="polite"></aside>
     </div>
   </div>
+  ${renderHelpPanel()}
   <script nonce="${nonce}">
     const vscode = acquireVsCodeApi();
     let state = ${serializedPayload};
@@ -2027,27 +2037,8 @@ function renderBoard(
     }
 
     render();
+    ${HELP_SCRIPT}
   </script>
 </body>
 </html>`;
-}
-
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-
-function getNonce(): string {
-  let text = '';
-  const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-
-  for (let i = 0; i < 32; i++) {
-    text += possible.charAt(Math.floor(Math.random() * possible.length));
-  }
-
-  return text;
 }

@@ -13,15 +13,15 @@ import {
   validateRepositoryState
 } from 'planfs-core';
 import {
+  createHelpTopics,
+  handleHelpMessage,
   HELP_SCRIPT,
   HELP_STYLES,
-  HelpContext,
   HelpTopic,
-  loadHelpTopics,
-  openHelpDocument,
   renderHelpButton,
   renderHelpPanel
 } from './help';
+import { getNonce, renderMessageDocument } from './webview';
 import { getPlanFSWorkspaceFolder } from './workspace';
 
 interface InsightsPayload {
@@ -178,9 +178,7 @@ export class InsightsProvider {
         await openEntityFile(String(message.entityId));
       }
 
-      if (message?.type === 'openHelpDocument') {
-        await openHelpDocument(this.extensionUri, message.context as HelpContext);
-      }
+      await handleHelpMessage(this.extensionUri, message);
     });
 
     await this.render();
@@ -313,7 +311,7 @@ async function createPayload(
       csv: '',
       markdown: ''
     },
-    helpTopics: loadHelpTopics(extensionUri, [
+    helpTopics: createHelpTopics(extensionUri, [
       'insights.timeline',
       'insights.graph',
       'insights.reports',
@@ -547,17 +545,7 @@ function csvLine(values: Array<string | number>): string {
 }
 
 function renderMessage(message: string): string {
-  return `<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PlanFS Insights</title>
-</head>
-<body>
-  <p>${escapeHtml(message)}</p>
-</body>
-</html>`;
+  return renderMessageDocument('PlanFS Insights', message);
 }
 
 function renderInsights(webview: vscode.Webview, payload: InsightsPayload): string {
@@ -1856,24 +1844,4 @@ function renderInsights(webview: vscode.Webview, payload: InsightsPayload): stri
   </script>
 </body>
 </html>`;
-}
-
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-
-function getNonce(): string {
-  let text = '';
-  const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-
-  for (let i = 0; i < 32; i++) {
-    text += possible.charAt(Math.floor(Math.random() * possible.length));
-  }
-
-  return text;
 }

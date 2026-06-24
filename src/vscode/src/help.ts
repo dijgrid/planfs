@@ -2,9 +2,12 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { parseFrontmatter } from 'planfs-core';
+import { escapeHtml } from './webview';
 
 export type HelpContext =
+  | 'archive'
   | 'backlog'
+  | 'board'
   | 'editor'
   | 'insights.timeline'
   | 'insights.graph'
@@ -24,7 +27,9 @@ interface HelpTopicFile {
 }
 
 const HELP_TOPIC_FILES: HelpTopicFile[] = [
+  { context: 'archive', fileName: 'archive.md' },
   { context: 'backlog', fileName: 'backlog.md' },
+  { context: 'board', fileName: 'board.md' },
   { context: 'editor', fileName: 'editor.md' },
   { context: 'insights.timeline', fileName: 'insights-timeline.md' },
   { context: 'insights.graph', fileName: 'insights-graph.md' },
@@ -34,6 +39,22 @@ const HELP_TOPIC_FILES: HelpTopicFile[] = [
 
 export function loadHelpTopics(extensionUri: vscode.Uri, contexts: HelpContext[]): HelpTopic[] {
   return contexts.map(context => loadHelpTopic(extensionUri, context));
+}
+
+export function createHelpTopics(extensionUri: vscode.Uri, contexts: HelpContext[]): HelpTopic[] {
+  return loadHelpTopics(extensionUri, contexts);
+}
+
+export async function handleHelpMessage(
+  extensionUri: vscode.Uri,
+  message: unknown
+): Promise<boolean> {
+  if (!isHelpMessage(message)) {
+    return false;
+  }
+
+  await openHelpDocument(extensionUri, message.context);
+  return true;
 }
 
 export async function openHelpDocument(
@@ -215,6 +236,20 @@ function findTopicFile(context: HelpContext): HelpTopicFile {
   return topicFile;
 }
 
+function isHelpMessage(value: unknown): value is { type: 'openHelpDocument'; context: HelpContext } {
+  if (
+    typeof value !== 'object'
+    || value === null
+    || (value as { type?: unknown }).type !== 'openHelpDocument'
+  ) {
+    return false;
+  }
+
+  const context = (value as { context?: unknown }).context;
+  return typeof context === 'string'
+    && HELP_TOPIC_FILES.some(topic => topic.context === context);
+}
+
 function markdownBodyToHtml(markdown: string): string {
   const lines = markdown.split(/\r?\n/);
   const html: string[] = [];
@@ -245,14 +280,4 @@ function markdownBodyToHtml(markdown: string): string {
   }
 
   return html.join('');
-}
-
-function escapeHtml(value: unknown): string {
-  return String(value ?? '').replace(/[&<>"']/g, char => ({
-    '&': '&amp;',
-    '<': '&lt;',
-    '>': '&gt;',
-    '"': '&quot;',
-    "'": '&#39;'
-  }[char] ?? char));
 }
