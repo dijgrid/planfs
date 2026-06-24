@@ -209,6 +209,12 @@ describe('VS Code view refresh workspace selection', () => {
     expect(backlogPanel.webview.html).toContain('vscode.getState');
     expect(backlogPanel.webview.html).toContain('savedFilterId');
     expect(backlogPanel.webview.html).toContain('persistUiState');
+    expect(backlogPanel.webview.html).toContain('class="toolbar backlogToolbar"');
+    expect(backlogPanel.webview.html).toContain('class="captureGroup"');
+    expect(backlogPanel.webview.html).toContain('class="filterGroup"');
+    expect(backlogPanel.webview.html).toContain('grid-template-columns: minmax(180px, 1.35fr) minmax(150px, 0.9fr) minmax(150px, 0.85fr)');
+    expect(backlogPanel.webview.html).toContain('@media (max-width: 700px)');
+    expect(backlogPanel.webview.html).toContain('.filterGroup { grid-template-columns: 1fr; min-width: 0; }');
     expect(backlogPanel.webview.html).toContain('editorPanel');
     expect(backlogPanel.webview.html).toContain('data-select-task');
     expect(backlogPanel.webview.html).toContain('Open Markdown');

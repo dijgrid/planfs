@@ -350,14 +350,18 @@ function renderBacklogHtml(payload: BacklogHtmlPayload): string {
   <title>PlanFS Backlog</title>
   <style>
     * { box-sizing: border-box; }
-    body { margin: 0; color: var(--vscode-foreground); background: var(--vscode-editor-background); font-family: var(--vscode-font-family); font-size: var(--vscode-font-size); }
-    .toolbar { display: flex; gap: 8px; align-items: center; padding: 12px; border-bottom: 1px solid var(--vscode-panel-border); flex-wrap: wrap; }
+    body { height: 100vh; margin: 0; display: grid; grid-template-rows: auto minmax(0, 1fr); color: var(--vscode-foreground); background: var(--vscode-editor-background); font-family: var(--vscode-font-family); font-size: var(--vscode-font-size); }
+    .toolbar { display: flex; gap: 8px; align-items: center; padding: 8px 10px; border-bottom: 1px solid var(--vscode-panel-border); flex-wrap: wrap; }
+    .backlogToolbar { align-items: stretch; }
+    .captureGroup { display: grid; grid-template-columns: minmax(180px, 1fr) auto; gap: 8px; flex: 1 1 280px; min-width: 220px; }
+    .filterGroup { display: grid; grid-template-columns: minmax(180px, 1.35fr) minmax(150px, 0.9fr) minmax(150px, 0.85fr); gap: 8px; flex: 2 1 560px; min-width: min(100%, 360px); }
+    .toolbarActions { display: flex; align-items: center; justify-content: flex-end; flex: 0 0 auto; min-width: 30px; }
     input, select, button { max-width: 100%; color: var(--vscode-input-foreground); background: var(--vscode-input-background); border: 1px solid var(--vscode-input-border); padding: 6px 8px; border-radius: 4px; }
     input, select { width: 100%; min-width: 0; }
     input[type="checkbox"] { width: auto; min-width: auto; flex: 0 0 auto; margin: 2px 0 0; }
     button { cursor: pointer; color: var(--vscode-button-foreground); background: var(--vscode-button-background); border-color: var(--vscode-button-background); }
     button.secondary { color: var(--vscode-button-secondaryForeground); background: var(--vscode-button-secondaryBackground); border-color: var(--vscode-button-secondaryBackground); }
-    main { display: grid; grid-template-columns: minmax(320px, 0.95fr) minmax(320px, 1.05fr); gap: 12px; height: calc(100vh - 58px); padding: 12px; overflow: hidden; }
+    main { display: grid; grid-template-columns: minmax(320px, 0.95fr) minmax(320px, 1.05fr); gap: 12px; min-height: 0; padding: 12px; overflow: hidden; }
     .editorPanel, .listPanel { min-width: 0; border: 1px solid var(--vscode-panel-border); border-radius: 6px; background: var(--vscode-editorWidget-background); }
     .editorPanel { min-height: 0; padding: 12px; overflow: auto; }
     .listPanel { min-height: 0; padding: 10px; overflow: auto; }
@@ -385,11 +389,16 @@ function renderBacklogHtml(payload: BacklogHtmlPayload): string {
     .sectionItem { display: flex; gap: 8px; align-items: flex-start; padding: 6px 0; color: var(--vscode-foreground); }
     .sectionItem.done { color: var(--vscode-descriptionForeground); }
     .sectionText { line-height: 1.35; overflow-wrap: anywhere; }
-    .toolbarSpacer { flex: 1 1 auto; }
     ${HELP_STYLES}
     @media (max-width: 820px) {
+      body { height: auto; min-height: 100vh; display: block; }
       main { grid-template-columns: 1fr; height: auto; overflow: visible; }
       .editorPanel, .listPanel { max-height: 70vh; }
+    }
+    @media (max-width: 700px) {
+      .captureGroup, .filterGroup, .toolbarActions { flex-basis: 100%; }
+      .filterGroup { grid-template-columns: 1fr; min-width: 0; }
+      .toolbarActions { justify-content: flex-start; }
     }
     @media (max-width: 1120px) {
       .formGrid { grid-template-columns: 1fr; }
@@ -397,21 +406,26 @@ function renderBacklogHtml(payload: BacklogHtmlPayload): string {
   </style>
 </head>
 <body>
-  <div class="toolbar">
-    <input id="captureTitle" type="text" placeholder="Capture backlog item" aria-label="Capture backlog item">
-    <button type="button" id="capture">Capture</button>
-    <input id="filter" type="search" placeholder="Filter backlog" aria-label="Filter backlog">
-    <select id="savedFilter" aria-label="Saved filter"></select>
-    <select id="groupBy" aria-label="Group backlog">
-      <option value="">Backlog order</option>
-      <option value="refinementState">Group by refinement</option>
-      <option value="epic">Group by epic</option>
-      <option value="milestone">Group by milestone</option>
-      <option value="assignee">Group by assignee</option>
-      <option value="priority">Group by priority</option>
-    </select>
-    <span class="toolbarSpacer"></span>
-    ${renderHelpButton('backlog', 'Show help for the backlog view')}
+  <div class="toolbar backlogToolbar">
+    <div class="captureGroup">
+      <input id="captureTitle" type="text" placeholder="Capture backlog item" aria-label="Capture backlog item">
+      <button type="button" id="capture">Capture</button>
+    </div>
+    <div class="filterGroup" aria-label="Backlog filters">
+      <input id="filter" type="search" placeholder="Filter backlog" aria-label="Filter backlog">
+      <select id="savedFilter" aria-label="Saved filter"></select>
+      <select id="groupBy" aria-label="Group backlog">
+        <option value="">Backlog order</option>
+        <option value="refinementState">Group by refinement</option>
+        <option value="epic">Group by epic</option>
+        <option value="milestone">Group by milestone</option>
+        <option value="assignee">Group by assignee</option>
+        <option value="priority">Group by priority</option>
+      </select>
+    </div>
+    <div class="toolbarActions">
+      ${renderHelpButton('backlog', 'Show help for the backlog view')}
+    </div>
   </div>
   <main id="layout">
     <section id="content" class="listPanel"></section>
