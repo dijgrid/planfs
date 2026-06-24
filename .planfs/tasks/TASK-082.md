@@ -33,5 +33,5 @@ The AI epic questions indicate first-class commands should cover state transitio
 
 ## Questions
 
-- [ ] What metadata, if any, should mark an AI-assisted planning update without adding noisy churn?
-- [ ] Which command names best fit existing CLI conventions?
+- [ ] What metadata, if any, should mark an AI-assisted planning update without adding noisy churn? **Hmmm, probably just a note in the markdown?**
+- [ ] Which command names best fit existing CLI conventions? **Hmmm, this should not involve new commands I think just wiring existing commands into something AI can easily utilize**

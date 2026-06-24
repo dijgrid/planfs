@@ -2,6 +2,9 @@
 id: TASK-012
 title: Add structured entity editors
 status: done
+archive:
+  archivedAt: 2026-06-24T01:55:21.269Z
+  originalPath: .planfs/tasks/TASK-012.md
 priority: high
 assignee: justin
 epic: EPIC-phase-2-enhanced
@@ -14,10 +17,10 @@ tags:
   - editing
   - phase-2
 dueDate: 2026-06-15
-createdAt: 2026-06-15T00:00:00Z
-updatedAt: 2026-06-15T00:00:00Z
 refinementState: ready
 backlogOrder: 20
+createdAt: 2026-06-15T00:00:00Z
+updatedAt: 2026-06-24T01:55:21.269Z
 ---
 
 Provide form-based editing for PlanFS entities.

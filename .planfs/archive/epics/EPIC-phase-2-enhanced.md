@@ -2,11 +2,14 @@
 id: EPIC-phase-2-enhanced
 title: Phase 2 - Enhanced Editing and Board Views
 status: completed
+archive:
+  archivedAt: 2026-06-24T01:55:21.269Z
+  originalPath: .planfs/epics/EPIC-phase-2-enhanced.md
 owner: justin
 description: Add richer visualization, structured editing, search, and Git-aware workflows
 targetDate: 2026-08-11
 createdAt: 2026-06-15T00:00:00Z
-updatedAt: 2026-06-21T00:00:00Z
+updatedAt: 2026-06-24T01:55:21.269Z
 ---
 
 Phase 2 turns the MVP into a day-to-day planning interface with board views, form editors, filtering, and early Git integration.

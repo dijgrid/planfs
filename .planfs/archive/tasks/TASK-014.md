@@ -2,6 +2,9 @@
 id: TASK-014
 title: Add Git-aware planning helpers
 status: done
+archive:
+  archivedAt: 2026-06-24T01:55:21.269Z
+  originalPath: .planfs/tasks/TASK-014.md
 priority: medium
 assignee: justin
 epic: EPIC-phase-2-enhanced
@@ -12,10 +15,10 @@ tags:
   - git
   - phase-2
 dueDate: 2026-06-15
-createdAt: 2026-06-15T00:00:00Z
-updatedAt: 2026-06-15T00:00:00Z
 refinementState: ready
 backlogOrder: 40
+createdAt: 2026-06-15T00:00:00Z
+updatedAt: 2026-06-24T01:55:21.269Z
 ---
 
 Start connecting planning artifacts to branch and commit workflows.

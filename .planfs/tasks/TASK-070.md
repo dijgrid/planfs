@@ -2,7 +2,7 @@
 id: TASK-070
 title: Define external import mapping and migration workflow
 status: todo
-priority: medium
+priority: low
 assignee: justin
 epic: EPIC-external-import-workflows
 milestone: MILESTONE-phase-5
@@ -17,10 +17,10 @@ tags:
   - github
   - csv
 dueDate: 2026-11-03
-createdAt: 2026-06-21T18:24:21Z
-updatedAt: 2026-06-21T18:24:21Z
 refinementState: needs-refinement
 backlogOrder: 21
+createdAt: 2026-06-21T18:24:21Z
+updatedAt: 2026-06-24T01:50:12.807Z
 ---
 
 Define the first external import workflow for bringing work items from CSV exports, Jira, GitLab, GitHub Issues, and other trackers into PlanFS.

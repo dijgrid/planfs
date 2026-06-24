@@ -16,7 +16,7 @@ tags:
 dueDate: 2026-10-21
 createdAt: 2026-06-15T00:00:00Z
 updatedAt: 2026-06-21T18:24:21Z
-refinementState: needs-refinement
+refinementState: ready
 backlogOrder: 20
 ---
 
