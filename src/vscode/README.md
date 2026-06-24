@@ -20,7 +20,7 @@ Install PlanFS from the VS Code Marketplace once published, or install a local V
 
 ```sh
 npm run package:vscode
-code --install-extension dist/planfs-vscode-0.1.0.vsix
+code --install-extension dist/planfs-vscode-1.0.0-alpha.0.vsix
 ```
 
 For development setup and local packaging details, see the [VS Code Extension Build and Local Install guide](https://github.com/dijgrid/planfs/blob/main/docs/VSCODE_EXTENSION.md).

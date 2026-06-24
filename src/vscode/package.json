@@ -2,7 +2,7 @@
   "name": "planfs-vscode",
   "displayName": "PlanFS",
   "description": "Git-native project management for VS Code",
-  "version": "0.8.0",
+  "version": "1.0.0-alpha.0",
   "publisher": "dijgrid",
   "license": "MIT",
   "icon": "resources/icon.png",
@@ -141,11 +141,6 @@
           "command": "planfs.openTask",
           "when": "view == planfs-explorer && viewItem == task",
           "group": "navigation@2"
-        },
-        {
-          "command": "planfs.archiveItem",
-          "when": "view == planfs-explorer && viewItem == epic",
-          "group": "inline"
         }
       ]
     },
@@ -168,7 +163,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "planfs-core": "0.8.0"
+    "planfs-core": "1.0.0-alpha.0"
   },
   "devDependencies": {
     "@types/jest": "^30.0.0",

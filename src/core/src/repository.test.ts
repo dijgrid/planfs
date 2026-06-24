@@ -485,6 +485,32 @@ describe('Repository', () => {
       expect(repository.archivedTasks?.has('TASK-001')).toBe(false);
     });
 
+    it('allows active tasks to keep historical dependencies on archived tasks', async () => {
+      const dependency = {
+        ...createTaskTemplate('TASK-001', 'Archived dependency'),
+        status: 'done' as const
+      };
+      const active = {
+        ...createTaskTemplate('TASK-002', 'Active dependent'),
+        dependsOn: [dependency.id]
+      };
+      await saveEntity(rootPath, dependency);
+      await saveEntity(rootPath, active);
+      await archiveEntity(rootPath, dependency.id, {
+        now: new Date('2026-06-21T18:44:00Z')
+      });
+
+      const repository = await loadRepository(rootPath);
+      const result = validateRepositoryState(repository);
+
+      expect(result.valid).toBe(true);
+      expect(result.errors).toContainEqual(expect.objectContaining({
+        id: 'TASK-002',
+        message: 'Task depends on archived task: TASK-001',
+        severity: 'warning'
+      }));
+    });
+
     it('archives an epic with child tasks and can permanently delete archived items', async () => {
       const epic = createEpicTemplate('EPIC-archive', 'Archive epic');
       const child = {

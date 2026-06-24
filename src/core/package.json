@@ -1,6 +1,6 @@
 {
   "name": "planfs-core",
-  "version": "0.8.0",
+  "version": "1.0.0-alpha.0",
   "description": "Core parsing and validation library for PlanFS",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -30,7 +30,7 @@
   "license": "MIT",
   "dependencies": {
     "ajv": "^8.12.0",
-    "planfs-schema": "0.8.0",
+    "planfs-schema": "1.0.0-alpha.0",
     "yaml": "^2.3.0"
   },
   "devDependencies": {

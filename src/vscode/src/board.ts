@@ -4,6 +4,7 @@
 
 import * as vscode from 'vscode';
 import {
+  bulkUpdateTasks as bulkUpdateTaskSet,
   createTaskTemplate,
   getNextTaskId,
   getNextWorkCandidates,
@@ -14,9 +15,18 @@ import {
   saveEntity,
   Task,
   TaskReadiness,
-  TaskStatus,
-  validateRepositoryState
+  TaskStatus
 } from 'planfs-core';
+import {
+  createHelpTopics,
+  handleHelpMessage,
+  HELP_SCRIPT,
+  HELP_STYLES,
+  HelpTopic,
+  renderHelpButton,
+  renderHelpPanel
+} from './help';
+import { getNonce, renderMessageDocument } from './webview';
 import { getPlanFSWorkspaceFolder } from './workspace';
 
 const TASK_STATUSES: TaskStatus[] = ['todo', 'in-progress', 'review', 'done'];
@@ -56,6 +66,7 @@ interface BoardPayload {
   tasks: BoardTask[];
   statuses: TaskStatus[];
   savedFilters: SavedFilter[];
+  helpTopics: HelpTopic[];
 }
 
 interface CreateTaskContext {
@@ -67,12 +78,13 @@ interface CreateTaskContext {
   tags?: string[];
 }
 
-type BulkUpdateAction = 'status' | 'assignee' | 'tag' | 'epic' | 'milestone' | 'priority';
+type BulkUpdateAction = 'status' | 'assignee' | 'milestone' | 'priority' | 'estimate';
 type BoardMode = 'status' | 'next-work';
 
 interface BulkUpdateRequest {
   taskIds: string[];
   action: BulkUpdateAction;
+  expectedUpdatedAtByTaskId?: Record<string, string | undefined>;
 }
 
 export class BoardProvider {
@@ -146,6 +158,8 @@ export class BoardProvider {
       if (message?.type === 'bulkUpdateTasks') {
         await this.bulkUpdateTasks(message as Partial<BulkUpdateRequest>);
       }
+
+      await handleHelpMessage(this.extensionUri, message);
     });
 
     await this.render({ replaceHtml: true });
@@ -170,7 +184,10 @@ export class BoardProvider {
     }
 
     try {
-      const payload = await loadBoardPayload(workspaceFolder.uri.fsPath);
+      const payload = {
+        ...await loadBoardPayload(workspaceFolder.uri.fsPath),
+        helpTopics: createHelpTopics(this.extensionUri, ['board'])
+      };
 
       if (!options.replaceHtml && this.hasRenderedBoard) {
         const didPost = await this.panel.webview.postMessage({
@@ -440,49 +457,30 @@ export class BoardProvider {
 
     try {
       const repository = await loadRepository(workspaceFolder.uri.fsPath);
-      const missingTaskIds = taskIds.filter(taskId => !repository.tasks.has(taskId));
-      if (missingTaskIds.length > 0) {
-        vscode.window.showErrorMessage(`Cannot bulk update missing tasks: ${missingTaskIds.join(', ')}`);
-        await this.render();
-        return;
-      }
-
-      const updatedTasks = taskIds.map(taskId => repository.tasks.get(taskId)!);
-      const now = new Date().toISOString();
-      for (const task of updatedTasks) {
-        applyBulkUpdate(task, action, value);
-        task.updatedAt = now;
-      }
-
-      const validation = validateRepositoryState(repository);
-      const errors = validation.errors.filter(error => error.severity === 'error');
-      if (errors.length > 0) {
-        vscode.window.showErrorMessage(
-          `Bulk update blocked by validation: ${errors.slice(0, 3).map(error => error.message).join('; ')}`
-        );
-        await this.render();
-        return;
-      }
-
-      for (const task of updatedTasks) {
-        await saveEntity(workspaceFolder.uri.fsPath, task);
-      }
+      const result = await bulkUpdateTaskSet(workspaceFolder.uri.fsPath, repository, {
+        taskIds,
+        patch: { [action]: value },
+        expectedUpdatedAt: request.expectedUpdatedAtByTaskId
+      });
 
       vscode.window.showInformationMessage(
-        `Updated ${updatedTasks.length} task${updatedTasks.length === 1 ? '' : 's'}`
+        `Updated ${result.changedTasks.length} task${result.changedTasks.length === 1 ? '' : 's'}`
       );
       await this.render();
       await this.panel?.webview.postMessage({ type: 'clearSelection' });
     } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
       vscode.window.showErrorMessage(
-        `Failed to bulk update tasks: ${error instanceof Error ? error.message : String(error)}`
+        message.startsWith('Bulk update failed validation:')
+          ? `Bulk update blocked by validation: ${message.replace('Bulk update failed validation: ', '')}`
+          : `Failed to bulk update tasks: ${message}`
       );
       await this.render();
     }
   }
 }
 
-async function loadBoardPayload(rootPath: string): Promise<BoardPayload> {
+async function loadBoardPayload(rootPath: string): Promise<Omit<BoardPayload, 'helpTopics'>> {
   const repository = await loadRepository(rootPath);
   const nextWorkCandidates = getNextWorkCandidates(repository, {
     includeBlocked: true
@@ -553,17 +551,7 @@ function toBoardTask(
 }
 
 function renderMessage(message: string): string {
-  return `<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PlanFS Board</title>
-</head>
-<body>
-  <p>${escapeHtml(message)}</p>
-</body>
-</html>`;
+  return renderMessageDocument('PlanFS Board', message);
 }
 
 function toBoardSavedFilter(filter: SavedFilter): SavedFilter {
@@ -662,10 +650,9 @@ function parseTaskContext(value: string): Partial<CreateTaskContext> {
 function isBulkUpdateAction(action: unknown): action is BulkUpdateAction {
   return action === 'status'
     || action === 'assignee'
-    || action === 'tag'
-    || action === 'epic'
     || action === 'milestone'
-    || action === 'priority';
+    || action === 'priority'
+    || action === 'estimate';
 }
 
 async function promptBulkUpdateValue(
@@ -689,10 +676,9 @@ function bulkActionLabel(action: BulkUpdateAction): string {
   return {
     status: 'Set status',
     assignee: 'Set assignee',
-    tag: 'Add tag',
-    epic: 'Set epic',
     milestone: 'Set milestone',
-    priority: 'Set priority'
+    priority: 'Set priority',
+    estimate: 'Set estimate'
   }[action];
 }
 
@@ -700,54 +686,10 @@ function bulkActionPlaceholder(action: BulkUpdateAction): string {
   return {
     status: 'todo, in-progress, review, or done',
     assignee: 'Assignee name',
-    tag: 'Tag to add',
-    epic: 'EPIC-example',
     milestone: 'MILESTONE-example',
-    priority: 'low, medium, high, or critical'
+    priority: 'low, medium, high, or critical',
+    estimate: '2d, 3h, or team estimate'
   }[action];
-}
-
-function applyBulkUpdate(
-  task: Task,
-  action: BulkUpdateAction,
-  value: string
-): void {
-  if (action === 'status') {
-    if (!TASK_STATUSES.includes(value as TaskStatus)) {
-      throw new Error(`Invalid task status: ${value}`);
-    }
-    task.status = value as TaskStatus;
-    return;
-  }
-
-  if (action === 'priority') {
-    const priorities = ['low', 'medium', 'high', 'critical'];
-    if (!priorities.includes(value)) {
-      throw new Error(`Invalid task priority: ${value}`);
-    }
-    task.priority = value as Task['priority'];
-    return;
-  }
-
-  if (action === 'tag') {
-    if (!value) {
-      throw new Error('Tag cannot be empty.');
-    }
-    task.tags = Array.from(new Set([...(task.tags ?? []), value])).sort();
-    return;
-  }
-
-  if (action === 'assignee') {
-    task.assignee = value || undefined;
-    return;
-  }
-
-  if (action === 'epic') {
-    task.epic = value || undefined;
-    return;
-  }
-
-  task.milestone = value || undefined;
 }
 
 function renderBoard(
@@ -1236,6 +1178,8 @@ function renderBoard(
       justify-self: start;
     }
 
+    ${HELP_STYLES}
+
     @media (max-width: 980px) {
       .content {
         grid-template-columns: 1fr;
@@ -1254,6 +1198,7 @@ function renderBoard(
         <h1>PlanFS Board</h1>
         <div class="subtle">Drag cards between statuses. Changes are saved to .planfs task files.</div>
       </div>
+      ${renderHelpButton('board', 'Show help for the board')}
     </header>
     <div class="toolbar">
       <input id="filter" type="search" placeholder="Filter by ID, title, assignee, epic, milestone, or tag" aria-label="Filter tasks">
@@ -1283,10 +1228,9 @@ function renderBoard(
       <select id="bulkAction" aria-label="Bulk action">
         <option value="status">Set status</option>
         <option value="assignee">Set assignee</option>
-        <option value="tag">Add tag</option>
-        <option value="epic">Set epic</option>
         <option value="milestone">Set milestone</option>
         <option value="priority">Set priority</option>
+        <option value="estimate">Set estimate</option>
       </select>
       <button type="button" id="bulkApply">Apply</button>
       <button type="button" id="bulkClear">Clear</button>
@@ -1298,6 +1242,7 @@ function renderBoard(
       <aside id="details" class="detailsDrawer" aria-live="polite"></aside>
     </div>
   </div>
+  ${renderHelpPanel()}
   <script nonce="${nonce}">
     const vscode = acquireVsCodeApi();
     let state = ${serializedPayload};
@@ -1372,7 +1317,13 @@ function renderBoard(
       vscode.postMessage({
         type: 'bulkUpdateTasks',
         taskIds: Array.from(selectedBulkTaskIds),
-        action: bulkActionInput.value
+        action: bulkActionInput.value,
+        expectedUpdatedAtByTaskId: Object.fromEntries(
+          Array.from(selectedBulkTaskIds).map(taskId => [
+            taskId,
+            state.tasks.find(task => task.id === taskId)?.updatedAt
+          ])
+        )
       });
     });
     bulkClearButton.addEventListener('click', () => {
@@ -2027,27 +1978,8 @@ function renderBoard(
     }
 
     render();
+    ${HELP_SCRIPT}
   </script>
 </body>
 </html>`;
-}
-
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-
-function getNonce(): string {
-  let text = '';
-  const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-
-  for (let i = 0; i < 32; i++) {
-    text += possible.charAt(Math.floor(Math.random() * possible.length));
-  }
-
-  return text;
 }

@@ -16,7 +16,8 @@ import {
   PlanfsInitializationResult
 } from './files';
 import { loadEntity, getFilenameFromId, getEntityDirectory } from './loader';
-import { validateAll, validateEntity } from './validator';
+import { listArchivedReferenceEntities } from './references';
+import { validateEntity, validateRepository } from './validator';
 import {
   Entity,
   Repository,
@@ -125,9 +126,15 @@ export function getAllEntities(
  */
 export function validateRepositoryState(repository: Repository): ValidationResult {
   const entities = getAllEntities(repository);
-  const result = validateAll(entities);
-  const archivedErrors = listArchivedEntities(repository).flatMap(entity => validateEntity(entity));
-  const errors = [...result.errors, ...archivedErrors];
+  const archivedEntities = listArchivedReferenceEntities(repository);
+  const entityErrors = [
+    ...entities.flatMap(entity => validateEntity(entity)),
+    ...archivedEntities.flatMap(entity => validateEntity(entity))
+  ];
+  const repositoryErrors = validateRepository(entities, {
+    referenceEntities: archivedEntities
+  });
+  const errors = [...entityErrors, ...repositoryErrors];
   return {
     valid: !errors.some(error => error.severity === 'error'),
     errors

@@ -15,6 +15,7 @@ import {
 import { BacklogProvider } from './backlog';
 import { ArchiveProvider } from './archive';
 import { BoardProvider } from './board';
+import { createEpicCommand, createMilestoneCommand } from './commands/create';
 import { EntityEditorProvider } from './editor';
 import { ExplorerProvider } from './explorer';
 import { InsightsProvider } from './insights';
@@ -128,6 +129,8 @@ describe('VS Code view refresh workspace selection', () => {
     expect(boardPanel.webview.html).toContain('id="details"');
     expect(boardPanel.webview.html).toContain('renderDetails');
     expect(boardPanel.webview.html).toContain('selectTask(task.id)');
+    expect(boardPanel.webview.html).toContain('data-help-context="board"');
+    expect(boardPanel.webview.html).toContain('Use the board to move active tasks');
     expect(boardPanel.webview.html).toContain('data-open-entity');
     expect(boardPanel.webview.html).toContain('Open Markdown');
     expect(boardPanel.webview.html).toContain('Copy ID');
@@ -160,12 +163,35 @@ describe('VS Code view refresh workspace selection', () => {
     expect(insightsPanel.webview.html).not.toContain('TASK-001');
   });
 
+  it('creates epics and milestones from VS Code commands', async () => {
+    const explorer = new ExplorerProvider();
+    jest.mocked(vscode.window.showInputBox)
+      .mockResolvedValueOnce('Launch Work')
+      .mockResolvedValueOnce('Beta Release')
+      .mockResolvedValueOnce('2026-09-30');
+
+    await createEpicCommand(explorer);
+    await createMilestoneCommand(explorer);
+
+    const repository = await loadRepository(firstRoot);
+    expect(Array.from(repository.epics.values()).map(epic => epic.title)).toContain('Launch Work');
+    expect(Array.from(repository.milestones.values()).map(milestone => milestone.title)).toContain('Beta Release');
+    expect(Array.from(repository.milestones.values()).map(milestone => milestone.targetDate)).toContain('2026-09-30');
+    expect(vscode.window.showInformationMessage).toHaveBeenCalledWith(expect.stringMatching(/^Created epic: EPIC-/));
+    expect(vscode.window.showInformationMessage).toHaveBeenCalledWith(expect.stringMatching(/^Created milestone: MILESTONE-/));
+  });
+
   it('renders and updates the backlog view as a separate command surface', async () => {
     await saveEntity(firstRoot, {
       ...createTaskTemplate('TASK-050', 'Captured backlog task'),
       refinementState: 'captured',
       priority: 'high',
       body: 'Needs later refinement.\n\n## Acceptance Criteria\n\n- [ ] Refine the task'
+    });
+    await saveEntity(firstRoot, {
+      ...createTaskTemplate('TASK-051', 'Completed captured backlog task'),
+      status: 'done',
+      refinementState: 'captured'
     });
 
     const uiPreferences = new PlanFSUiPreferences(new TestMemento());
@@ -177,18 +203,28 @@ describe('VS Code view refresh workspace selection', () => {
 
     expect(backlogPanel.webview.html).toContain('PlanFS Backlog');
     expect(backlogPanel.webview.html).toContain('Captured backlog task');
+    expect(backlogPanel.webview.html).not.toContain('Completed captured backlog task');
     expect(backlogPanel.webview.html).toContain('captureBacklogItem');
     expect(backlogPanel.webview.html).toContain('updateBacklogTask');
     expect(backlogPanel.webview.html).toContain('vscode.getState');
     expect(backlogPanel.webview.html).toContain('savedFilterId');
     expect(backlogPanel.webview.html).toContain('persistUiState');
+    expect(backlogPanel.webview.html).toContain('class="toolbar backlogToolbar"');
+    expect(backlogPanel.webview.html).toContain('class="captureGroup"');
+    expect(backlogPanel.webview.html).toContain('class="filterGroup"');
+    expect(backlogPanel.webview.html).toContain('grid-template-columns: minmax(180px, 1.35fr) minmax(150px, 0.9fr) minmax(150px, 0.85fr)');
+    expect(backlogPanel.webview.html).toContain('@media (max-width: 700px)');
+    expect(backlogPanel.webview.html).toContain('.filterGroup { grid-template-columns: 1fr; min-width: 0; }');
     expect(backlogPanel.webview.html).toContain('editorPanel');
     expect(backlogPanel.webview.html).toContain('data-select-task');
     expect(backlogPanel.webview.html).toContain('Open Markdown');
     expect(backlogPanel.webview.html).toContain('Acceptance Criteria');
     expect(backlogPanel.webview.html).toContain('Group by refinement');
+    expect(backlogPanel.webview.html).toContain('data-help-context="backlog"');
+    expect(backlogPanel.webview.html).toContain('Use the backlog view to capture rough work');
     expect(backlogPanel.webview.html).toContain('"backlogPanelsSwapped":true');
-    expect(backlogPanel.webview.html).toContain('updateUiPreference');
+    expect(backlogPanel.webview.html).not.toContain('swapPanels');
+    expect(backlogPanel.webview.html).not.toContain('Swap panels');
 
     await backlogPanel.webview.postMessage({
       type: 'updateBacklogTask',
@@ -260,6 +296,8 @@ describe('VS Code view refresh workspace selection', () => {
     expect(archivePanel.webview.html).toContain('TASK-071');
     expect(archivePanel.webview.html).toContain("type: 'restore'");
     expect(archivePanel.webview.html).toContain("type: 'delete'");
+    expect(archivePanel.webview.html).toContain('data-help-context="archive"');
+    expect(archivePanel.webview.html).toContain('Use the archive to inspect');
   });
 
   it('renders visual planning controls for graph and timeline insights', async () => {
@@ -275,6 +313,15 @@ describe('VS Code view refresh workspace selection', () => {
     expect(insightsPanel.webview.html).toContain('renderGraphLegend');
     expect(insightsPanel.webview.html).toContain('timelineWindow');
     expect(insightsPanel.webview.html).toContain('timelineGroup');
+    expect(insightsPanel.webview.html).toContain('timelineDensity');
+    expect(insightsPanel.webview.html).toContain('<button class="tab active" data-tab="timeline">Timeline</button>');
+    expect(insightsPanel.webview.html).toContain('const helpButtons = {');
+    expect(insightsPanel.webview.html).toContain('"context":"insights.timeline"');
+    expect(insightsPanel.webview.html).toContain('"context":"insights.graph"');
+    expect(insightsPanel.webview.html).toContain('"context":"insights.reports"');
+    expect(insightsPanel.webview.html).toContain('"context":"insights.branch"');
+    expect(insightsPanel.webview.html).toContain('Use the window and card density controls');
+    expect(insightsPanel.webview.html).toContain('Trace prerequisite flow');
     expect(insightsPanel.webview.html).toContain('renderTimelineDetails');
   });
 
@@ -654,7 +701,7 @@ describe('VS Code view refresh workspace selection', () => {
     expect(repository.tasks.get('TASK-033')?.status).toBe('done');
   });
 
-  it('renders bulk selection controls and applies validated bulk updates', async () => {
+  it('renders bulk selection controls and applies transactional bulk updates', async () => {
     selectPlanFSWorkspaceFolder(firstFolder);
 
     await saveEntity(firstRoot, {
@@ -676,20 +723,20 @@ describe('VS Code view refresh workspace selection', () => {
     expect(boardPanel.webview.html).toContain('selectedBulkTaskIds');
     expect(boardPanel.webview.html).toContain('clearSelection');
 
-    jest.mocked(vscode.window.showInputBox).mockResolvedValueOnce('review');
+    jest.mocked(vscode.window.showInputBox).mockResolvedValueOnce('2d');
     jest.mocked(vscode.window.showInformationMessage).mockResolvedValueOnce('Apply' as never);
 
     await boardPanel.webview.postMessage({
       type: 'bulkUpdateTasks',
       taskIds: ['TASK-034', 'TASK-035'],
-      action: 'status'
+      action: 'estimate'
     });
 
     const repository = await loadRepository(firstRoot);
-    expect(repository.tasks.get('TASK-034')?.status).toBe('review');
-    expect(repository.tasks.get('TASK-035')?.status).toBe('review');
+    expect(repository.tasks.get('TASK-034')?.estimate).toBe('2d');
+    expect(repository.tasks.get('TASK-035')?.estimate).toBe('2d');
     expect(vscode.window.showInformationMessage).toHaveBeenCalledWith(
-      'Apply Set status to 2 tasks?',
+      'Apply Set estimate to 2 tasks?',
       { modal: true },
       'Apply'
     );
@@ -707,20 +754,52 @@ describe('VS Code view refresh workspace selection', () => {
     await board.open();
     const boardPanel = jest.mocked(vscode.window.createWebviewPanel).mock.results[0].value;
 
-    jest.mocked(vscode.window.showInputBox).mockResolvedValueOnce('EPIC-missing');
+    jest.mocked(vscode.window.showInputBox).mockResolvedValueOnce('MILESTONE-missing');
     jest.mocked(vscode.window.showInformationMessage).mockResolvedValueOnce('Apply' as never);
 
     await boardPanel.webview.postMessage({
       type: 'bulkUpdateTasks',
       taskIds: ['TASK-036'],
-      action: 'epic'
+      action: 'milestone'
     });
 
     expect(vscode.window.showErrorMessage).toHaveBeenCalledWith(
       expect.stringContaining('Bulk update blocked by validation:')
     );
     const repository = await loadRepository(firstRoot);
-    expect(repository.tasks.get('TASK-036')?.epic).toBeUndefined();
+    expect(repository.tasks.get('TASK-036')?.milestone).toBeUndefined();
+  });
+
+  it('blocks stale board bulk updates before writing task files', async () => {
+    selectPlanFSWorkspaceFolder(firstFolder);
+
+    await saveEntity(firstRoot, {
+      ...createTaskTemplate('TASK-037', 'Stale bulk target'),
+      status: 'todo',
+      updatedAt: '2026-06-20T00:00:00.000Z'
+    });
+
+    const board = new BoardProvider(vscode.Uri.file('/extension'));
+    await board.open();
+    const boardPanel = jest.mocked(vscode.window.createWebviewPanel).mock.results[0].value;
+
+    jest.mocked(vscode.window.showInputBox).mockResolvedValueOnce('review');
+    jest.mocked(vscode.window.showInformationMessage).mockResolvedValueOnce('Apply' as never);
+
+    await boardPanel.webview.postMessage({
+      type: 'bulkUpdateTasks',
+      taskIds: ['TASK-037'],
+      action: 'status',
+      expectedUpdatedAtByTaskId: {
+        'TASK-037': '2026-06-19T00:00:00.000Z'
+      }
+    });
+
+    expect(vscode.window.showErrorMessage).toHaveBeenCalledWith(
+      expect.stringContaining('Task changed since preview: TASK-037')
+    );
+    const repository = await loadRepository(firstRoot);
+    expect(repository.tasks.get('TASK-037')?.status).toBe('todo');
   });
 
   it('renders board grouping controls and keeps saved filters in the grouping pipeline', async () => {
@@ -943,6 +1022,7 @@ describe('VS Code view refresh workspace selection', () => {
     expect(editorPanel.webview.html).toContain('class="compactField" data-field="targetDate"');
     expect(editorPanel.webview.html).toContain('name="owner"');
     expect(editorPanel.webview.html).toContain('name="tags"');
+    expect(editorPanel.webview.html).toContain('Archive Epic');
 
     await saveEntity(firstRoot, {
       ...createTaskTemplate('TASK-012', 'Newly refreshed task'),
@@ -951,6 +1031,51 @@ describe('VS Code view refresh workspace selection', () => {
     });
     await editor.refresh();
     expect(editorPanel.webview.html).toContain('Newly refreshed task');
+  });
+
+  it('renders epic planning sections and archives epics from the structured editor', async () => {
+    selectPlanFSWorkspaceFolder(firstFolder);
+
+    await saveEntity(firstRoot, {
+      ...createEpicTemplate('EPIC-editor-archive', 'Editor archive epic'),
+      body: [
+        'Epic body.',
+        '',
+        '## Acceptance Criteria',
+        '',
+        '- [ ] Render criteria in the epic editor',
+        '',
+        '## Questions',
+        '',
+        '- [x] Should epics support archive here? Yes'
+      ].join('\n')
+    });
+    await saveEntity(firstRoot, {
+      ...createTaskTemplate('TASK-031', 'Epic child task'),
+      epic: 'EPIC-editor-archive'
+    });
+
+    const editor = new EntityEditorProvider(vscode.Uri.file('/extension'));
+    await editor.open('EPIC-editor-archive');
+
+    const editorPanel = jest.mocked(vscode.window.createWebviewPanel).mock.results[0].value;
+    expect(editorPanel.webview.html).toContain('Epic Planning Notes');
+    expect(editorPanel.webview.html).toContain('Acceptance Criteria');
+    expect(editorPanel.webview.html).toContain('Render criteria in the epic editor');
+    expect(editorPanel.webview.html).toContain('Questions');
+    expect(editorPanel.webview.html).toContain('Archive Epic');
+    jest.mocked(vscode.window.showWarningMessage).mockResolvedValueOnce('Archive epic only' as never);
+
+    await editorPanel.webview.postMessage({
+      type: 'archiveEntity'
+    });
+
+    const repository = await loadRepository(firstRoot);
+    expect(repository.epics.has('EPIC-editor-archive')).toBe(false);
+    expect(repository.archivedEpics?.has('EPIC-editor-archive')).toBe(true);
+    expect(repository.tasks.has('TASK-031')).toBe(true);
+    expect(vscode.window.showInformationMessage).toHaveBeenCalledWith('Archived EPIC-editor-archive');
+    expect(vscode.commands.executeCommand).toHaveBeenCalledWith('planfs.refreshExplorer');
   });
 
   it('renders common Markdown sections instead of a raw body field in the structured editor', async () => {
@@ -989,6 +1114,8 @@ describe('VS Code view refresh workspace selection', () => {
     expect(editorPanel.webview.html).toContain('name="title"');
     expect(editorPanel.webview.html).toContain('name="assignee"');
     expect(editorPanel.webview.html).toContain('name="epic"');
+    expect(editorPanel.webview.html).toContain('data-help-context="editor"');
+    expect(editorPanel.webview.html).toContain('Use the structured editor for safe metadata edits');
     expect(editorPanel.webview.html).toContain('Acceptance Criteria');
     expect(editorPanel.webview.html).toContain('Keep the body in Markdown');
     expect(editorPanel.webview.html).toContain('Questions');
@@ -1026,8 +1153,8 @@ describe('VS Code view refresh workspace selection', () => {
     expect(editorPanel.webview.html).toContain('Backlog Readiness');
     expect(editorPanel.webview.html).toContain('Missing priority');
     expect(editorPanel.webview.html).toContain('No updates in 60 days');
-    expect(editorPanel.webview.html).toContain('Backlog readiness is separate from workflow status');
-    expect(editorPanel.webview.html).toContain('todo, in-progress, review, or done');
+    expect(editorPanel.webview.html).not.toContain('Backlog readiness is separate from workflow status');
+    expect(editorPanel.webview.html).not.toContain('todo, in-progress, review, or done');
 
     await editorPanel.webview.postMessage({
       type: 'save',
@@ -1040,12 +1167,12 @@ describe('VS Code view refresh workspace selection', () => {
       }
     });
 
-    expect(editorPanel.webview.html).toContain('No backlog review blockers remain.');
+    expect(editorPanel.webview.html).not.toContain('Backlog Readiness');
     expect(editorPanel.webview.html).not.toContain('Missing priority');
     expect(editorPanel.webview.html).not.toContain('No updates in 60 days');
   });
 
-  it('renders a clear backlog readiness message for fully ready tasks', async () => {
+  it('hides backlog readiness details for fully ready tasks', async () => {
     selectPlanFSWorkspaceFolder(firstFolder);
 
     await saveEntity(firstRoot, {
@@ -1059,9 +1186,9 @@ describe('VS Code view refresh workspace selection', () => {
     await editor.open('TASK-022');
 
     const editorPanel = jest.mocked(vscode.window.createWebviewPanel).mock.results[0].value;
-    expect(editorPanel.webview.html).toContain('Backlog Readiness');
-    expect(editorPanel.webview.html).toContain('No backlog review blockers remain.');
-    expect(editorPanel.webview.html).toContain('Needs review can come from missing body content');
+    expect(editorPanel.webview.html).not.toContain('Backlog Readiness');
+    expect(editorPanel.webview.html).not.toContain('No backlog review blockers remain.');
+    expect(editorPanel.webview.html).not.toContain('Needs review can come from missing body content');
   });
 
   it('archives tasks from the structured editor', async () => {
@@ -1077,7 +1204,7 @@ describe('VS Code view refresh workspace selection', () => {
     jest.mocked(vscode.window.showWarningMessage).mockResolvedValueOnce('Archive' as never);
 
     await editorPanel.webview.postMessage({
-      type: 'archiveTask'
+      type: 'archiveEntity'
     });
 
     const repository = await loadRepository(firstRoot);

@@ -2,7 +2,7 @@
 id: TASK-023
 title: Add custom fields and templates
 status: todo
-priority: medium
+priority: low
 assignee: justin
 epic: EPIC-customization-templates
 milestone: MILESTONE-phase-5
@@ -14,10 +14,10 @@ tags:
   - templates
   - phase-5
 dueDate: 2026-10-14
-createdAt: 2026-06-15T00:00:00Z
-updatedAt: 2026-06-20T00:00:00Z
 refinementState: needs-refinement
 backlogOrder: 10
+createdAt: 2026-06-15T00:00:00Z
+updatedAt: 2026-06-24T01:50:16.381Z
 ---
 
 Let repositories extend PlanFS for their own planning domains.

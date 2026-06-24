@@ -2,7 +2,7 @@
 id: TASK-022
 title: Add team discussion and notification features
 status: todo
-priority: medium
+priority: low
 assignee: justin
 epic: EPIC-phase-4-collaboration
 milestone: MILESTONE-phase-4
@@ -12,10 +12,10 @@ tags:
   - collaboration
   - phase-4
 dueDate: 2026-10-03
-createdAt: 2026-06-15T00:00:00Z
-updatedAt: 2026-06-20T00:00:00Z
 refinementState: needs-refinement
 backlogOrder: 40
+createdAt: 2026-06-15T00:00:00Z
+updatedAt: 2026-06-24T01:50:27.302Z
 ---
 
 Add lightweight collaboration around planning artifacts.

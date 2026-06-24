@@ -2,6 +2,7 @@ import { promises as fs } from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { aiCommand } from './ai';
+import { archiveCommand } from './archive';
 import { createCommand } from './create';
 import { backlogCommand } from './backlog';
 import { gitCommand } from './git';
@@ -134,6 +135,39 @@ describe('CLI commands', () => {
     expect(logSpy).toHaveBeenCalledWith(
       '✓ Created milestone: MILESTONE-phase-6-polish'
     );
+  });
+
+  it('previews entity creation without writing files', async () => {
+    await expect(
+      createCommand(rootPath, 'task', {
+        title: 'Preview task',
+        priority: 'high',
+        assignee: 'justin',
+        dryRun: true,
+        format: 'json'
+      })
+    ).resolves.toBe(0);
+
+    const output = JSON.parse(
+      logSpy.mock.calls[logSpy.mock.calls.length - 1]?.[0] as string
+    );
+    expect(output).toMatchObject({
+      type: 'task',
+      id: 'TASK-001',
+      dryRun: true,
+      entity: {
+        title: 'Preview task',
+        priority: 'high',
+        assignee: 'justin'
+      }
+    });
+    expect(output.preview).toContain('title: Preview task');
+    await expect(
+      fs.stat(path.join(rootPath, '.planfs'))
+    ).rejects.toMatchObject({ code: 'ENOENT' });
+    await expect(
+      fs.stat(path.join(rootPath, '.planfs', 'tasks', 'TASK-001.md'))
+    ).rejects.toMatchObject({ code: 'ENOENT' });
   });
 
   it('requires target date when creating milestones', async () => {
@@ -298,6 +332,65 @@ describe('CLI commands', () => {
     expect(logSpy).toHaveBeenCalledWith('TASK-001 Thin backlog item');
   });
 
+  it('previews archive changes without moving files', async () => {
+    await writeTask('TASK-001', [
+      'title: Archive preview',
+      'status: todo',
+      'updatedAt: 2026-06-20T00:00:00.000Z'
+    ]);
+
+    await expect(archiveCommand(rootPath, 'archive', {
+      id: 'TASK-001',
+      dryRun: true,
+      expectedUpdatedAt: '2026-06-20T00:00:00.000Z',
+      format: 'json'
+    })).resolves.toBe(0);
+
+    const output = JSON.parse(
+      logSpy.mock.calls[logSpy.mock.calls.length - 1]?.[0] as string
+    );
+    expect(output).toMatchObject({
+      dryRun: true,
+      archived: [
+        {
+          id: 'TASK-001',
+          archive: {
+            originalPath: '.planfs/tasks/TASK-001.md'
+          }
+        }
+      ]
+    });
+    expect(output.previews[0].preview).toContain('archive:');
+    await expect(
+      fs.stat(path.join(rootPath, '.planfs', 'tasks', 'TASK-001.md'))
+    ).resolves.toBeDefined();
+    await expect(
+      fs.stat(path.join(rootPath, '.planfs', 'archive', 'tasks', 'TASK-001.md'))
+    ).rejects.toMatchObject({ code: 'ENOENT' });
+  });
+
+  it('refuses archive when the target changed since preview', async () => {
+    await writeTask('TASK-001', [
+      'title: Archive conflict',
+      'status: todo',
+      'updatedAt: 2026-06-20T00:00:00.000Z'
+    ]);
+
+    await expect(archiveCommand(rootPath, 'archive', {
+      id: 'TASK-001',
+      expectedUpdatedAt: '2026-06-19T00:00:00.000Z',
+      format: 'json'
+    })).resolves.toBe(1);
+
+    expect(errorSpy).toHaveBeenCalledWith(
+      'Error:',
+      'Archive conflict: TASK-001 changed since preview'
+    );
+    await expect(
+      fs.stat(path.join(rootPath, '.planfs', 'tasks', 'TASK-001.md'))
+    ).resolves.toBeDefined();
+  });
+
   it('can include blocked next-work candidates with explanations', async () => {
     await writeTask('TASK-001', [
       'title: Open dependency',
@@ -413,6 +506,99 @@ describe('CLI commands', () => {
     expect(taskFile).toContain('tags:');
   });
 
+  it('previews and applies transactional AI bulk task updates', async () => {
+    await writeTask('TASK-001', [
+      'title: First bulk task',
+      'status: todo'
+    ]);
+    await writeTask('TASK-002', [
+      'title: Second bulk task',
+      'status: todo'
+    ]);
+
+    await expect(aiCommand(rootPath, 'bulk-update-tasks', {
+      ids: 'TASK-001,TASK-002',
+      status: 'review',
+      assignee: 'justin',
+      estimate: '2d',
+      dryRun: true,
+      format: 'json'
+    })).resolves.toBe(0);
+
+    let output = JSON.parse(
+      logSpy.mock.calls[logSpy.mock.calls.length - 1]?.[0] as string
+    );
+    expect(output.dryRun).toBe(true);
+    expect(output.taskIds).toEqual(['TASK-001', 'TASK-002']);
+    expect(output.changedFields).toEqual(['status', 'assignee', 'estimate']);
+    expect(output.changedTasks[0].preview).toContain('estimate: 2d');
+
+    let firstTask = await fs.readFile(
+      path.join(rootPath, '.planfs', 'tasks', 'TASK-001.md'),
+      'utf-8'
+    );
+    expect(firstTask).toContain('status: todo');
+    expect(firstTask).not.toContain('estimate: 2d');
+
+    await expect(aiCommand(rootPath, 'bulk-update-tasks', {
+      ids: ['TASK-001', 'TASK-002'],
+      status: 'review',
+      assignee: 'justin',
+      estimate: '2d',
+      format: 'json'
+    })).resolves.toBe(0);
+
+    output = JSON.parse(
+      logSpy.mock.calls[logSpy.mock.calls.length - 1]?.[0] as string
+    );
+    expect(output.dryRun).toBe(false);
+    firstTask = await fs.readFile(
+      path.join(rootPath, '.planfs', 'tasks', 'TASK-001.md'),
+      'utf-8'
+    );
+    const secondTask = await fs.readFile(
+      path.join(rootPath, '.planfs', 'tasks', 'TASK-002.md'),
+      'utf-8'
+    );
+    expect(firstTask).toContain('status: review');
+    expect(firstTask).toContain('assignee: justin');
+    expect(firstTask).toContain('estimate: 2d');
+    expect(secondTask).toContain('status: review');
+    expect(secondTask).toContain('estimate: 2d');
+  });
+
+  it('blocks invalid AI bulk task updates before writing', async () => {
+    await writeTask('TASK-001', [
+      'title: First invalid bulk task',
+      'status: todo'
+    ]);
+    await writeTask('TASK-002', [
+      'title: Second invalid bulk task',
+      'status: todo'
+    ]);
+
+    await expect(aiCommand(rootPath, 'bulk-update-tasks', {
+      ids: 'TASK-001,TASK-002',
+      milestone: 'MILESTONE-missing',
+      format: 'json'
+    })).resolves.toBe(1);
+
+    expect(errorSpy).toHaveBeenCalledWith(
+      'Error:',
+      expect.stringContaining('Referenced milestone not found')
+    );
+    const firstTask = await fs.readFile(
+      path.join(rootPath, '.planfs', 'tasks', 'TASK-001.md'),
+      'utf-8'
+    );
+    const secondTask = await fs.readFile(
+      path.join(rootPath, '.planfs', 'tasks', 'TASK-002.md'),
+      'utf-8'
+    );
+    expect(firstTask).not.toContain('MILESTONE-missing');
+    expect(secondTask).not.toContain('MILESTONE-missing');
+  });
+
   it('blocks invalid AI task updates before writing', async () => {
     await writeTask('TASK-001', [
       'title: Invalid AI update',
@@ -483,6 +669,8 @@ describe('CLI commands', () => {
     agents = await fs.readFile(path.join(rootPath, 'AGENTS.md'), 'utf-8');
     expect(agents).toContain('Existing guidance.');
     expect(agents).toContain('node src/cli/dist/cli.js ai summary');
+    expect(agents).toContain('node src/cli/dist/cli.js ai bulk-update-tasks --ids TASK-061,TASK-062 --status review --dry-run');
+    expect(agents).toContain('Prefer these preview/apply helpers over editing task frontmatter directly');
     expect(agents.match(/PLANFS-AI-AWARENESS:START/g)).toHaveLength(1);
 
     await expect(aiCommand(rootPath, 'initialize', {

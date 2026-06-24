@@ -1,7 +1,7 @@
 ---
 id: TASK-024
 title: Add transactional bulk update workflows
-status: todo
+status: done
 priority: medium
 assignee: justin
 epic: EPIC-bulk-import-workflows
@@ -14,10 +14,10 @@ tags:
   - transactions
   - phase-5
 dueDate: 2026-10-21
-createdAt: 2026-06-15T00:00:00Z
-updatedAt: 2026-06-21T18:24:21Z
-refinementState: needs-refinement
+refinementState: ready
 backlogOrder: 20
+createdAt: 2026-06-15T00:00:00Z
+updatedAt: 2026-06-24T03:38:36.501Z
 ---
 
 Support managing many existing PlanFS tasks at once through safe, previewable bulk updates.
@@ -26,13 +26,13 @@ Importing external work items from CSV, Jira, GitLab, GitHub, or other systems i
 
 ## Acceptance Criteria
 
-- [ ] Multiple tasks can be selected and updated together
-- [ ] Bulk status, assignee, priority, milestone, and estimate updates work
-- [ ] Bulk updates are available through shared core APIs, CLI workflows, and VS Code UI
-- [ ] Bulk updates support a transaction-like preview/apply workflow
-- [ ] Failed validation prevents partial writes and leaves existing artifacts unchanged
-- [ ] Conflicts are detected before writing files
-- [ ] Tests cover successful bulk updates, preview output, validation failures, rollback/no-partial-write behavior, and VS Code refresh behavior
+- [x] Multiple tasks can be selected and updated together
+- [x] Bulk status, assignee, priority, milestone, and estimate updates work
+- [x] Bulk updates are available through shared core APIs, CLI workflows, and VS Code UI
+- [x] Bulk updates support a transaction-like preview/apply workflow
+- [x] Failed validation prevents partial writes and leaves existing artifacts unchanged
+- [x] Conflicts are detected before writing files
+- [x] Tests cover successful bulk updates, preview output, validation failures, rollback/no-partial-write behavior, and VS Code refresh behavior
 
 ## Questions
 

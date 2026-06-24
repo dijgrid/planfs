@@ -12,6 +12,16 @@ import {
   saveEntity,
   validateRepositoryState
 } from 'planfs-core';
+import {
+  createHelpTopics,
+  handleHelpMessage,
+  HELP_SCRIPT,
+  HELP_STYLES,
+  HelpTopic,
+  renderHelpButton,
+  renderHelpPanel
+} from './help';
+import { getNonce, renderMessageDocument } from './webview';
 import { getPlanFSWorkspaceFolder } from './workspace';
 
 interface InsightsPayload {
@@ -117,6 +127,7 @@ interface InsightsPayload {
     csv: string;
     markdown: string;
   };
+  helpTopics: HelpTopic[];
 }
 
 export class InsightsProvider {
@@ -166,6 +177,8 @@ export class InsightsProvider {
       if (message?.type === 'openEntity') {
         await openEntityFile(String(message.entityId));
       }
+
+      await handleHelpMessage(this.extensionUri, message);
     });
 
     await this.render();
@@ -190,7 +203,7 @@ export class InsightsProvider {
 
     try {
       const repository = await loadRepository(workspaceFolder.uri.fsPath);
-      const payload = await createPayload(repository);
+      const payload = await createPayload(repository, this.extensionUri);
       this.panel.webview.html = renderInsights(this.panel.webview, payload);
     } catch (error) {
       this.panel.webview.html = renderMessage(
@@ -231,7 +244,10 @@ export class InsightsProvider {
   }
 }
 
-async function createPayload(repository: Repository): Promise<InsightsPayload> {
+async function createPayload(
+  repository: Repository,
+  extensionUri: vscode.Uri
+): Promise<InsightsPayload> {
   const graph = buildTaskGraph(repository.tasks.values());
   const reports = generateReports(repository);
   const validation = validateRepositoryState(repository);
@@ -294,7 +310,13 @@ async function createPayload(repository: Repository): Promise<InsightsPayload> {
       json: '',
       csv: '',
       markdown: ''
-    }
+    },
+    helpTopics: createHelpTopics(extensionUri, [
+      'insights.timeline',
+      'insights.graph',
+      'insights.reports',
+      'insights.branch'
+    ])
   };
 
   payload.exports = {
@@ -523,17 +545,7 @@ function csvLine(values: Array<string | number>): string {
 }
 
 function renderMessage(message: string): string {
-  return `<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PlanFS Insights</title>
-</head>
-<body>
-  <p>${escapeHtml(message)}</p>
-</body>
-</html>`;
+  return renderMessageDocument('PlanFS Insights', message);
 }
 
 function renderInsights(webview: vscode.Webview, payload: InsightsPayload): string {
@@ -829,6 +841,16 @@ function renderInsights(webview: vscode.Webview, payload: InsightsPayload): stri
       height: 340px;
     }
 
+    .tabIntro {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      justify-content: space-between;
+      margin: 0 0 12px;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
     .axisLine,
     .nowLine {
       position: absolute;
@@ -875,10 +897,10 @@ function renderInsights(webview: vscode.Webview, payload: InsightsPayload): stri
 
     .timelineItem {
       position: absolute;
-      width: 172px;
-      min-height: 58px;
+      width: 132px;
+      min-height: 42px;
       transform: translateX(-50%);
-      padding: 8px;
+      padding: 6px 7px;
       border: 1px solid var(--border);
       border-radius: 6px;
       background: var(--vscode-input-background);
@@ -886,6 +908,22 @@ function renderInsights(webview: vscode.Webview, payload: InsightsPayload): stri
       color: var(--text);
       text-align: left;
       cursor: pointer;
+    }
+
+    .timelineItem.compact {
+      width: 96px;
+      min-height: 30px;
+      padding: 5px 6px;
+    }
+
+    .timelineItem.compact .timelineTitle,
+    .timelineItem.compact .timelineProgress,
+    .timelineItem.compact .timelineDate {
+      display: none;
+    }
+
+    .timelineItem.detailed {
+      width: 150px;
     }
 
     .timelineItem.task {
@@ -925,6 +963,7 @@ function renderInsights(webview: vscode.Webview, payload: InsightsPayload): stri
       overflow-wrap: anywhere;
       line-height: 1.25;
       margin-top: 3px;
+      font-size: 12px;
     }
 
     .undatedRail {
@@ -987,6 +1026,8 @@ function renderInsights(webview: vscode.Webview, payload: InsightsPayload): stri
     button:hover {
       background: var(--vscode-button-hoverBackground);
     }
+
+    ${HELP_STYLES}
 
     .reportGrid {
       grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
@@ -1062,21 +1103,28 @@ function renderInsights(webview: vscode.Webview, payload: InsightsPayload): stri
     </header>
 
     <nav class="tabs" aria-label="Insights views">
-      <button class="tab active" data-tab="graph">Dependency Graph</button>
-      <button class="tab" data-tab="timeline">Timeline</button>
+      <button class="tab active" data-tab="timeline">Timeline</button>
+      <button class="tab" data-tab="graph">Dependency Graph</button>
       <button class="tab" data-tab="reports">Reports</button>
       <button class="tab" data-tab="branch">Branch</button>
     </nav>
 
-    <section id="graph" class="panel active"></section>
-    <section id="timeline" class="panel"></section>
+    <section id="timeline" class="panel active"></section>
+    <section id="graph" class="panel"></section>
     <section id="reports" class="panel"></section>
     <section id="branch" class="panel"></section>
   </div>
+  ${renderHelpPanel()}
 
   <script nonce="${nonce}">
     const vscode = acquireVsCodeApi();
     const state = ${JSON.stringify(payload)};
+    const helpButtons = {
+      timeline: ${JSON.stringify(renderHelpButton('insights.timeline', 'Show help for the timeline'))},
+      graph: ${JSON.stringify(renderHelpButton('insights.graph', 'Show help for the dependency graph'))},
+      reports: ${JSON.stringify(renderHelpButton('insights.reports', 'Show help for reports'))},
+      branch: ${JSON.stringify(renderHelpButton('insights.branch', 'Show help for branch context'))}
+    };
     const tabs = document.querySelectorAll('.tab');
     const panels = document.querySelectorAll('.panel');
     let selectedGraphNode;
@@ -1101,6 +1149,7 @@ function renderInsights(webview: vscode.Webview, payload: InsightsPayload): stri
         vscode.postMessage({ type: 'openEntity', entityId: button.dataset.openEntity });
       }
     });
+    ${HELP_SCRIPT}
 
     function renderGraph() {
       const root = document.getElementById('graph');
@@ -1108,6 +1157,7 @@ function renderInsights(webview: vscode.Webview, payload: InsightsPayload): stri
       const milestoneOptions = unique(state.graph.nodes.map(node => node.milestone || 'No milestone')).sort();
       const assigneeOptions = unique(state.graph.nodes.map(node => node.assignee || 'Unassigned')).sort();
       root.innerHTML = [
+        '<p class="tabIntro"><span>Trace prerequisite flow, spot missing dependency references, and inspect the tasks most likely to affect downstream work.</span>' + helpButtons.graph + '</p>',
         renderMetrics([
           ['Tasks', state.graph.nodes.length],
           ['Dependencies', state.graph.edges.length],
@@ -1397,6 +1447,7 @@ function renderInsights(webview: vscode.Webview, payload: InsightsPayload): stri
     function renderTimeline() {
       const root = document.getElementById('timeline');
       root.innerHTML = [
+        '<p class="tabIntro"><span>Scan dated work across tasks, epics, and milestones. Use the window and card density controls to reduce overlap when dates are clustered.</span>' + helpButtons.timeline + '</p>',
         '<div class="timelineTools">',
         '<input id="timelineFilter" type="search" placeholder="Filter task, milestone, or epic" aria-label="Filter timeline">',
         '<select id="timelineWindow" aria-label="Timeline window">',
@@ -1419,6 +1470,10 @@ function renderInsights(webview: vscode.Webview, payload: InsightsPayload): stri
         '<option value="epic">Epics</option>',
         '<option value="milestone">Milestones</option>',
         '</select>',
+        '<select id="timelineDensity" aria-label="Timeline card density">',
+        '<option value="compact">Compact cards</option>',
+        '<option value="detailed">Detailed cards</option>',
+        '</select>',
         '<select id="healthFilter" aria-label="Filter delivery health">',
         '<option value="all">All delivery health</option>',
         '<option value="complete">Complete</option>',
@@ -1436,6 +1491,7 @@ function renderInsights(webview: vscode.Webview, payload: InsightsPayload): stri
       root.querySelector('#timelineWindow').addEventListener('change', renderTimelineItems);
       root.querySelector('#timelineGroup').addEventListener('change', renderTimelineItems);
       root.querySelector('#timelineKind').addEventListener('change', renderTimelineItems);
+      root.querySelector('#timelineDensity').addEventListener('change', renderTimelineItems);
       root.querySelector('#healthFilter').addEventListener('change', renderTimelineItems);
       root.addEventListener('click', event => {
         const button = event.target.closest('[data-save-date]');
@@ -1463,6 +1519,7 @@ function renderInsights(webview: vscode.Webview, payload: InsightsPayload): stri
       const windowValue = root.querySelector('#timelineWindow').value;
       const groupBy = root.querySelector('#timelineGroup').value;
       const kind = root.querySelector('#timelineKind').value;
+      const density = root.querySelector('#timelineDensity').value;
       const health = root.querySelector('#healthFilter').value;
       const items = state.timeline.filter(item => {
         const searchable = [item.id, item.title, item.status].join(' ').toLowerCase();
@@ -1475,7 +1532,7 @@ function renderInsights(webview: vscode.Webview, payload: InsightsPayload): stri
           && timelineWindowMatches(item, windowValue);
       });
 
-      timelineItems.innerHTML = renderGroupedTimeAxis(items, groupBy);
+      timelineItems.innerHTML = renderGroupedTimeAxis(items, groupBy, density);
       const selected = state.timeline.find(item => item.id === selectedTimelineItem);
       timelineDetails.innerHTML = selected
         ? renderTimelineDetails(selected)
@@ -1483,9 +1540,9 @@ function renderInsights(webview: vscode.Webview, payload: InsightsPayload): stri
       timelineDetails.className = selected ? 'selectedDetails' : 'selectedDetails subtle';
     }
 
-    function renderGroupedTimeAxis(items, groupBy) {
+    function renderGroupedTimeAxis(items, groupBy, density) {
       if (groupBy === 'none') {
-        return renderTimeAxis(items);
+        return renderTimeAxis(items, density);
       }
 
       const groups = new Map();
@@ -1499,7 +1556,7 @@ function renderInsights(webview: vscode.Webview, payload: InsightsPayload): stri
 
       return Array.from(groups.entries())
         .sort((a, b) => a[0].localeCompare(b[0]))
-        .map(([group, groupItems]) => '<section class="timelineGroup"><h2>' + escapeHtml(group) + '</h2>' + renderTimeAxis(groupItems) + '</section>')
+        .map(([group, groupItems]) => '<section class="timelineGroup"><h2>' + escapeHtml(group) + '</h2>' + renderTimeAxis(groupItems, density) + '</section>')
         .join('');
     }
 
@@ -1533,7 +1590,7 @@ function renderInsights(webview: vscode.Webview, payload: InsightsPayload): stri
       return time >= now - size && time <= now + size;
     }
 
-    function renderTimeAxis(items) {
+    function renderTimeAxis(items, density) {
       if (items.length === 0) {
         return '<div class="warningList subtle">No timeline items match the current filters.</div>';
       }
@@ -1548,29 +1605,58 @@ function renderInsights(webview: vscode.Webview, payload: InsightsPayload): stri
       const min = Math.min(now - 1000 * 60 * 60 * 24 * 14, ...times);
       const max = Math.max(now + 1000 * 60 * 60 * 24 * 45, ...times);
       const span = Math.max(1, max - min);
-      const positioned = dated.map((item, index) => ({
-        ...item,
-        x: 4 + ((item.time - min) / span) * 92,
-        y: 22 + (index % 5) * 62
-      }));
+      const positioned = positionTimelineItems(dated, min, span, density);
       const nowX = 4 + ((now - min) / span) * 92;
       const ticks = createTicks(min, max);
+      const canvasHeight = Math.max(340, ...positioned.map(item => item.y + (density === 'compact' ? 38 : 82))) + 24;
+      const nowHeight = Math.max(318, canvasHeight - 22);
+      const nowLabelTop = nowHeight + 4;
 
-      return '<div class="timelineAxis"><div class="timelineCanvas">' +
+      return '<div class="timelineAxis"><div class="timelineCanvas" style="height:' + canvasHeight + 'px">' +
         '<div class="axisLine"></div>' +
-        '<div class="nowLine" style="left:' + nowX + '%"></div><div class="nowLabel" style="left:' + nowX + '%">now</div>' +
+        '<div class="nowLine" style="left:' + nowX + '%; height:' + nowHeight + 'px"></div><div class="nowLabel" style="left:' + nowX + '%; top:' + nowLabelTop + 'px">now</div>' +
         ticks.map(tick => '<div class="tick" style="left:' + tick.x + '%"><span>' + escapeHtml(tick.label) + '</span></div>').join('') +
-        positioned.map(renderTimelineCard).join('') +
+        positioned.map(item => renderTimelineCard(item, density)).join('') +
         '</div></div>' +
         (undated.length > 0 ? '<div class="undatedRail">' + undated.map(renderUndatedTimelineItem).join('') + '</div>' : '');
     }
 
-    function renderTimelineCard(item) {
-      const top = item.time < Date.now() ? 24 + item.y : 184 + item.y / 2;
-      return '<button type="button" data-timeline-item="' + escapeHtml(item.id) + '" class="timelineItem ' + item.kind + ' ' + item.health + (selectedTimelineItem === item.id ? ' selected' : '') + '" style="left:' + item.x + '%; top:' + top + 'px">' +
+    function positionTimelineItems(items, min, span, density) {
+      const laneHeight = density === 'compact' ? 38 : 56;
+      const itemWidth = density === 'compact' ? 10 : 14;
+      const lanes = { past: [], future: [] };
+      return items
+        .slice()
+        .sort((a, b) => a.time - b.time || a.id.localeCompare(b.id))
+        .map(item => {
+          const x = 4 + ((item.time - min) / span) * 92;
+          const side = item.time < Date.now() ? 'past' : 'future';
+          const laneIndex = firstAvailableLane(lanes[side], x, itemWidth);
+          lanes[side][laneIndex] = x + itemWidth;
+          return {
+            ...item,
+            x,
+            y: side === 'past'
+              ? 22 + laneIndex * laneHeight
+              : 188 + laneIndex * laneHeight
+          };
+        });
+    }
+
+    function firstAvailableLane(lanes, x, width) {
+      for (let index = 0; index < lanes.length; index += 1) {
+        if (x >= lanes[index]) {
+          return index;
+        }
+      }
+      return lanes.length;
+    }
+
+    function renderTimelineCard(item, density) {
+      return '<button type="button" title="' + escapeHtml(item.id + ': ' + item.title) + '" data-timeline-item="' + escapeHtml(item.id) + '" class="timelineItem ' + density + ' ' + item.kind + ' ' + item.health + (selectedTimelineItem === item.id ? ' selected' : '') + '" style="left:' + item.x + '%; top:' + item.y + 'px">' +
         '<div class="nodeHead"><span>' + escapeHtml(item.id) + '</span><span class="lane">' + escapeHtml(item.kind) + '</span></div>' +
         '<div class="timelineTitle">' + escapeHtml(item.title) + '</div>' +
-        '<div class="subtle">' + escapeHtml(toDateInput(item.date)) + ' · ' + escapeHtml(item.status) + '</div>' +
+        '<div class="subtle timelineDate">' + escapeHtml(toDateInput(item.date)) + ' · ' + escapeHtml(item.status) + '</div>' +
         renderTimelineProgress(item) +
       '</button>';
     }
@@ -1594,7 +1680,7 @@ function renderInsights(webview: vscode.Webview, payload: InsightsPayload): stri
         return '';
       }
       return '<div class="bar"><div class="fill" style="width:' + item.percentDone + '%"></div></div>' +
-        '<div class="subtle">' + item.done + ' of ' + item.total + ' tasks done · ' + item.percentDone + '%</div>' +
+        '<div class="subtle timelineProgress">' + item.done + ' of ' + item.total + ' tasks done · ' + item.percentDone + '%</div>' +
         (item.kind === 'milestone'
           ? '<div class="row" style="margin-top:8px"><input type="date" data-date-for="' + escapeHtml(item.id) + '" value="' + escapeHtml(toDateInput(item.date)) + '"><button data-save-date="' + escapeHtml(item.id) + '">Save date</button></div>'
           : '');
@@ -1614,6 +1700,7 @@ function renderInsights(webview: vscode.Webview, payload: InsightsPayload): stri
     function renderReports() {
       const root = document.getElementById('reports');
       root.innerHTML = [
+        '<p class="tabIntro"><span>Review progress, workload, and risk summaries, then export the current planning snapshot for sharing or deeper analysis.</span>' + helpButtons.reports + '</p>',
         '<div class="row" style="margin-bottom:12px">',
         '<button data-export="json">Export JSON</button>',
         '<button data-export="csv">Export CSV</button>',
@@ -1658,11 +1745,12 @@ function renderInsights(webview: vscode.Webview, payload: InsightsPayload): stri
       const branch = state.branch;
 
       if (!branch.available) {
-        root.innerHTML = '<article class="card"><h2>Branch Context</h2><p class="subtle">Branch context is unavailable.</p><p class="subtle">' + escapeHtml(branch.message || 'No Git comparison could be loaded.') + '</p></article>';
+        root.innerHTML = '<p class="tabIntro"><span>Compare the current Git branch with the planning state so pull request work stays connected to tracked tasks.</span>' + helpButtons.branch + '</p><article class="card"><h2>Branch Context</h2><p class="subtle">Branch context is unavailable.</p><p class="subtle">' + escapeHtml(branch.message || 'No Git comparison could be loaded.') + '</p></article>';
         return;
       }
 
       root.innerHTML = [
+        '<p class="tabIntro"><span>Compare the current Git branch with the planning state so pull request work stays connected to tracked tasks.</span>' + helpButtons.branch + '</p>',
         renderMetrics([
           ['Changed Files', branch.changedFiles.length],
           ['Added Tasks', branch.addedTasks.length],
@@ -1756,24 +1844,4 @@ function renderInsights(webview: vscode.Webview, payload: InsightsPayload): stri
   </script>
 </body>
 </html>`;
-}
-
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-
-function getNonce(): string {
-  let text = '';
-  const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-
-  for (let i = 0; i < 32; i++) {
-    text += possible.charAt(Math.floor(Math.random() * possible.length));
-  }
-
-  return text;
 }

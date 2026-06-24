@@ -40,6 +40,27 @@ describe('Next work utilities', () => {
     expect(getTaskReadiness(done, repository).status).toBe('done');
   });
 
+  it('treats archived dependencies as satisfied historical work', () => {
+    const archived = {
+      ...createTask('TASK-001', 'Archived dependency', 'done'),
+      archive: {
+        archivedAt: '2026-06-21T18:44:00Z',
+        originalPath: '.planfs/tasks/TASK-001.md'
+      }
+    };
+    const active = createTask('TASK-002', 'Active task', 'todo', ['TASK-001']);
+    const repository = {
+      ...createRepository([active]),
+      archivedTasks: new Map([[archived.id, archived]])
+    };
+
+    expect(getTaskReadiness(active, repository)).toEqual({
+      status: 'ready',
+      blockingTaskIds: [],
+      missingDependencyIds: []
+    });
+  });
+
   it('ranks actionable tasks by priority, due date, critical path, downstream work, and stable tie-breakers', () => {
     const foundation = createTask('TASK-001', 'Foundation', 'done');
     const criticalPath = {

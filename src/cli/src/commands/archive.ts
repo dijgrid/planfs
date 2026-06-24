@@ -2,9 +2,12 @@
  * Archive command workflows.
  */
 
+import * as path from 'path';
 import {
   archiveEntity,
   deleteArchivedEntity,
+  Entity,
+  generateEntityContent,
   listArchivedEntities,
   loadRepository,
   restoreArchivedEntity
@@ -15,6 +18,8 @@ export type ArchiveAction = 'list' | 'archive' | 'restore' | 'delete';
 export interface ArchiveOptions {
   id?: string;
   includeChildren?: boolean;
+  dryRun?: boolean;
+  expectedUpdatedAt?: string;
   yes?: boolean;
   format?: 'text' | 'json';
 }
@@ -72,13 +77,30 @@ async function archiveItem(rootPath: string, options: ArchiveOptions): Promise<n
     return 1;
   }
 
+  const repository = await loadRepository(rootPath);
+  const entity = repository.tasks.get(options.id) ?? repository.epics.get(options.id);
+  if (!entity) {
+    throw new Error(`Active task or epic not found: ${options.id}`);
+  }
+  if (options.expectedUpdatedAt !== undefined && entity.updatedAt !== options.expectedUpdatedAt) {
+    throw new Error(`Archive conflict: ${entity.id} changed since preview`);
+  }
+
+  const preview = previewArchiveEntities(rootPath, entity, {
+    includeChildren: options.includeChildren,
+    now: new Date(),
+    childTasks: Array.from(repository.tasks.values()).filter(task => task.epic === entity.id)
+  });
+
+  if (options.dryRun) {
+    printArchiveResult(preview.archived, true, options.format, preview.previews);
+    return 0;
+  }
+
   const result = await archiveEntity(rootPath, options.id, {
     includeChildren: options.includeChildren
   });
-  console.log(`✓ Archived ${result.archived.length} item${result.archived.length === 1 ? '' : 's'}`);
-  for (const entity of result.archived) {
-    console.log(`  ${entity.id} ${entity.title}`);
-  }
+  printArchiveResult(result.archived, false, options.format);
   return 0;
 }
 
@@ -106,4 +128,66 @@ async function deleteItem(rootPath: string, options: ArchiveOptions): Promise<nu
   const entity = await deleteArchivedEntity(rootPath, options.id);
   console.log(`✓ Permanently deleted archived item ${entity.id}`);
   return 0;
+}
+
+function previewArchiveEntities(
+  rootPath: string,
+  entity: Entity,
+  options: { includeChildren?: boolean; now: Date; childTasks: Entity[] }
+): { archived: Entity[]; previews: Array<{ id: string; preview: string }> } {
+  const toArchive = [entity];
+  if (entity.type === 'epic' && options.includeChildren) {
+    toArchive.push(...options.childTasks);
+  }
+
+  const archivedAt = options.now.toISOString();
+  const archived = toArchive.map(current => {
+    const archive = {
+      archivedAt,
+      originalPath: path.relative(rootPath, current.filePath)
+    };
+    return {
+      ...current,
+      archive,
+      updatedAt: archivedAt,
+      metadata: {
+        ...current.metadata,
+        archive,
+        updatedAt: archivedAt
+      }
+    } as Entity;
+  });
+
+  return {
+    archived,
+    previews: archived.map(current => ({
+      id: current.id,
+      preview: generateEntityContent(current)
+    }))
+  };
+}
+
+function printArchiveResult(
+  archived: Entity[],
+  dryRun: boolean,
+  format: ArchiveOptions['format'],
+  previews: Array<{ id: string; preview: string }> = []
+): void {
+  if (format === 'json') {
+    console.log(JSON.stringify({
+      dryRun,
+      archived,
+      previews
+    }, null, 2));
+    return;
+  }
+
+  console.log(`✓ ${dryRun ? 'Previewed archive of' : 'Archived'} ${archived.length} item${archived.length === 1 ? '' : 's'}`);
+  for (const entity of archived) {
+    console.log(`  ${entity.id} ${entity.title}`);
+  }
+  for (const item of previews) {
+    console.log(`\n--- preview ${item.id} ---`);
+    console.log(item.preview.trimEnd());
+  }
 }

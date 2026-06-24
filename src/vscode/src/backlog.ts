@@ -17,6 +17,15 @@ import {
   TaskPriority,
   validateRepositoryState
 } from 'planfs-core';
+import {
+  createHelpTopics,
+  handleHelpMessage,
+  HELP_SCRIPT,
+  HELP_STYLES,
+  HelpTopic,
+  renderHelpButton,
+  renderHelpPanel
+} from './help';
 import { extractMarkdownSections, MarkdownSection } from './markdownSections';
 import { PlanFSUiPreferences, UI_PREFERENCES } from './preferences';
 import { getPlanFSWorkspaceFolder } from './workspace';
@@ -83,6 +92,7 @@ export class BacklogProvider {
       if (message?.type === 'updateUiPreference') {
         await this.updateUiPreference(String(message.key), message.value);
       }
+      await handleHelpMessage(this.extensionUri, message);
     });
 
     await this.render();
@@ -111,7 +121,7 @@ export class BacklogProvider {
     }
     const reviewItems = reviewBacklog(repository);
     const reviewIds = new Set(reviewItems.map(item => item.task.id));
-    const tasks = listBacklogTasks(repository, { includeDone: true }).map(task => ({
+    const tasks = listBacklogTasks(repository).map(task => ({
       id: task.id,
       title: task.title,
       status: task.status,
@@ -151,7 +161,8 @@ export class BacklogProvider {
           UI_PREFERENCES.backlogPanelsSwapped,
           workspaceFolder
         )
-      }
+      },
+      helpTopics: createHelpTopics(this.extensionUri, ['backlog'])
     });
   }
 
@@ -326,6 +337,7 @@ interface BacklogHtmlPayload {
   preferences: {
     backlogPanelsSwapped: boolean;
   };
+  helpTopics: HelpTopic[];
 }
 
 function renderBacklogHtml(payload: BacklogHtmlPayload): string {
@@ -338,14 +350,18 @@ function renderBacklogHtml(payload: BacklogHtmlPayload): string {
   <title>PlanFS Backlog</title>
   <style>
     * { box-sizing: border-box; }
-    body { margin: 0; color: var(--vscode-foreground); background: var(--vscode-editor-background); font-family: var(--vscode-font-family); font-size: var(--vscode-font-size); }
-    .toolbar { display: flex; gap: 8px; align-items: center; padding: 12px; border-bottom: 1px solid var(--vscode-panel-border); flex-wrap: wrap; }
+    body { height: 100vh; margin: 0; display: grid; grid-template-rows: auto minmax(0, 1fr); color: var(--vscode-foreground); background: var(--vscode-editor-background); font-family: var(--vscode-font-family); font-size: var(--vscode-font-size); }
+    .toolbar { display: flex; gap: 8px; align-items: center; padding: 8px 10px; border-bottom: 1px solid var(--vscode-panel-border); flex-wrap: wrap; }
+    .backlogToolbar { align-items: stretch; }
+    .captureGroup { display: grid; grid-template-columns: minmax(180px, 1fr) auto; gap: 8px; flex: 1 1 280px; min-width: 220px; }
+    .filterGroup { display: grid; grid-template-columns: minmax(180px, 1.35fr) minmax(150px, 0.9fr) minmax(150px, 0.85fr); gap: 8px; flex: 2 1 560px; min-width: min(100%, 360px); }
+    .toolbarActions { display: flex; align-items: center; justify-content: flex-end; flex: 0 0 auto; min-width: 30px; }
     input, select, button { max-width: 100%; color: var(--vscode-input-foreground); background: var(--vscode-input-background); border: 1px solid var(--vscode-input-border); padding: 6px 8px; border-radius: 4px; }
     input, select { width: 100%; min-width: 0; }
     input[type="checkbox"] { width: auto; min-width: auto; flex: 0 0 auto; margin: 2px 0 0; }
     button { cursor: pointer; color: var(--vscode-button-foreground); background: var(--vscode-button-background); border-color: var(--vscode-button-background); }
     button.secondary { color: var(--vscode-button-secondaryForeground); background: var(--vscode-button-secondaryBackground); border-color: var(--vscode-button-secondaryBackground); }
-    main { display: grid; grid-template-columns: minmax(320px, 0.95fr) minmax(320px, 1.05fr); gap: 12px; height: calc(100vh - 58px); padding: 12px; overflow: hidden; }
+    main { display: grid; grid-template-columns: minmax(320px, 0.95fr) minmax(320px, 1.05fr); gap: 12px; min-height: 0; padding: 12px; overflow: hidden; }
     .editorPanel, .listPanel { min-width: 0; border: 1px solid var(--vscode-panel-border); border-radius: 6px; background: var(--vscode-editorWidget-background); }
     .editorPanel { min-height: 0; padding: 12px; overflow: auto; }
     .listPanel { min-height: 0; padding: 10px; overflow: auto; }
@@ -373,9 +389,16 @@ function renderBacklogHtml(payload: BacklogHtmlPayload): string {
     .sectionItem { display: flex; gap: 8px; align-items: flex-start; padding: 6px 0; color: var(--vscode-foreground); }
     .sectionItem.done { color: var(--vscode-descriptionForeground); }
     .sectionText { line-height: 1.35; overflow-wrap: anywhere; }
+    ${HELP_STYLES}
     @media (max-width: 820px) {
+      body { height: auto; min-height: 100vh; display: block; }
       main { grid-template-columns: 1fr; height: auto; overflow: visible; }
       .editorPanel, .listPanel { max-height: 70vh; }
+    }
+    @media (max-width: 700px) {
+      .captureGroup, .filterGroup, .toolbarActions { flex-basis: 100%; }
+      .filterGroup { grid-template-columns: 1fr; min-width: 0; }
+      .toolbarActions { justify-content: flex-start; }
     }
     @media (max-width: 1120px) {
       .formGrid { grid-template-columns: 1fr; }
@@ -383,25 +406,32 @@ function renderBacklogHtml(payload: BacklogHtmlPayload): string {
   </style>
 </head>
 <body>
-  <div class="toolbar">
-    <input id="captureTitle" type="text" placeholder="Capture backlog item" aria-label="Capture backlog item">
-    <button type="button" id="capture">Capture</button>
-    <input id="filter" type="search" placeholder="Filter backlog" aria-label="Filter backlog">
-    <select id="savedFilter" aria-label="Saved filter"></select>
-    <select id="groupBy" aria-label="Group backlog">
-      <option value="">Backlog order</option>
-      <option value="refinementState">Group by refinement</option>
-      <option value="epic">Group by epic</option>
-      <option value="milestone">Group by milestone</option>
-      <option value="assignee">Group by assignee</option>
-      <option value="priority">Group by priority</option>
-    </select>
-    <button type="button" id="swapPanels" class="secondary">Swap panels</button>
+  <div class="toolbar backlogToolbar">
+    <div class="captureGroup">
+      <input id="captureTitle" type="text" placeholder="Capture backlog item" aria-label="Capture backlog item">
+      <button type="button" id="capture">Capture</button>
+    </div>
+    <div class="filterGroup" aria-label="Backlog filters">
+      <input id="filter" type="search" placeholder="Filter backlog" aria-label="Filter backlog">
+      <select id="savedFilter" aria-label="Saved filter"></select>
+      <select id="groupBy" aria-label="Group backlog">
+        <option value="">Backlog order</option>
+        <option value="refinementState">Group by refinement</option>
+        <option value="epic">Group by epic</option>
+        <option value="milestone">Group by milestone</option>
+        <option value="assignee">Group by assignee</option>
+        <option value="priority">Group by priority</option>
+      </select>
+    </div>
+    <div class="toolbarActions">
+      ${renderHelpButton('backlog', 'Show help for the backlog view')}
+    </div>
   </div>
   <main id="layout">
     <section id="content" class="listPanel"></section>
     <section id="editor" class="editorPanel"></section>
   </main>
+  ${renderHelpPanel()}
   <script>
     const vscode = acquireVsCodeApi();
     const payload = ${json};
@@ -436,13 +466,6 @@ function renderBacklogHtml(payload: BacklogHtmlPayload): string {
     filter.addEventListener('input', () => { query = filter.value.toLowerCase(); persistUiState(); render(); });
     savedFilter.addEventListener('change', () => { savedFilterId = savedFilter.value; persistUiState(); render(); });
     groupByInput.addEventListener('change', () => { groupBy = groupByInput.value; persistUiState(); render(); });
-    document.getElementById('swapPanels').addEventListener('click', () => {
-      panelsSwapped = !panelsSwapped;
-      layout.classList.toggle('swapped', panelsSwapped);
-      persistUiState();
-      vscode.postMessage({ type: 'updateUiPreference', key: 'backlog.panelsSwapped', value: panelsSwapped });
-    });
-
     function persistUiState() {
       vscode.setState?.({
         query,
@@ -595,6 +618,7 @@ function renderBacklogHtml(payload: BacklogHtmlPayload): string {
 
     persistUiState();
     render();
+    ${HELP_SCRIPT}
   </script>
 </body>
 </html>`;

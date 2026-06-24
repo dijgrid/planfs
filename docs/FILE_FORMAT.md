@@ -142,6 +142,8 @@ archive:
 
 Archived tasks are hidden from normal list, board, backlog, next-work, search, and explorer views by default. They remain readable Markdown files and can be browsed, restored, or permanently deleted through archive workflows.
 
+Active tasks may keep `dependsOn` references to archived tasks as historical prerequisites. Validation reports those references as warnings, not errors, and next-work readiness treats archived dependencies as satisfied.
+
 ---
 
 ## Epic Entity
@@ -473,7 +475,7 @@ links:
 
 1. **Epic exists** - Referenced epic must exist
 2. **Milestone exists** - Referenced milestone must exist
-3. **Dependencies exist** - All `dependsOn` tasks exist
+3. **Dependencies exist** - All `dependsOn` tasks exist in active tasks or archived tasks; archived dependency references warn but do not fail validation
 4. **No circular deps** - Task cannot indirectly depend on itself
 
 ### Global Validation

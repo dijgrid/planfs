@@ -6,6 +6,7 @@ import { promises as fs } from 'fs';
 import * as path from 'path';
 import {
   buildPlanningSummary,
+  bulkUpdateTasks,
   loadRepository,
   parseTaskUpdatePatch,
   RefinementState,
@@ -13,15 +14,17 @@ import {
   updateTaskPlanning
 } from 'planfs-core';
 
-export type AiAction = 'summary' | 'update-task' | 'initialize';
+export type AiAction = 'summary' | 'update-task' | 'bulk-update-tasks' | 'initialize';
 
 export interface AiOptions {
   id?: string;
+  ids?: string | string[];
   status?: string | string[];
   priority?: string;
   assignee?: string;
   epic?: string;
   milestone?: string;
+  estimate?: string;
   refinementState?: string | string[];
   dueDate?: string;
   tags?: string | string[];
@@ -54,6 +57,8 @@ export async function aiCommand(
         return await summary(rootPath, options);
       case 'update-task':
         return await updateTask(rootPath, options);
+      case 'bulk-update-tasks':
+        return await bulkUpdateTaskSet(rootPath, options);
       case 'initialize':
         return await initializeAwareness(rootPath, options);
     }
@@ -94,6 +99,7 @@ async function updateTask(rootPath: string, options: AiOptions): Promise<number>
     assignee: options.assignee,
     epic: options.epic,
     milestone: options.milestone,
+    estimate: options.estimate,
     refinementState: firstValue(options.refinementState),
     dueDate: options.dueDate,
     tags: normalizeTags(options.tags)
@@ -125,6 +131,58 @@ async function updateTask(rootPath: string, options: AiOptions): Promise<number>
   if (result.preview) {
     console.log('\n--- preview ---');
     console.log(result.preview.trimEnd());
+  }
+  return 0;
+}
+
+async function bulkUpdateTaskSet(rootPath: string, options: AiOptions): Promise<number> {
+  const taskIds = normalizeTaskIds(options.ids);
+  if (taskIds.length === 0) {
+    console.error('Error: --ids is required when bulk updating tasks');
+    return 1;
+  }
+
+  const repository = await loadRepository(rootPath);
+  const patch = parseTaskUpdatePatch({
+    status: firstValue(options.status),
+    priority: options.priority,
+    assignee: options.assignee,
+    milestone: options.milestone,
+    estimate: options.estimate
+  });
+  const result = await bulkUpdateTasks(rootPath, repository, {
+    taskIds,
+    patch,
+    dryRun: Boolean(options.dryRun)
+  });
+
+  if (options.format === 'json') {
+    console.log(JSON.stringify({
+      dryRun: result.dryRun,
+      taskIds: result.taskIds,
+      changedFields: result.changedFields,
+      changedTasks: result.changedTasks.map(change => ({
+        id: change.id,
+        changedFields: change.changedFields,
+        task: change.task,
+        preview: change.preview
+      }))
+    }, null, 2));
+    return 0;
+  }
+
+  if (result.changedTasks.length === 0) {
+    console.log(`No changes for ${result.taskIds.length} task${result.taskIds.length === 1 ? '' : 's'}`);
+    return 0;
+  }
+
+  console.log(`${result.dryRun ? 'Previewed' : 'Updated'} ${result.changedTasks.length} task${result.changedTasks.length === 1 ? '' : 's'}`);
+  console.log(`  Changed: ${result.changedFields.join(', ')}`);
+  if (result.dryRun) {
+    for (const change of result.changedTasks) {
+      console.log(`\n--- preview ${change.id} ---`);
+      console.log(change.preview.trimEnd());
+    }
   }
   return 0;
 }
@@ -190,6 +248,17 @@ function normalizeTags(value: string | string[] | undefined): string | undefined
   return Array.isArray(value) ? value.join(',') : value;
 }
 
+function normalizeTaskIds(value: string | string[] | undefined): string[] {
+  if (!value) {
+    return [];
+  }
+  const values = Array.isArray(value) ? value : [value];
+  return values
+    .flatMap(item => item.split(','))
+    .map(item => item.trim())
+    .filter(Boolean);
+}
+
 function normalizeStringArray(value: string | string[] | undefined): string[] | undefined {
   if (!value) {
     return undefined;
@@ -239,13 +308,19 @@ node src/cli/dist/cli.js ai summary
 
 Use the returned IDs and file paths for targeted follow-up reads instead of scanning all of \`.planfs\`.
 
-Preview metadata updates before writing:
+Preview metadata updates before writing. Use \`update-task\` for one task:
 
 \`\`\`sh
 node src/cli/dist/cli.js ai update-task --id TASK-061 --status in-progress --dry-run
 \`\`\`
 
-After applying AI-assisted planning updates, run:
+Use \`bulk-update-tasks\` when applying the same bounded metadata change to multiple tasks:
+
+\`\`\`sh
+node src/cli/dist/cli.js ai bulk-update-tasks --ids TASK-061,TASK-062 --status review --dry-run
+\`\`\`
+
+Prefer these preview/apply helpers over editing task frontmatter directly for status, priority, assignee, milestone, estimate, due date, tags, or refinement-state updates. After applying AI-assisted planning updates, run:
 
 \`\`\`sh
 node src/cli/dist/cli.js validate

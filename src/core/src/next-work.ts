@@ -3,6 +3,7 @@
  */
 
 import { buildTaskGraph } from './graph';
+import { isTaskDependencyBlocking, isTaskReferenceSatisfied } from './references';
 import { Repository, Task, TaskPriority, TaskStatus } from './types';
 
 export type TaskReadiness =
@@ -52,12 +53,11 @@ export function getTaskReadiness(
 ): TaskReadinessResult {
   const dependencyIds = task.dependsOn ?? [];
   const missingDependencyIds = dependencyIds.filter(
-    dependencyId => !repository.tasks.has(dependencyId)
+    dependencyId => !isTaskReferenceSatisfied(repository, dependencyId)
   );
-  const blockingTaskIds = dependencyIds.filter(dependencyId => {
-    const dependency = repository.tasks.get(dependencyId);
-    return dependency && dependency.status !== 'done';
-  });
+  const blockingTaskIds = dependencyIds.filter(
+    dependencyId => isTaskDependencyBlocking(repository, dependencyId)
+  );
 
   if (task.status === 'done') {
     return { status: 'done', blockingTaskIds: [], missingDependencyIds };

@@ -30,11 +30,16 @@ export async function main(): Promise<void> {
         y
           .positional('action', {
             describe: 'AI helper to run',
-            choices: ['summary', 'update-task', 'initialize']
+            choices: ['summary', 'update-task', 'bulk-update-tasks', 'initialize']
           })
           .option('id', {
             type: 'string',
             description: 'Task ID to update'
+          })
+          .option('ids', {
+            type: 'array',
+            string: true,
+            description: 'Task IDs to bulk update, comma-separated or repeated'
           })
           .option('assignee', {
             type: 'string',
@@ -47,6 +52,10 @@ export async function main(): Promise<void> {
           .option('milestone', {
             type: 'string',
             description: 'Scope summary or set task milestone'
+          })
+          .option('estimate', {
+            type: 'string',
+            description: 'Set task estimate'
           })
           .option('status', {
             type: 'array',
@@ -99,9 +108,11 @@ export async function main(): Promise<void> {
           args.action as AiAction,
           {
             id: args.id as string | undefined,
+            ids: args.ids as string[] | undefined,
             assignee: args.assignee as string | undefined,
             epic: args.epic as string | undefined,
             milestone: args.milestone as string | undefined,
+            estimate: args.estimate as string | undefined,
             status: args.status as string[] | undefined,
             priority: args.priority as string | undefined,
             refinementState: args.refinementState as string[] | undefined,
@@ -276,6 +287,15 @@ export async function main(): Promise<void> {
             default: false,
             description: 'When archiving an epic, also archive child tasks'
           })
+          .option('dry-run', {
+            type: 'boolean',
+            default: false,
+            description: 'Preview archive changes without writing files'
+          })
+          .option('expected-updated-at', {
+            type: 'string',
+            description: 'Refuse archive if the target updatedAt has changed'
+          })
           .option('yes', {
             type: 'boolean',
             default: false,
@@ -294,6 +314,8 @@ export async function main(): Promise<void> {
           {
             id: args.id as string | undefined,
             includeChildren: args.includeChildren as boolean,
+            dryRun: args.dryRun as boolean,
+            expectedUpdatedAt: args.expectedUpdatedAt as string | undefined,
             yes: args.yes as boolean,
             format: args.format as 'text' | 'json'
           }
@@ -545,6 +567,17 @@ export async function main(): Promise<void> {
           .option('target-date', {
             type: 'string',
             description: 'Target date for milestones'
+          })
+          .option('dry-run', {
+            type: 'boolean',
+            default: false,
+            description: 'Preview created Markdown without writing files'
+          })
+          .option('format', {
+            type: 'string',
+            choices: ['text', 'json'],
+            default: 'text',
+            description: 'Output format'
           }),
       async (args) => {
         const exitCode = await createCommand(
@@ -557,7 +590,9 @@ export async function main(): Promise<void> {
             assignee: args.assignee as string | undefined,
             owner: args.owner as string | undefined,
             description: args.description as string | undefined,
-            targetDate: args.targetDate as string | undefined
+            targetDate: args.targetDate as string | undefined,
+            dryRun: args.dryRun as boolean,
+            format: args.format as 'text' | 'json'
           }
         );
         process.exit(exitCode);

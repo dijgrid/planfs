@@ -19,6 +19,7 @@ import {
   ValidationError,
   ValidationResult
 } from './types';
+import { isArchivedReference } from './references';
 
 const ajv = new Ajv({ strict: false, validateFormats: false });
 const schemaValidators: Record<Entity['type'], ValidateFunction> = {
@@ -406,16 +407,29 @@ function validateDecision(decision: Decision): ValidationError[] {
   return errors;
 }
 
+export interface ValidateRepositoryOptions {
+  referenceEntities?: Entity[];
+}
+
 /**
- * Validate a collection of entities for global constraints
+ * Validate a collection of entities for global constraints.
+ *
+ * referenceEntities can satisfy references without participating in duplicate
+ * ID or circular dependency checks for the active collection.
  */
-export function validateRepository(entities: Entity[]): ValidationError[] {
+export function validateRepository(
+  entities: Entity[],
+  options: ValidateRepositoryOptions = {}
+): ValidationError[] {
   const errors: ValidationError[] = [];
-  const idMap = new Map<string, Entity>();
+  const idMap = new Map<string, Entity>(
+    (options.referenceEntities ?? []).map(entity => [entity.id, entity])
+  );
 
   // Check for duplicate IDs
+  const seenIds = new Set<string>();
   for (const entity of entities) {
-    if (idMap.has(entity.id)) {
+    if (seenIds.has(entity.id)) {
       errors.push({
         id: entity.id,
         path: entity.filePath,
@@ -423,6 +437,7 @@ export function validateRepository(entities: Entity[]): ValidationError[] {
         severity: 'error'
       });
     }
+    seenIds.add(entity.id);
     idMap.set(entity.id, entity);
   }
 
@@ -463,7 +478,13 @@ function checkEntityReferences(
       });
     } else if (task.epic) {
       const epic = idMap.get(task.epic) as Epic;
-      if (epic.status === 'completed' || epic.status === 'archived') {
+      if (isArchivedReference(epic)) {
+        errors.push({
+          id: task.id,
+          message: `Task references archived epic: ${task.epic}`,
+          severity: 'warning'
+        });
+      } else if (epic.status === 'completed' || epic.status === 'archived') {
         errors.push({
           id: task.id,
           message: `Task references ${epic.status} epic: ${task.epic}`,
@@ -493,11 +514,18 @@ function checkEntityReferences(
     // Check dependencies
     if (task.dependsOn) {
       for (const dep of task.dependsOn) {
-        if (!idMap.has(dep)) {
+        const dependency = idMap.get(dep) as Task | undefined;
+        if (!dependency) {
           errors.push({
             id: task.id,
             message: `Referenced task not found: ${dep}`,
             severity: 'error'
+          });
+        } else if (isArchivedReference(dependency)) {
+          errors.push({
+            id: task.id,
+            message: `Task depends on archived task: ${dep}`,
+            severity: 'warning'
           });
         }
       }

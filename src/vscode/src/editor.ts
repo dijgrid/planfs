@@ -16,7 +16,17 @@ import {
   Task,
   validateEntity
 } from 'planfs-core';
+import {
+  createHelpTopics,
+  handleHelpMessage,
+  HELP_SCRIPT,
+  HELP_STYLES,
+  HelpTopic,
+  renderHelpButton,
+  renderHelpPanel
+} from './help';
 import { extractMarkdownSections, MarkdownSection } from './markdownSections';
+import { escapeHtml, getNonce, renderMessageDocument } from './webview';
 import { getPlanFSWorkspaceFolder } from './workspace';
 
 interface EditorPayload {
@@ -30,6 +40,7 @@ interface EditorPayload {
   };
   epicBoard?: EpicBoardColumn[];
   backlogReadiness?: BacklogReadinessInfo;
+  helpTopics: HelpTopic[];
 }
 
 type EditableEntity = Task | Epic | Milestone;
@@ -81,7 +92,7 @@ export class EntityEditorProvider {
         existingPanel.reveal(vscode.ViewColumn.One);
         existingPanel.webview.html = renderEditor(
           existingPanel.webview,
-          await createPayload(repository, entity)
+          await createPayload(repository, entity, this.extensionUri)
         );
         return;
       }
@@ -111,11 +122,13 @@ export class EntityEditorProvider {
           await this.open(String(message.entityId));
         }
 
-        if (message?.type === 'archiveTask') {
-          await this.archiveTask(String(entity.id), panel);
+        if (message?.type === 'archiveEntity' || message?.type === 'archiveTask') {
+          await this.archiveEditableEntity(String(entity.id), panel);
         }
+
+        await handleHelpMessage(this.extensionUri, message);
       });
-      panel.webview.html = renderEditor(panel.webview, await createPayload(repository, entity));
+      panel.webview.html = renderEditor(panel.webview, await createPayload(repository, entity, this.extensionUri));
     } catch (error) {
       vscode.window.showErrorMessage(
         `Failed to open PlanFS editor: ${error instanceof Error ? error.message : String(error)}`
@@ -141,7 +154,7 @@ export class EntityEditorProvider {
       for (const [entityId, panel] of this.panels.entries()) {
         const entity = findEditableEntity(repository, entityId);
         panel.webview.html = entity
-          ? renderEditor(panel.webview, await createPayload(repository, entity))
+          ? renderEditor(panel.webview, await createPayload(repository, entity, this.extensionUri))
           : renderMessage(`Entity not found: ${entityId}`);
       }
     } catch (error) {
@@ -192,7 +205,7 @@ export class EntityEditorProvider {
       const refreshed = await loadRepository(workspaceFolder.uri.fsPath);
       panel.webview.html = renderEditor(
         panel.webview,
-        await createPayload(refreshed, findEditableEntity(refreshed, originalEntityId) ?? entity)
+        await createPayload(refreshed, findEditableEntity(refreshed, originalEntityId) ?? entity, this.extensionUri)
       );
       vscode.window.showInformationMessage(`Saved ${entity.id}`);
     } catch (error) {
@@ -202,7 +215,7 @@ export class EntityEditorProvider {
     }
   }
 
-  private async archiveTask(
+  private async archiveEditableEntity(
     entityId: string,
     panel: vscode.WebviewPanel
   ): Promise<void> {
@@ -220,44 +233,49 @@ export class EntityEditorProvider {
         return;
       }
 
-      if (entity.type !== 'task') {
-        vscode.window.showErrorMessage('Only tasks can be archived from the PlanFS editor.');
+      if (entity.type !== 'task' && entity.type !== 'epic') {
+        vscode.window.showErrorMessage('Only tasks and epics can be archived from the PlanFS editor.');
         return;
       }
 
-      const answer = await vscode.window.showWarningMessage(
-        `Archive ${entity.id}?`,
-        { modal: true },
-        'Archive'
-      );
-      if (answer !== 'Archive') {
-        return;
+      let includeChildren = false;
+      if (entity.type === 'epic') {
+        const answer = await vscode.window.showWarningMessage(
+          `Archive ${entity.id}? Child tasks can be archived with it.`,
+          { modal: true },
+          'Archive epic only',
+          'Archive epic and tasks'
+        );
+        if (!answer) {
+          return;
+        }
+        includeChildren = answer === 'Archive epic and tasks';
+      } else {
+        const answer = await vscode.window.showWarningMessage(
+          `Archive ${entity.id}?`,
+          { modal: true },
+          'Archive'
+        );
+        if (answer !== 'Archive') {
+          return;
+        }
       }
 
-      await archiveEntity(workspaceFolder.uri.fsPath, entity.id);
+      await archiveEntity(workspaceFolder.uri.fsPath, entity.id, { includeChildren });
       panel.webview.html = renderMessage(`Archived ${entity.id}`);
       vscode.window.showInformationMessage(`Archived ${entity.id}`);
       await vscode.commands.executeCommand('planfs.refreshExplorer');
     } catch (error) {
       vscode.window.showErrorMessage(
-        `Failed to archive task: ${error instanceof Error ? error.message : String(error)}`
+        `Failed to archive item: ${error instanceof Error ? error.message : String(error)}`
       );
     }
   }
+
 }
 
 function renderMessage(message: string): string {
-  return `<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PlanFS Entity Editor</title>
-</head>
-<body>
-  <p>${escapeHtml(message)}</p>
-</body>
-</html>`;
+  return renderMessageDocument('PlanFS Entity Editor', message);
 }
 
 async function openRawFile(entityId: string): Promise<void> {
@@ -314,7 +332,11 @@ function findEditableEntity(
     ?? repository.milestones.get(entityId);
 }
 
-async function createPayload(repository: Repository, entity: EditableEntity): Promise<EditorPayload> {
+async function createPayload(
+  repository: Repository,
+  entity: EditableEntity,
+  extensionUri: vscode.Uri
+): Promise<EditorPayload> {
   const tags = new Set<string>();
   for (const task of repository.tasks.values()) {
     for (const tag of task.tags ?? []) {
@@ -345,7 +367,8 @@ async function createPayload(repository: Repository, entity: EditableEntity): Pr
       })),
       tags: Array.from(tags).sort(),
       developers: developers.map(developer => developer.label)
-    }
+    },
+    helpTopics: createHelpTopics(extensionUri, ['editor'])
   };
 
   if (entity.type === 'epic') {
@@ -583,6 +606,12 @@ function renderEditor(webview: vscode.Webview, payload: EditorPayload): string {
       border-color: var(--vscode-button-secondaryBackground);
     }
 
+    button.danger {
+      color: var(--vscode-errorForeground, var(--vscode-button-foreground));
+      background: color-mix(in srgb, var(--vscode-inputValidation-errorBackground, var(--vscode-input-background)) 78%, var(--vscode-button-background));
+      border-color: var(--vscode-inputValidation-errorBorder, var(--vscode-errorForeground));
+    }
+
     .errors {
       display: none;
       border: 1px solid var(--error);
@@ -708,6 +737,8 @@ function renderEditor(webview: vscode.Webview, payload: EditorPayload): string {
       margin: 3px 0;
     }
 
+    ${HELP_STYLES}
+
     .emptyColumn {
       padding: 8px;
       color: var(--muted);
@@ -743,7 +774,8 @@ function renderEditor(webview: vscode.Webview, payload: EditorPayload): string {
       <div class="actions">
         <button id="save">Save</button>
         <button id="openRaw" class="secondary">Open Markdown</button>
-        ${payload.entity.type === 'task' ? '<button id="archiveTask" class="secondary" type="button">Archive Task</button>' : ''}
+        ${renderHelpButton('editor', 'Show help for the structured editor')}
+        ${payload.entity.type === 'task' || payload.entity.type === 'epic' ? '<button id="archiveEntity" class="danger" type="button">Archive ' + escapeHtml(titleCase(payload.entity.type)) + '</button>' : ''}
       </div>
     </header>
     <div id="errors" class="errors"></div>
@@ -751,9 +783,11 @@ function renderEditor(webview: vscode.Webview, payload: EditorPayload): string {
       ${renderEntityFields(payload)}
     </form>
   </div>
+  ${renderHelpPanel()}
   <script nonce="${nonce}">
     const vscode = acquireVsCodeApi();
     const initial = ${JSON.stringify(payload.entity)};
+    const state = { helpTopics: ${JSON.stringify(payload.helpTopics)} };
     const form = document.getElementById('form');
     const errors = document.getElementById('errors');
 
@@ -766,8 +800,8 @@ function renderEditor(webview: vscode.Webview, payload: EditorPayload): string {
     document.getElementById('openRaw').addEventListener('click', () => {
       vscode.postMessage({ type: 'openRaw' });
     });
-    document.getElementById('archiveTask')?.addEventListener('click', () => {
-      vscode.postMessage({ type: 'archiveTask' });
+    document.getElementById('archiveEntity')?.addEventListener('click', () => {
+      vscode.postMessage({ type: 'archiveEntity' });
     });
     document.querySelectorAll('[data-open-entity]').forEach(button => {
       button.addEventListener('click', () => {
@@ -850,6 +884,7 @@ function renderEditor(webview: vscode.Webview, payload: EditorPayload): string {
         .replaceAll('"', '&quot;')
         .replaceAll("'", '&#39;');
     }
+    ${HELP_SCRIPT}
   </script>
 </body>
 </html>`;
@@ -902,7 +937,7 @@ function renderEntityFields(payload: EditorPayload): string {
       textarea('Description', 'description', epic.description ?? '', 'full'),
       textarea('Links JSON', 'links', formatJson(epic.links), 'full'),
       renderEpicBoard(payload),
-      renderBodySections(epic.body)
+      renderBodySections(epic.body, 'Epic Planning Notes')
     ].join('');
   }
 
@@ -928,7 +963,7 @@ function compactMeta(fields: string[]): string {
 
 function renderBacklogReadiness(payload: EditorPayload): string {
   const readiness = payload.backlogReadiness;
-  if (!readiness) {
+  if (!readiness || !readiness.needsReview) {
     return '';
   }
 
@@ -936,13 +971,11 @@ function renderBacklogReadiness(payload: EditorPayload): string {
     ? '<ul class="reasonList">' + readiness.reasons
       .map(reason => '<li>' + escapeHtml(reason) + '</li>')
       .join('') + '</ul>'
-    : '<p class="subtle">No backlog review blockers remain.</p>';
+    : '<p class="subtle">Needs backlog review.</p>';
 
   return [
-    '<section class="card full infoBox' + (readiness.needsReview ? ' warning' : '') + '">',
+    '<section class="card full infoBox warning">',
     '<h2>Backlog Readiness</h2>',
-    '<p class="subtle">Backlog readiness is separate from workflow status. A task can be todo, in-progress, review, or done while still needing backlog review.</p>',
-    '<p class="subtle">Needs review can come from missing body content, missing priority, blocking dependencies, missing dependency IDs, or stale update metadata.</p>',
     reasons,
     '</section>'
   ].join('');
@@ -1034,13 +1067,13 @@ function textarea(label: string, name: string, value: string, className = ''): s
   return `<label class="${className}">${escapeHtml(label)}<textarea name="${name}">${escapeHtml(value)}</textarea></label>`;
 }
 
-function renderBodySections(body: string): string {
+function renderBodySections(body: string, heading = 'Markdown Sections'): string {
   const sections = extractMarkdownSections(body, ['Acceptance Criteria', 'Questions']);
 
   return [
     '<section class="card full">',
-    '<h2>Markdown Sections</h2>',
-    '<p class="subtle">Use Open Markdown for full body editing. Common planning sections are shown here for quick review.</p>',
+    '<h2>' + escapeHtml(heading) + '</h2>',
+    '<p class="subtle">Use Open Markdown for full body editing. Acceptance criteria and questions are shown here for quick review.</p>',
     sections.length === 0
       ? '<p class="subtle">No Acceptance Criteria or Questions sections found.</p>'
       : '<div class="sectionList">' + sections.map(renderMarkdownSection).join('') + '</div>',
@@ -1097,22 +1130,6 @@ function toDateInput(value?: string): string {
   return String(value ?? '').slice(0, 10);
 }
 
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-
-function getNonce(): string {
-  let text = '';
-  const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-
-  for (let i = 0; i < 32; i++) {
-    text += possible.charAt(Math.floor(Math.random() * possible.length));
-  }
-
-  return text;
+function titleCase(value: string): string {
+  return value.charAt(0).toUpperCase() + value.slice(1);
 }
