@@ -16,6 +16,15 @@ import {
   Task,
   validateEntity
 } from 'planfs-core';
+import {
+  HELP_SCRIPT,
+  HELP_STYLES,
+  HelpTopic,
+  loadHelpTopics,
+  openHelpDocument,
+  renderHelpButton,
+  renderHelpPanel
+} from './help';
 import { extractMarkdownSections, MarkdownSection } from './markdownSections';
 import { getPlanFSWorkspaceFolder } from './workspace';
 
@@ -30,6 +39,7 @@ interface EditorPayload {
   };
   epicBoard?: EpicBoardColumn[];
   backlogReadiness?: BacklogReadinessInfo;
+  helpTopics: HelpTopic[];
 }
 
 type EditableEntity = Task | Epic | Milestone;
@@ -81,7 +91,7 @@ export class EntityEditorProvider {
         existingPanel.reveal(vscode.ViewColumn.One);
         existingPanel.webview.html = renderEditor(
           existingPanel.webview,
-          await createPayload(repository, entity)
+          await createPayload(repository, entity, this.extensionUri)
         );
         return;
       }
@@ -114,8 +124,12 @@ export class EntityEditorProvider {
         if (message?.type === 'archiveEntity' || message?.type === 'archiveTask') {
           await this.archiveEditableEntity(String(entity.id), panel);
         }
+
+        if (message?.type === 'openHelpDocument') {
+          await openHelpDocument(this.extensionUri, 'editor');
+        }
       });
-      panel.webview.html = renderEditor(panel.webview, await createPayload(repository, entity));
+      panel.webview.html = renderEditor(panel.webview, await createPayload(repository, entity, this.extensionUri));
     } catch (error) {
       vscode.window.showErrorMessage(
         `Failed to open PlanFS editor: ${error instanceof Error ? error.message : String(error)}`
@@ -141,7 +155,7 @@ export class EntityEditorProvider {
       for (const [entityId, panel] of this.panels.entries()) {
         const entity = findEditableEntity(repository, entityId);
         panel.webview.html = entity
-          ? renderEditor(panel.webview, await createPayload(repository, entity))
+          ? renderEditor(panel.webview, await createPayload(repository, entity, this.extensionUri))
           : renderMessage(`Entity not found: ${entityId}`);
       }
     } catch (error) {
@@ -192,7 +206,7 @@ export class EntityEditorProvider {
       const refreshed = await loadRepository(workspaceFolder.uri.fsPath);
       panel.webview.html = renderEditor(
         panel.webview,
-        await createPayload(refreshed, findEditableEntity(refreshed, originalEntityId) ?? entity)
+        await createPayload(refreshed, findEditableEntity(refreshed, originalEntityId) ?? entity, this.extensionUri)
       );
       vscode.window.showInformationMessage(`Saved ${entity.id}`);
     } catch (error) {
@@ -329,7 +343,11 @@ function findEditableEntity(
     ?? repository.milestones.get(entityId);
 }
 
-async function createPayload(repository: Repository, entity: EditableEntity): Promise<EditorPayload> {
+async function createPayload(
+  repository: Repository,
+  entity: EditableEntity,
+  extensionUri: vscode.Uri
+): Promise<EditorPayload> {
   const tags = new Set<string>();
   for (const task of repository.tasks.values()) {
     for (const tag of task.tags ?? []) {
@@ -360,7 +378,8 @@ async function createPayload(repository: Repository, entity: EditableEntity): Pr
       })),
       tags: Array.from(tags).sort(),
       developers: developers.map(developer => developer.label)
-    }
+    },
+    helpTopics: loadHelpTopics(extensionUri, ['editor'])
   };
 
   if (entity.type === 'epic') {
@@ -729,6 +748,8 @@ function renderEditor(webview: vscode.Webview, payload: EditorPayload): string {
       margin: 3px 0;
     }
 
+    ${HELP_STYLES}
+
     .emptyColumn {
       padding: 8px;
       color: var(--muted);
@@ -764,6 +785,7 @@ function renderEditor(webview: vscode.Webview, payload: EditorPayload): string {
       <div class="actions">
         <button id="save">Save</button>
         <button id="openRaw" class="secondary">Open Markdown</button>
+        ${renderHelpButton('editor', 'Show help for the structured editor')}
         ${payload.entity.type === 'task' || payload.entity.type === 'epic' ? '<button id="archiveEntity" class="danger" type="button">Archive ' + escapeHtml(titleCase(payload.entity.type)) + '</button>' : ''}
       </div>
     </header>
@@ -772,9 +794,11 @@ function renderEditor(webview: vscode.Webview, payload: EditorPayload): string {
       ${renderEntityFields(payload)}
     </form>
   </div>
+  ${renderHelpPanel()}
   <script nonce="${nonce}">
     const vscode = acquireVsCodeApi();
     const initial = ${JSON.stringify(payload.entity)};
+    const state = { helpTopics: ${JSON.stringify(payload.helpTopics)} };
     const form = document.getElementById('form');
     const errors = document.getElementById('errors');
 
@@ -871,6 +895,7 @@ function renderEditor(webview: vscode.Webview, payload: EditorPayload): string {
         .replaceAll('"', '&quot;')
         .replaceAll("'", '&#39;');
     }
+    ${HELP_SCRIPT}
   </script>
 </body>
 </html>`;

@@ -193,6 +193,8 @@ describe('VS Code view refresh workspace selection', () => {
     expect(backlogPanel.webview.html).toContain('Open Markdown');
     expect(backlogPanel.webview.html).toContain('Acceptance Criteria');
     expect(backlogPanel.webview.html).toContain('Group by refinement');
+    expect(backlogPanel.webview.html).toContain('data-help-context="backlog"');
+    expect(backlogPanel.webview.html).toContain('Use the backlog view to capture rough work');
     expect(backlogPanel.webview.html).toContain('"backlogPanelsSwapped":true');
     expect(backlogPanel.webview.html).not.toContain('swapPanels');
     expect(backlogPanel.webview.html).not.toContain('Swap panels');
@@ -284,6 +286,11 @@ describe('VS Code view refresh workspace selection', () => {
     expect(insightsPanel.webview.html).toContain('timelineGroup');
     expect(insightsPanel.webview.html).toContain('timelineDensity');
     expect(insightsPanel.webview.html).toContain('<button class="tab active" data-tab="timeline">Timeline</button>');
+    expect(insightsPanel.webview.html).toContain('const helpButtons = {');
+    expect(insightsPanel.webview.html).toContain('"context":"insights.timeline"');
+    expect(insightsPanel.webview.html).toContain('"context":"insights.graph"');
+    expect(insightsPanel.webview.html).toContain('"context":"insights.reports"');
+    expect(insightsPanel.webview.html).toContain('"context":"insights.branch"');
     expect(insightsPanel.webview.html).toContain('Use the window and card density controls');
     expect(insightsPanel.webview.html).toContain('Trace prerequisite flow');
     expect(insightsPanel.webview.html).toContain('renderTimelineDetails');
@@ -1046,6 +1053,8 @@ describe('VS Code view refresh workspace selection', () => {
     expect(editorPanel.webview.html).toContain('name="title"');
     expect(editorPanel.webview.html).toContain('name="assignee"');
     expect(editorPanel.webview.html).toContain('name="epic"');
+    expect(editorPanel.webview.html).toContain('data-help-context="editor"');
+    expect(editorPanel.webview.html).toContain('Use the structured editor for safe metadata edits');
     expect(editorPanel.webview.html).toContain('Acceptance Criteria');
     expect(editorPanel.webview.html).toContain('Keep the body in Markdown');
     expect(editorPanel.webview.html).toContain('Questions');

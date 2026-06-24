@@ -17,6 +17,15 @@ import {
   TaskPriority,
   validateRepositoryState
 } from 'planfs-core';
+import {
+  HELP_SCRIPT,
+  HELP_STYLES,
+  HelpTopic,
+  loadHelpTopics,
+  openHelpDocument,
+  renderHelpButton,
+  renderHelpPanel
+} from './help';
 import { extractMarkdownSections, MarkdownSection } from './markdownSections';
 import { PlanFSUiPreferences, UI_PREFERENCES } from './preferences';
 import { getPlanFSWorkspaceFolder } from './workspace';
@@ -82,6 +91,9 @@ export class BacklogProvider {
       }
       if (message?.type === 'updateUiPreference') {
         await this.updateUiPreference(String(message.key), message.value);
+      }
+      if (message?.type === 'openHelpDocument') {
+        await openHelpDocument(this.extensionUri, 'backlog');
       }
     });
 
@@ -151,7 +163,8 @@ export class BacklogProvider {
           UI_PREFERENCES.backlogPanelsSwapped,
           workspaceFolder
         )
-      }
+      },
+      helpTopics: loadHelpTopics(this.extensionUri, ['backlog'])
     });
   }
 
@@ -326,6 +339,7 @@ interface BacklogHtmlPayload {
   preferences: {
     backlogPanelsSwapped: boolean;
   };
+  helpTopics: HelpTopic[];
 }
 
 function renderBacklogHtml(payload: BacklogHtmlPayload): string {
@@ -373,6 +387,8 @@ function renderBacklogHtml(payload: BacklogHtmlPayload): string {
     .sectionItem { display: flex; gap: 8px; align-items: flex-start; padding: 6px 0; color: var(--vscode-foreground); }
     .sectionItem.done { color: var(--vscode-descriptionForeground); }
     .sectionText { line-height: 1.35; overflow-wrap: anywhere; }
+    .toolbarSpacer { flex: 1 1 auto; }
+    ${HELP_STYLES}
     @media (max-width: 820px) {
       main { grid-template-columns: 1fr; height: auto; overflow: visible; }
       .editorPanel, .listPanel { max-height: 70vh; }
@@ -396,11 +412,14 @@ function renderBacklogHtml(payload: BacklogHtmlPayload): string {
       <option value="assignee">Group by assignee</option>
       <option value="priority">Group by priority</option>
     </select>
+    <span class="toolbarSpacer"></span>
+    ${renderHelpButton('backlog', 'Show help for the backlog view')}
   </div>
   <main id="layout">
     <section id="content" class="listPanel"></section>
     <section id="editor" class="editorPanel"></section>
   </main>
+  ${renderHelpPanel()}
   <script>
     const vscode = acquireVsCodeApi();
     const payload = ${json};
@@ -587,6 +606,7 @@ function renderBacklogHtml(payload: BacklogHtmlPayload): string {
 
     persistUiState();
     render();
+    ${HELP_SCRIPT}
   </script>
 </body>
 </html>`;

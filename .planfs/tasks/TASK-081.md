@@ -1,7 +1,7 @@
 ---
 id: TASK-081
 title: Design contextual help for PlanFS views
-status: todo
+status: done
 priority: medium
 assignee: justin
 epic: EPIC-phase-5-advanced
@@ -14,7 +14,7 @@ tags:
 dueDate: 2026-09-24
 refinementState: ready
 createdAt: 2026-06-23T00:00:00Z
-updatedAt: 2026-06-23T00:00:00Z
+updatedAt: 2026-06-24T02:07:00.000Z
 ---
 
 Design a lightweight contextual help system for PlanFS webviews so users can ask for guidance without permanently consuming panel space.
@@ -23,12 +23,18 @@ The requirement here is to provide a help system for users which utilizes widget
 
 ## Acceptance Criteria
 
-- [ ] Define a reusable help icon and placement pattern for VS Code webviews
-- [ ] Define whether help opens as an inline panel, side panel, modal, or dedicated help view
-- [ ] Add initial help topics for Insights Timeline, Dependency Graph, Reports, Branch, Backlog, and structured editor sections
-- [ ] Help text explains what each view helps users decide or do, not just what controls exist
-- [ ] Help affordances are keyboard accessible and screen-reader friendly
-- [ ] Help content stays grounded in implemented behavior
+- [x] Define a reusable help icon and placement pattern for VS Code webviews
+- [x] Define whether help opens as an inline panel, side panel, modal, or dedicated help view
+- [x] Add initial help topics for Insights Timeline, Dependency Graph, Reports, Branch, Backlog, and structured editor sections
+- [x] Help text explains what each view helps users decide or do, not just what controls exist
+- [x] Help affordances are keyboard accessible and screen-reader friendly
+- [x] Help content stays grounded in implemented behavior
+
+## Notes
+
+- Implemented Markdown-backed help topics under `src/vscode/resources/help`.
+- Added a reusable contextual help panel and icon pattern for the Backlog, Insights, and structured editor webviews.
+- Help opens on demand as a non-modal side panel and links back to the source Markdown topic.
 
 ## Questions
 

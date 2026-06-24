@@ -12,6 +12,16 @@ import {
   saveEntity,
   validateRepositoryState
 } from 'planfs-core';
+import {
+  HELP_SCRIPT,
+  HELP_STYLES,
+  HelpContext,
+  HelpTopic,
+  loadHelpTopics,
+  openHelpDocument,
+  renderHelpButton,
+  renderHelpPanel
+} from './help';
 import { getPlanFSWorkspaceFolder } from './workspace';
 
 interface InsightsPayload {
@@ -117,6 +127,7 @@ interface InsightsPayload {
     csv: string;
     markdown: string;
   };
+  helpTopics: HelpTopic[];
 }
 
 export class InsightsProvider {
@@ -166,6 +177,10 @@ export class InsightsProvider {
       if (message?.type === 'openEntity') {
         await openEntityFile(String(message.entityId));
       }
+
+      if (message?.type === 'openHelpDocument') {
+        await openHelpDocument(this.extensionUri, message.context as HelpContext);
+      }
     });
 
     await this.render();
@@ -190,7 +205,7 @@ export class InsightsProvider {
 
     try {
       const repository = await loadRepository(workspaceFolder.uri.fsPath);
-      const payload = await createPayload(repository);
+      const payload = await createPayload(repository, this.extensionUri);
       this.panel.webview.html = renderInsights(this.panel.webview, payload);
     } catch (error) {
       this.panel.webview.html = renderMessage(
@@ -231,7 +246,10 @@ export class InsightsProvider {
   }
 }
 
-async function createPayload(repository: Repository): Promise<InsightsPayload> {
+async function createPayload(
+  repository: Repository,
+  extensionUri: vscode.Uri
+): Promise<InsightsPayload> {
   const graph = buildTaskGraph(repository.tasks.values());
   const reports = generateReports(repository);
   const validation = validateRepositoryState(repository);
@@ -294,7 +312,13 @@ async function createPayload(repository: Repository): Promise<InsightsPayload> {
       json: '',
       csv: '',
       markdown: ''
-    }
+    },
+    helpTopics: loadHelpTopics(extensionUri, [
+      'insights.timeline',
+      'insights.graph',
+      'insights.reports',
+      'insights.branch'
+    ])
   };
 
   payload.exports = {
@@ -830,6 +854,10 @@ function renderInsights(webview: vscode.Webview, payload: InsightsPayload): stri
     }
 
     .tabIntro {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      justify-content: space-between;
       margin: 0 0 12px;
       color: var(--muted);
       line-height: 1.45;
@@ -1011,6 +1039,8 @@ function renderInsights(webview: vscode.Webview, payload: InsightsPayload): stri
       background: var(--vscode-button-hoverBackground);
     }
 
+    ${HELP_STYLES}
+
     .reportGrid {
       grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
     }
@@ -1096,10 +1126,17 @@ function renderInsights(webview: vscode.Webview, payload: InsightsPayload): stri
     <section id="reports" class="panel"></section>
     <section id="branch" class="panel"></section>
   </div>
+  ${renderHelpPanel()}
 
   <script nonce="${nonce}">
     const vscode = acquireVsCodeApi();
     const state = ${JSON.stringify(payload)};
+    const helpButtons = {
+      timeline: ${JSON.stringify(renderHelpButton('insights.timeline', 'Show help for the timeline'))},
+      graph: ${JSON.stringify(renderHelpButton('insights.graph', 'Show help for the dependency graph'))},
+      reports: ${JSON.stringify(renderHelpButton('insights.reports', 'Show help for reports'))},
+      branch: ${JSON.stringify(renderHelpButton('insights.branch', 'Show help for branch context'))}
+    };
     const tabs = document.querySelectorAll('.tab');
     const panels = document.querySelectorAll('.panel');
     let selectedGraphNode;
@@ -1124,6 +1161,7 @@ function renderInsights(webview: vscode.Webview, payload: InsightsPayload): stri
         vscode.postMessage({ type: 'openEntity', entityId: button.dataset.openEntity });
       }
     });
+    ${HELP_SCRIPT}
 
     function renderGraph() {
       const root = document.getElementById('graph');
@@ -1131,7 +1169,7 @@ function renderInsights(webview: vscode.Webview, payload: InsightsPayload): stri
       const milestoneOptions = unique(state.graph.nodes.map(node => node.milestone || 'No milestone')).sort();
       const assigneeOptions = unique(state.graph.nodes.map(node => node.assignee || 'Unassigned')).sort();
       root.innerHTML = [
-        '<p class="tabIntro">Trace prerequisite flow, spot missing dependency references, and inspect the tasks most likely to affect downstream work.</p>',
+        '<p class="tabIntro"><span>Trace prerequisite flow, spot missing dependency references, and inspect the tasks most likely to affect downstream work.</span>' + helpButtons.graph + '</p>',
         renderMetrics([
           ['Tasks', state.graph.nodes.length],
           ['Dependencies', state.graph.edges.length],
@@ -1421,7 +1459,7 @@ function renderInsights(webview: vscode.Webview, payload: InsightsPayload): stri
     function renderTimeline() {
       const root = document.getElementById('timeline');
       root.innerHTML = [
-        '<p class="tabIntro">Scan dated work across tasks, epics, and milestones. Use the window and card density controls to reduce overlap when dates are clustered.</p>',
+        '<p class="tabIntro"><span>Scan dated work across tasks, epics, and milestones. Use the window and card density controls to reduce overlap when dates are clustered.</span>' + helpButtons.timeline + '</p>',
         '<div class="timelineTools">',
         '<input id="timelineFilter" type="search" placeholder="Filter task, milestone, or epic" aria-label="Filter timeline">',
         '<select id="timelineWindow" aria-label="Timeline window">',
@@ -1674,7 +1712,7 @@ function renderInsights(webview: vscode.Webview, payload: InsightsPayload): stri
     function renderReports() {
       const root = document.getElementById('reports');
       root.innerHTML = [
-        '<p class="tabIntro">Review progress, workload, and risk summaries, then export the current planning snapshot for sharing or deeper analysis.</p>',
+        '<p class="tabIntro"><span>Review progress, workload, and risk summaries, then export the current planning snapshot for sharing or deeper analysis.</span>' + helpButtons.reports + '</p>',
         '<div class="row" style="margin-bottom:12px">',
         '<button data-export="json">Export JSON</button>',
         '<button data-export="csv">Export CSV</button>',
@@ -1719,12 +1757,12 @@ function renderInsights(webview: vscode.Webview, payload: InsightsPayload): stri
       const branch = state.branch;
 
       if (!branch.available) {
-        root.innerHTML = '<p class="tabIntro">Compare the current Git branch with the planning state so pull request work stays connected to tracked tasks.</p><article class="card"><h2>Branch Context</h2><p class="subtle">Branch context is unavailable.</p><p class="subtle">' + escapeHtml(branch.message || 'No Git comparison could be loaded.') + '</p></article>';
+        root.innerHTML = '<p class="tabIntro"><span>Compare the current Git branch with the planning state so pull request work stays connected to tracked tasks.</span>' + helpButtons.branch + '</p><article class="card"><h2>Branch Context</h2><p class="subtle">Branch context is unavailable.</p><p class="subtle">' + escapeHtml(branch.message || 'No Git comparison could be loaded.') + '</p></article>';
         return;
       }
 
       root.innerHTML = [
-        '<p class="tabIntro">Compare the current Git branch with the planning state so pull request work stays connected to tracked tasks.</p>',
+        '<p class="tabIntro"><span>Compare the current Git branch with the planning state so pull request work stays connected to tracked tasks.</span>' + helpButtons.branch + '</p>',
         renderMetrics([
           ['Changed Files', branch.changedFiles.length],
           ['Added Tasks', branch.addedTasks.length],
