@@ -1,14 +1,14 @@
 ---
 id: TASK-086
 title: Improve handling for malformed PlanFS Markdown
-status: todo
+status: done
 priority: high
 assignee: justin
 epic: EPIC-phase-5-advanced
 milestone: MILESTONE-phase-5
 refinementState: ready
 createdAt: 2026-07-07T03:04:48.309Z
-updatedAt: 2026-07-07T03:41:00.585Z
+updatedAt: 2026-07-07T04:39:39.315Z
 ---
 
 Make PlanFS resilient when task or epic Markdown files are incomplete, malformed, or missing expected metadata.
@@ -17,13 +17,13 @@ Missing or incorrectly formatted fields currently tend to surface later as save 
 
 ## Acceptance Criteria
 
-- [ ] Loader and parser behavior is reviewed for malformed task and epic frontmatter
-- [ ] Missing optional fields fall back to safe defaults where possible
-- [ ] Missing required fields produce actionable diagnostics that include file path, field name, and repair guidance
-- [ ] VS Code views can show recoverable malformed entities without crashing or blocking unrelated entities
-- [ ] Save flows refuse destructive rewrites when required identity fields are ambiguous
-- [ ] Tests cover missing fields, invalid enum values, malformed YAML, and partially recoverable entities
-- [ ] Documentation explains what PlanFS can recover automatically and what requires manual repair
+- [x] Loader and parser behavior is reviewed for malformed task and epic frontmatter
+- [x] Missing optional fields fall back to safe defaults where possible
+- [x] Missing required fields produce actionable diagnostics that include file path, field name, and repair guidance
+- [x] VS Code views can show recoverable malformed entities without crashing or blocking unrelated entities
+- [x] Save flows refuse destructive rewrites when required identity fields are ambiguous
+- [x] Tests cover missing fields, invalid enum values, malformed YAML, and partially recoverable entities
+- [x] Documentation explains what PlanFS can recover automatically and what requires manual repair
 
 ## Questions
 

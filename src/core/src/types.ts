@@ -24,6 +24,7 @@ export interface BaseEntity {
   filePath: string;
   metadata: Record<string, unknown>;
   body: string;
+  diagnostics?: ValidationError[];
   createdAt?: string;
   updatedAt?: string;
   archive?: ArchiveMetadata;
@@ -109,6 +110,7 @@ export interface Repository {
   decisions: Map<string, Decision>;
   archivedTasks?: Map<string, Task>;
   archivedEpics?: Map<string, Epic>;
+  diagnostics?: ValidationError[];
 }
 
 /**

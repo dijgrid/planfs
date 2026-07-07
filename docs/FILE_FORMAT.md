@@ -487,6 +487,28 @@ links:
 
 ---
 
+## Malformed File Recovery
+
+PlanFS tries to keep human-edited task and epic files visible even when the Markdown frontmatter is incomplete or malformed.
+
+PlanFS can recover automatically enough to display a file when:
+
+- Optional metadata is missing. Tasks default missing `status` to `todo`; epics default missing `status` to `active`.
+- `id` is missing but the file name provides an ID, such as `.planfs/tasks/TASK-123.md`.
+- YAML frontmatter is malformed but the file is still in a known entity directory and has a usable file name.
+- Unknown metadata fields are present. They are preserved and reported as warnings.
+
+PlanFS reports diagnostics when repair is required:
+
+- Missing `id` diagnostics include the file path, the inferred ID if one is available, and guidance to add `id: ...` to frontmatter.
+- Missing `title` diagnostics include the file path and guidance to add `title: <short summary>`.
+- Malformed YAML diagnostics include the parser message and guidance to repair the frontmatter syntax.
+- Invalid enum values, such as unsupported task or epic statuses, remain validation errors until corrected.
+
+Save flows are intentionally conservative. PlanFS refuses to save when an entity ID is missing or when the entity ID no longer matches the source file name, because that could rewrite the wrong file or create a duplicate. After repairing the required fields in the structured editor or Markdown file, saving rewrites the file into normal YAML frontmatter plus Markdown body format.
+
+---
+
 ## Evolution & Versioning
 
 The format uses semantic versioning:

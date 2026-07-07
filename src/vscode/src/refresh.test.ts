@@ -1208,6 +1208,31 @@ describe('VS Code view refresh workspace selection', () => {
     expect(repository.tasks.get('TASK-020')?.body).toContain('Extra note preserved for readers.');
   });
 
+  it('opens recoverable malformed tasks in the structured editor with diagnostics', async () => {
+    selectPlanFSWorkspaceFolder(firstFolder);
+
+    await fs.writeFile(
+      path.join(firstRoot, '.planfs', 'tasks', 'TASK-019.md'),
+      [
+        '---',
+        'invalid: [yaml: content',
+        '---',
+        '',
+        'Malformed task body'
+      ].join('\n')
+    );
+
+    const editor = new EntityEditorProvider(vscode.Uri.file('/extension'));
+    await editor.open('TASK-019');
+
+    const editorPanel = jest.mocked(vscode.window.createWebviewPanel).mock.results[0].value;
+    expect(editorPanel.webview.html).toContain('TASK-019');
+    expect(editorPanel.webview.html).toContain('File Diagnostics');
+    expect(editorPanel.webview.html).toContain('Failed to parse YAML frontmatter');
+    expect(editorPanel.webview.html).toContain('Missing required field &#39;title&#39;');
+    expect(editorPanel.webview.html).toContain('Malformed task body');
+  });
+
   it('renders backlog readiness blockers and refreshes them after saving task metadata', async () => {
     selectPlanFSWorkspaceFolder(firstFolder);
 

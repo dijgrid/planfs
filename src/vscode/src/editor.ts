@@ -31,6 +31,7 @@ import { getPlanFSWorkspaceFolder } from './workspace';
 
 interface EditorPayload {
   entity: EditableEntity;
+  diagnostics: Array<{ message: string; severity: 'error' | 'warning'; path?: string }>;
   options: {
     epics: Array<{ id: string; title: string }>;
     milestones: Array<{ id: string; title: string }>;
@@ -352,6 +353,11 @@ async function createPayload(
   const developers = await getRepositoryDevelopers(repository.root);
   const payload: EditorPayload = {
     entity,
+    diagnostics: validateEntity(entity).map(diagnostic => ({
+      message: diagnostic.message,
+      severity: diagnostic.severity,
+      path: diagnostic.path
+    })),
     options: {
       epics: Array.from(repository.epics.values()).map(epic => ({
         id: epic.id,
@@ -801,6 +807,10 @@ function renderEditor(webview: vscode.Webview, payload: EditorPayload): string {
       border-color: var(--vscode-inputValidation-warningBorder, var(--border));
     }
 
+    .infoBox.error {
+      border-color: var(--vscode-inputValidation-errorBorder, var(--border));
+    }
+
     .reasonList {
       margin: 0;
       padding-left: 18px;
@@ -973,6 +983,7 @@ function renderEntityFields(payload: EditorPayload): string {
   if (entity.type === 'task') {
     const task = entity as Task;
     return [
+      renderDiagnostics(payload),
       compactMeta([
         compactInput('ID', 'id', task.id, 'text', true),
         compactSelect('Status', 'status', task.status, ['todo', 'in-progress', 'review', 'done']),
@@ -998,6 +1009,7 @@ function renderEntityFields(payload: EditorPayload): string {
   if (entity.type === 'epic') {
     const epic = entity as Epic;
     return [
+      renderDiagnostics(payload),
       compactMeta([
         common[0],
         compactSelect('Status', 'status', epic.status, ['active', 'completed', 'on-hold', 'archived']),
@@ -1018,6 +1030,7 @@ function renderEntityFields(payload: EditorPayload): string {
 
   const milestone = entity as Milestone;
   return [
+    renderDiagnostics(payload),
     compactMeta([
       common[0],
       compactSelect('Status', 'status', milestone.status, ['active', 'completed', 'delayed']),
@@ -1030,6 +1043,30 @@ function renderEntityFields(payload: EditorPayload): string {
     textarea('Links JSON', 'links', formatJson(milestone.links), 'full'),
     renderAdditionalMetadata(milestone),
     renderBodySections(milestone.body)
+  ].join('');
+}
+
+function renderDiagnostics(payload: EditorPayload): string {
+  if (payload.diagnostics.length === 0) {
+    return '';
+  }
+
+  const severity = payload.diagnostics.some(diagnostic => diagnostic.severity === 'error')
+    ? 'error'
+    : 'warning';
+
+  return [
+    '<section class="card full infoBox ' + severity + '">',
+    '<h2>File Diagnostics</h2>',
+    '<ul class="reasonList">',
+    payload.diagnostics.map(diagnostic =>
+      '<li><strong>' + escapeHtml(diagnostic.severity) + '</strong>: '
+      + escapeHtml(diagnostic.message)
+      + (diagnostic.path ? ' <span class="subtle">' + escapeHtml(diagnostic.path) + '</span>' : '')
+      + '</li>'
+    ).join(''),
+    '</ul>',
+    '</section>'
   ].join('');
 }
 
