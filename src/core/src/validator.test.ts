@@ -111,7 +111,7 @@ describe('Validator', () => {
       expect(errors.some(e => e.message.includes('backlogOrder'))).toBe(true);
     });
 
-    it('should catch unsupported metadata fields', () => {
+    it('should warn on unsupported metadata fields', () => {
       const task: Task = {
         id: 'TASK-001',
         type: 'task',
@@ -130,6 +130,7 @@ describe('Validator', () => {
       const errors = validateEntity(task);
 
       expect(errors.some(e => e.message.includes('Unsupported task metadata field: ownerGuess'))).toBe(true);
+      expect(errors.find(e => e.message.includes('Unsupported task metadata field: ownerGuess'))?.severity).toBe('warning');
     });
 
     it('should warn on stale or inconsistent updatedAt timestamps', () => {

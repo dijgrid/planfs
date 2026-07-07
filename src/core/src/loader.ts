@@ -3,28 +3,49 @@
  * Converts discovered files into typed entity objects
  */
 
-import { parseFrontmatter, normalizeMetadata } from './parser';
+import * as path from 'path';
+import { parseFrontmatter, parseFrontmatterTolerant, normalizeMetadata } from './parser';
 import {
   Entity,
   Task,
   Epic,
   Milestone,
   Decision,
-  EntityType
+  EntityType,
+  ValidationError
 } from './types';
 import { DiscoveredFile } from './files';
+
+export interface LoadEntityOptions {
+  tolerant?: boolean;
+}
 
 /**
  * Load an entity from a discovered file
  */
-export function loadEntity(file: DiscoveredFile, content: string): Entity {
-  const { metadata, body } = parseFrontmatter(content);
+export function loadEntity(
+  file: DiscoveredFile,
+  content: string,
+  options: LoadEntityOptions = {}
+): Entity {
+  const parsed = options.tolerant
+    ? parseFrontmatterTolerant(content)
+    : { ...parseFrontmatter(content), diagnostics: [] };
+  const { metadata, body } = parsed;
   const normalized = normalizeMetadata(metadata);
+  const diagnostics = parsed.diagnostics.map(diagnostic => ({
+    id: typeof normalized.id === 'string' ? normalized.id : undefined,
+    path: file.path,
+    message: diagnostic.message,
+    severity: diagnostic.severity
+  } satisfies ValidationError));
 
-  const id = normalized.id as string;
+  const id = getEntityId(file, normalized, diagnostics, options);
   if (!id) {
     throw new Error(`Entity in ${file.path} missing required 'id' field`);
   }
+  normalized.id = id;
+  addMissingFieldDiagnostics(file, normalized, id, diagnostics);
 
   const baseEntity = {
     id,
@@ -32,6 +53,7 @@ export function loadEntity(file: DiscoveredFile, content: string): Entity {
     filePath: file.path,
     metadata: normalized,
     body,
+    diagnostics,
     createdAt: normalized.createdAt as string | undefined,
     updatedAt: normalized.updatedAt as string | undefined,
     archive: isArchiveMetadata(normalized.archive)
@@ -53,7 +75,52 @@ export function loadEntity(file: DiscoveredFile, content: string): Entity {
   }
 }
 
-function loadTask(base: { id: string; type: EntityType; filePath: string; metadata: Record<string, unknown>; body: string; createdAt?: string; updatedAt?: string; archive?: Task['archive'] }): Task {
+function getEntityId(
+  file: DiscoveredFile,
+  metadata: Record<string, unknown>,
+  diagnostics: ValidationError[],
+  options: LoadEntityOptions
+): string | undefined {
+  const metadataId = metadata.id;
+  if (typeof metadataId === 'string' && metadataId.trim()) {
+    return metadataId.trim();
+  }
+
+  if (!options.tolerant) {
+    return undefined;
+  }
+
+  const inferredId = getIdFromFilename(path.basename(file.path));
+  if (!inferredId) {
+    return undefined;
+  }
+
+  diagnostics.push({
+    id: inferredId,
+    path: file.path,
+    message: `Missing required field 'id' in ${file.path}; using file name '${inferredId}' for this load. Repair by adding id: ${inferredId} to YAML frontmatter.`,
+    severity: 'warning'
+  });
+  return inferredId;
+}
+
+function addMissingFieldDiagnostics(
+  file: DiscoveredFile,
+  metadata: Record<string, unknown>,
+  id: string,
+  diagnostics: ValidationError[]
+): void {
+  if (typeof metadata.title !== 'string' || !metadata.title.trim()) {
+    diagnostics.push({
+      id,
+      path: file.path,
+      message: `Missing required field 'title' in ${file.path}. Repair by adding title: <short summary> to YAML frontmatter.`,
+      severity: 'error'
+    });
+  }
+}
+
+function loadTask(base: { id: string; type: EntityType; filePath: string; metadata: Record<string, unknown>; body: string; diagnostics?: ValidationError[]; createdAt?: string; updatedAt?: string; archive?: Task['archive'] }): Task {
   const metadata = base.metadata;
 
   return {
@@ -62,6 +129,7 @@ function loadTask(base: { id: string; type: EntityType; filePath: string; metada
     filePath: base.filePath,
     metadata: base.metadata,
     body: base.body,
+    diagnostics: base.diagnostics,
     createdAt: base.createdAt,
     updatedAt: base.updatedAt,
     archive: base.archive,
@@ -81,7 +149,7 @@ function loadTask(base: { id: string; type: EntityType; filePath: string; metada
   };
 }
 
-function loadEpic(base: { id: string; type: EntityType; filePath: string; metadata: Record<string, unknown>; body: string; createdAt?: string; updatedAt?: string; archive?: Epic['archive'] }): Epic {
+function loadEpic(base: { id: string; type: EntityType; filePath: string; metadata: Record<string, unknown>; body: string; diagnostics?: ValidationError[]; createdAt?: string; updatedAt?: string; archive?: Epic['archive'] }): Epic {
   const metadata = base.metadata;
 
   return {
@@ -90,6 +158,7 @@ function loadEpic(base: { id: string; type: EntityType; filePath: string; metada
     filePath: base.filePath,
     metadata: base.metadata,
     body: base.body,
+    diagnostics: base.diagnostics,
     createdAt: base.createdAt,
     updatedAt: base.updatedAt,
     archive: base.archive,
@@ -104,7 +173,7 @@ function loadEpic(base: { id: string; type: EntityType; filePath: string; metada
   };
 }
 
-function loadMilestone(base: { id: string; type: EntityType; filePath: string; metadata: Record<string, unknown>; body: string; createdAt?: string; updatedAt?: string; archive?: Milestone['archive'] }): Milestone {
+function loadMilestone(base: { id: string; type: EntityType; filePath: string; metadata: Record<string, unknown>; body: string; diagnostics?: ValidationError[]; createdAt?: string; updatedAt?: string; archive?: Milestone['archive'] }): Milestone {
   const metadata = base.metadata;
 
   return {
@@ -113,6 +182,7 @@ function loadMilestone(base: { id: string; type: EntityType; filePath: string; m
     filePath: base.filePath,
     metadata: base.metadata,
     body: base.body,
+    diagnostics: base.diagnostics,
     createdAt: base.createdAt,
     updatedAt: base.updatedAt,
     archive: base.archive,
@@ -125,7 +195,7 @@ function loadMilestone(base: { id: string; type: EntityType; filePath: string; m
   };
 }
 
-function loadDecision(base: { id: string; type: EntityType; filePath: string; metadata: Record<string, unknown>; body: string; createdAt?: string; updatedAt?: string; archive?: Decision['archive'] }): Decision {
+function loadDecision(base: { id: string; type: EntityType; filePath: string; metadata: Record<string, unknown>; body: string; diagnostics?: ValidationError[]; createdAt?: string; updatedAt?: string; archive?: Decision['archive'] }): Decision {
   const metadata = base.metadata;
 
   return {
@@ -134,6 +204,7 @@ function loadDecision(base: { id: string; type: EntityType; filePath: string; me
     filePath: base.filePath,
     metadata: base.metadata,
     body: base.body,
+    diagnostics: base.diagnostics,
     createdAt: base.createdAt,
     updatedAt: base.updatedAt,
     archive: base.archive,

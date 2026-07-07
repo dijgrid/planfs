@@ -1,12 +1,12 @@
 ---
 id: EPIC-ai-integration
 title: Improved AI Integration
-status: active
+status: completed
 owner: justin
 description: Make AI agents faster and safer at reviewing board status and applying planning updates
 targetDate: 2026-11-03
 createdAt: 2026-06-21T00:00:00Z
-updatedAt: 2026-06-21T00:00:00Z
+updatedAt: 2026-07-07T02:19:31Z
 ---
 
 Make PlanFS easier for AI coding agents to understand and update with fewer manual steps while preserving the core rule that planning artifacts remain clean, readable Markdown.

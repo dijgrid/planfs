@@ -94,7 +94,7 @@ const STALE_UPDATED_AT_DAYS = 180;
  * Validate a single entity
  */
 export function validateEntity(entity: Entity): ValidationError[] {
-  const errors: ValidationError[] = [];
+  const errors: ValidationError[] = [...entity.diagnostics ?? []];
   const validateSchema = schemaValidators[entity.type];
 
   if (validateSchema && !validateSchema(entity)) {
@@ -105,7 +105,8 @@ export function validateEntity(entity: Entity): ValidationError[] {
   // Check required fields
   if (!entity.id) {
     errors.push({
-      message: 'Entity must have an id',
+      path: entity.filePath,
+      message: `Missing required field 'id' in ${entity.filePath || 'entity'}. Repair by adding an id that matches the file name to YAML frontmatter.`,
       severity: 'error'
     });
   }
@@ -113,7 +114,8 @@ export function validateEntity(entity: Entity): ValidationError[] {
   if (!entity.title) {
     errors.push({
       id: entity.id,
-      message: 'Entity must have a title',
+      path: entity.filePath,
+      message: `Missing required field 'title' in ${entity.filePath || entity.id}. Repair by adding title: <short summary> to YAML frontmatter.`,
       severity: 'error'
     });
   }
@@ -205,7 +207,7 @@ function validateSupportedMetadata(entity: Entity): ValidationError[] {
       id: entity.id,
       path: entity.filePath,
       message: `Unsupported ${entity.type} metadata field: ${field}`,
-      severity: 'error'
+      severity: 'warning'
     }));
 }
 

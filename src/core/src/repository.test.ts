@@ -133,6 +133,31 @@ describe('Repository', () => {
       expect(content).toContain('github:');
     });
 
+    it('should preserve unknown metadata fields while serializing known fields', () => {
+      const task: Task = {
+        id: 'TASK-001',
+        type: 'task',
+        title: 'Test Task',
+        status: 'todo',
+        priority: 'high',
+        body: '',
+        filePath: '',
+        metadata: {
+          externalKey: 'JIRA-123',
+          review: {
+            required: true
+          }
+        }
+      };
+
+      const content = generateEntityContent(task);
+
+      expect(content).toContain('externalKey: JIRA-123');
+      expect(content).toContain('review:');
+      expect(content).toContain('required: true');
+      expect(content).toContain('priority: high');
+    });
+
     it('should generate backlog refinement metadata', () => {
       const task: Task = {
         id: 'TASK-001',
@@ -437,6 +462,137 @@ describe('Repository', () => {
         '.planfs/archive/tasks',
         '.planfs/archive/epics'
       ]);
+    });
+  });
+
+  describe('malformed markdown recovery', () => {
+    let rootPath: string;
+
+    beforeEach(async () => {
+      rootPath = await fs.mkdtemp(path.join(os.tmpdir(), 'planfs-malformed-'));
+      await initializeRepository(rootPath);
+    });
+
+    afterEach(async () => {
+      await fs.rm(rootPath, { recursive: true, force: true });
+    });
+
+    it('loads entities with missing optional fields using safe defaults', async () => {
+      await fs.writeFile(
+        path.join(rootPath, '.planfs', 'tasks', 'TASK-010.md'),
+        [
+          '---',
+          'id: TASK-010',
+          'title: Missing optional status',
+          '---',
+          '',
+          'Body'
+        ].join('\n')
+      );
+
+      const repository = await loadRepository(rootPath);
+      const task = repository.tasks.get('TASK-010');
+
+      expect(task?.status).toBe('todo');
+      expect(task?.body).toBe('Body');
+      expect(validateRepositoryState(repository).valid).toBe(true);
+    });
+
+    it('recovers a missing id from the file name and reports repair guidance', async () => {
+      await fs.writeFile(
+        path.join(rootPath, '.planfs', 'tasks', 'TASK-011.md'),
+        [
+          '---',
+          'title: Missing id',
+          'status: todo',
+          '---',
+          '',
+          'Body'
+        ].join('\n')
+      );
+
+      const repository = await loadRepository(rootPath);
+      const task = repository.tasks.get('TASK-011');
+      const validation = validateRepositoryState(repository);
+
+      expect(task?.id).toBe('TASK-011');
+      expect(validation.errors).toContainEqual(expect.objectContaining({
+        id: 'TASK-011',
+        path: path.join(rootPath, '.planfs', 'tasks', 'TASK-011.md'),
+        severity: 'warning',
+        message: expect.stringContaining("Missing required field 'id'")
+      }));
+      expect(validation.errors.find(error => error.message.includes('Repair by adding id: TASK-011'))).toBeDefined();
+    });
+
+    it('keeps malformed YAML visible and continues loading unrelated entities', async () => {
+      await saveEntity(rootPath, createTaskTemplate('TASK-012', 'Healthy task'));
+      await fs.writeFile(
+        path.join(rootPath, '.planfs', 'tasks', 'TASK-013.md'),
+        [
+          '---',
+          'invalid: [yaml: content',
+          '---',
+          '',
+          'Malformed body'
+        ].join('\n')
+      );
+
+      const repository = await loadRepository(rootPath);
+      const malformed = repository.tasks.get('TASK-013');
+      const validation = validateRepositoryState(repository);
+
+      expect(repository.tasks.has('TASK-012')).toBe(true);
+      expect(malformed?.body).toBe('Malformed body');
+      expect(malformed?.diagnostics).toContainEqual(expect.objectContaining({
+        path: path.join(rootPath, '.planfs', 'tasks', 'TASK-013.md'),
+        severity: 'error',
+        message: expect.stringContaining('Failed to parse YAML frontmatter')
+      }));
+      expect(validation.valid).toBe(false);
+      expect(validation.errors).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          id: 'TASK-013',
+          message: expect.stringContaining("Missing required field 'title'")
+        })
+      ]));
+    });
+
+    it('loads invalid enum values as diagnostics instead of hiding the file', async () => {
+      await fs.writeFile(
+        path.join(rootPath, '.planfs', 'epics', 'EPIC-invalid.md'),
+        [
+          '---',
+          'id: EPIC-invalid',
+          'title: Invalid epic',
+          'status: nope',
+          '---',
+          '',
+          'Body'
+        ].join('\n')
+      );
+
+      const repository = await loadRepository(rootPath);
+      const validation = validateRepositoryState(repository);
+
+      expect(repository.epics.has('EPIC-invalid')).toBe(true);
+      expect(validation.errors).toContainEqual(expect.objectContaining({
+        id: 'EPIC-invalid',
+        severity: 'error',
+        message: expect.stringContaining('Invalid epic status: nope')
+      }));
+    });
+
+    it('refuses to save when the entity id no longer matches its source file', async () => {
+      const task = createTaskTemplate('TASK-014', 'Original task');
+      await saveEntity(rootPath, task);
+      const repository = await loadRepository(rootPath);
+      const loaded = repository.tasks.get('TASK-014')!;
+
+      await expect(saveEntity(rootPath, {
+        ...loaded,
+        id: 'TASK-999'
+      })).rejects.toThrow('does not match existing file name TASK-014');
     });
   });
 

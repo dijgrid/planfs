@@ -1,12 +1,12 @@
 ---
 id: EPIC-bulk-import-workflows
 title: Bulk Update Workflows
-status: active
+status: completed
 owner: justin
 description: Support safe multi-item edits within PlanFS
 targetDate: 2026-10-21
 createdAt: 2026-06-20T00:00:00Z
-updatedAt: 2026-06-21T18:24:21Z
+updatedAt: 2026-07-07T02:19:31Z
 ---
 
 Support managing many existing PlanFS planning artifacts at once without surprising users or damaging hand-editable files.

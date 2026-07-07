@@ -9,10 +9,20 @@ export interface MarkdownSection {
   paragraphs: string[];
 }
 
+export interface MarkdownBodyExtraction {
+  sections: MarkdownSection[];
+  additionalMarkdown: string;
+}
+
 export function extractMarkdownSections(body: string, sectionTitles: string[]): MarkdownSection[] {
+  return extractMarkdownBody(body, sectionTitles).sections;
+}
+
+export function extractMarkdownBody(body: string, sectionTitles: string[]): MarkdownBodyExtraction {
   const wanted = new Map(sectionTitles.map(title => [normalizeTitle(title), title]));
   const lines = body.split(/\r?\n/);
   const sections: MarkdownSection[] = [];
+  const additionalLines: string[] = [];
   let active: {
     title: string;
     level: number;
@@ -31,12 +41,16 @@ export function extractMarkdownSections(body: string, sectionTitles: string[]): 
       const title = wanted.get(normalizeTitle(heading[2]));
       if (title) {
         active = { title, level, lines: [] };
+      } else {
+        additionalLines.push(line);
       }
       continue;
     }
 
     if (active) {
       active.lines.push(line);
+    } else {
+      additionalLines.push(line);
     }
   }
 
@@ -44,7 +58,10 @@ export function extractMarkdownSections(body: string, sectionTitles: string[]): 
     sections.push(parseSection(active.title, active.lines));
   }
 
-  return sections;
+  return {
+    sections,
+    additionalMarkdown: trimBlankLines(additionalLines).join('\n')
+  };
 }
 
 function parseSection(title: string, lines: string[]): MarkdownSection {
@@ -85,4 +102,16 @@ function parseSection(title: string, lines: string[]): MarkdownSection {
 
 function normalizeTitle(value: string): string {
   return value.trim().toLowerCase();
+}
+
+function trimBlankLines(lines: string[]): string[] {
+  let start = 0;
+  let end = lines.length;
+  while (start < end && !lines[start].trim()) {
+    start += 1;
+  }
+  while (end > start && !lines[end - 1].trim()) {
+    end -= 1;
+  }
+  return lines.slice(start, end);
 }

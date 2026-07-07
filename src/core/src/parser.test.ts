@@ -2,7 +2,7 @@
  * Tests for parser module
  */
 
-import { parseFrontmatter, normalizeMetadata } from '../src/parser';
+import { parseFrontmatter, parseFrontmatterTolerant, normalizeMetadata } from '../src/parser';
 
 describe('Parser', () => {
   describe('parseFrontmatter', () => {
@@ -89,6 +89,36 @@ Body`;
 
       expect(Array.isArray(result.metadata.tags)).toBe(true);
       expect(result.metadata.tags).toEqual(['tag1', 'tag2']);
+    });
+
+    it('should recover body content when opening frontmatter is missing in tolerant mode', () => {
+      const result = parseFrontmatterTolerant('id: TASK-001\n\nBody');
+
+      expect(result.metadata).toEqual({});
+      expect(result.body).toBe('id: TASK-001\n\nBody');
+      expect(result.diagnostics).toContainEqual(expect.objectContaining({
+        field: 'frontmatter',
+        severity: 'error',
+        message: expect.stringContaining('Missing opening YAML frontmatter delimiter')
+      }));
+    });
+
+    it('should recover body content when YAML is malformed in tolerant mode', () => {
+      const content = `---
+invalid: [yaml: content
+---
+
+Body`;
+
+      const result = parseFrontmatterTolerant(content);
+
+      expect(result.metadata).toEqual({});
+      expect(result.body).toBe('Body');
+      expect(result.diagnostics).toContainEqual(expect.objectContaining({
+        field: 'frontmatter',
+        severity: 'error',
+        message: expect.stringContaining('Failed to parse YAML frontmatter')
+      }));
     });
   });
 

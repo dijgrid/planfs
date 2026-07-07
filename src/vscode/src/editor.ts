@@ -25,12 +25,13 @@ import {
   renderHelpButton,
   renderHelpPanel
 } from './help';
-import { extractMarkdownSections, MarkdownSection } from './markdownSections';
+import { extractMarkdownBody, MarkdownSection } from './markdownSections';
 import { escapeHtml, getNonce, renderMessageDocument } from './webview';
 import { getPlanFSWorkspaceFolder } from './workspace';
 
 interface EditorPayload {
   entity: EditableEntity;
+  diagnostics: Array<{ message: string; severity: 'error' | 'warning'; path?: string }>;
   options: {
     epics: Array<{ id: string; title: string }>;
     milestones: Array<{ id: string; title: string }>;
@@ -352,6 +353,11 @@ async function createPayload(
   const developers = await getRepositoryDevelopers(repository.root);
   const payload: EditorPayload = {
     entity,
+    diagnostics: validateEntity(entity).map(diagnostic => ({
+      message: diagnostic.message,
+      severity: diagnostic.severity,
+      path: diagnostic.path
+    })),
     options: {
       epics: Array.from(repository.epics.values()).map(epic => ({
         id: epic.id,
@@ -699,6 +705,79 @@ function renderEditor(webview: vscode.Webview, payload: EditorPayload): string {
       gap: 8px;
     }
 
+    .metadataList {
+      display: grid;
+      gap: 8px;
+      margin: 0;
+    }
+
+    .metadataList > div {
+      display: grid;
+      grid-template-columns: minmax(120px, max-content) minmax(0, 1fr);
+      gap: 10px;
+      padding: 7px 8px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: var(--vscode-input-background);
+    }
+
+    .metadataList dt {
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    .metadataList dd {
+      min-width: 0;
+      margin: 0;
+      overflow-wrap: anywhere;
+    }
+
+    .metadataList code,
+    .markdownFallback code {
+      font-family: var(--vscode-editor-font-family);
+    }
+
+    .markdownFallback {
+      display: grid;
+      gap: 6px;
+      margin-bottom: 12px;
+      padding: 10px;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      background: var(--vscode-input-background);
+    }
+
+    .markdownFallback h2,
+    .markdownFallback h3,
+    .markdownFallback h4,
+    .markdownFallback p,
+    .markdownFallback ul,
+    .markdownFallback blockquote,
+    .markdownFallback pre {
+      margin: 0;
+    }
+
+    .markdownFallback ul {
+      padding-left: 20px;
+    }
+
+    .markdownFallback li {
+      margin: 4px 0;
+    }
+
+    .markdownFallback blockquote {
+      padding-left: 10px;
+      border-left: 3px solid var(--border);
+      color: var(--muted);
+    }
+
+    .markdownFallback pre {
+      overflow: auto;
+      padding: 8px;
+      border-radius: 4px;
+      background: var(--vscode-editor-background);
+    }
+
     .sectionItem {
       display: flex;
       gap: 8px;
@@ -726,6 +805,10 @@ function renderEditor(webview: vscode.Webview, payload: EditorPayload): string {
 
     .infoBox.warning {
       border-color: var(--vscode-inputValidation-warningBorder, var(--border));
+    }
+
+    .infoBox.error {
+      border-color: var(--vscode-inputValidation-errorBorder, var(--border));
     }
 
     .reasonList {
@@ -900,6 +983,7 @@ function renderEntityFields(payload: EditorPayload): string {
   if (entity.type === 'task') {
     const task = entity as Task;
     return [
+      renderDiagnostics(payload),
       compactMeta([
         compactInput('ID', 'id', task.id, 'text', true),
         compactSelect('Status', 'status', task.status, ['todo', 'in-progress', 'review', 'done']),
@@ -917,6 +1001,7 @@ function renderEntityFields(payload: EditorPayload): string {
       renderBacklogReadiness(payload),
       dependencyChecks(task, payload.options.tasks),
       textarea('Links JSON', 'links', formatJson(task.links), 'full'),
+      renderAdditionalMetadata(task),
       renderBodySections(task.body)
     ].join('');
   }
@@ -924,6 +1009,7 @@ function renderEntityFields(payload: EditorPayload): string {
   if (entity.type === 'epic') {
     const epic = entity as Epic;
     return [
+      renderDiagnostics(payload),
       compactMeta([
         common[0],
         compactSelect('Status', 'status', epic.status, ['active', 'completed', 'on-hold', 'archived']),
@@ -936,6 +1022,7 @@ function renderEntityFields(payload: EditorPayload): string {
       datalist('tag-options', payload.options.tags),
       textarea('Description', 'description', epic.description ?? '', 'full'),
       textarea('Links JSON', 'links', formatJson(epic.links), 'full'),
+      renderAdditionalMetadata(epic),
       renderEpicBoard(payload),
       renderBodySections(epic.body, 'Epic Planning Notes')
     ].join('');
@@ -943,6 +1030,7 @@ function renderEntityFields(payload: EditorPayload): string {
 
   const milestone = entity as Milestone;
   return [
+    renderDiagnostics(payload),
     compactMeta([
       common[0],
       compactSelect('Status', 'status', milestone.status, ['active', 'completed', 'delayed']),
@@ -953,7 +1041,32 @@ function renderEntityFields(payload: EditorPayload): string {
     datalist('developer-options', payload.options.developers),
     textarea('Description', 'description', milestone.description ?? '', 'full'),
     textarea('Links JSON', 'links', formatJson(milestone.links), 'full'),
+    renderAdditionalMetadata(milestone),
     renderBodySections(milestone.body)
+  ].join('');
+}
+
+function renderDiagnostics(payload: EditorPayload): string {
+  if (payload.diagnostics.length === 0) {
+    return '';
+  }
+
+  const severity = payload.diagnostics.some(diagnostic => diagnostic.severity === 'error')
+    ? 'error'
+    : 'warning';
+
+  return [
+    '<section class="card full infoBox ' + severity + '">',
+    '<h2>File Diagnostics</h2>',
+    '<ul class="reasonList">',
+    payload.diagnostics.map(diagnostic =>
+      '<li><strong>' + escapeHtml(diagnostic.severity) + '</strong>: '
+      + escapeHtml(diagnostic.message)
+      + (diagnostic.path ? ' <span class="subtle">' + escapeHtml(diagnostic.path) + '</span>' : '')
+      + '</li>'
+    ).join(''),
+    '</ul>',
+    '</section>'
   ].join('');
 }
 
@@ -1067,18 +1180,169 @@ function textarea(label: string, name: string, value: string, className = ''): s
   return `<label class="${className}">${escapeHtml(label)}<textarea name="${name}">${escapeHtml(value)}</textarea></label>`;
 }
 
+function renderAdditionalMetadata(entity: EditableEntity): string {
+  const known = knownMetadataFields(entity.type);
+  const entries = Object.entries(entity.metadata)
+    .filter(([key]) => !known.has(key))
+    .sort(([a], [b]) => a.localeCompare(b));
+
+  if (entries.length === 0) {
+    return '';
+  }
+
+  return [
+    '<section class="card full">',
+    '<h2>Additional metadata</h2>',
+    '<p class="subtle">These frontmatter fields are preserved from the Markdown file but do not map to structured editor controls.</p>',
+    '<dl class="metadataList">',
+    entries.map(([key, value]) => [
+      '<div>',
+      '<dt>' + escapeHtml(key) + '</dt>',
+      '<dd><code>' + escapeHtml(formatMetadataValue(value)) + '</code></dd>',
+      '</div>'
+    ].join('')).join(''),
+    '</dl>',
+    '</section>'
+  ].join('');
+}
+
+function knownMetadataFields(type: EditableEntity['type']): Set<string> {
+  const common = ['id', 'title', 'status', 'archive', 'createdAt', 'updatedAt'];
+  switch (type) {
+    case 'task':
+      return new Set([
+        ...common,
+        'priority',
+        'assignee',
+        'epic',
+        'milestone',
+        'dependsOn',
+        'tags',
+        'dueDate',
+        'estimate',
+        'refinementState',
+        'backlogOrder',
+        'links'
+      ]);
+    case 'epic':
+      return new Set([
+        ...common,
+        'priority',
+        'owner',
+        'description',
+        'targetDate',
+        'tags',
+        'links'
+      ]);
+    case 'milestone':
+      return new Set([
+        ...common,
+        'description',
+        'targetDate',
+        'owner',
+        'links'
+      ]);
+    default:
+      return new Set(common);
+  }
+}
+
+function formatMetadataValue(value: unknown): string {
+  if (typeof value === 'string') {
+    return value;
+  }
+  return JSON.stringify(value, null, 2) ?? '';
+}
+
 function renderBodySections(body: string, heading = 'Markdown Sections'): string {
-  const sections = extractMarkdownSections(body, ['Acceptance Criteria', 'Questions']);
+  const { sections, additionalMarkdown } = extractMarkdownBody(body, ['Acceptance Criteria', 'Questions']);
 
   return [
     '<section class="card full">',
     '<h2>' + escapeHtml(heading) + '</h2>',
-    '<p class="subtle">Use Open Markdown for full body editing. Acceptance criteria and questions are shown here for quick review.</p>',
+    '<p class="subtle">Use Open Markdown for full body editing. Known planning sections and additional Markdown are shown here for quick review.</p>',
+    additionalMarkdown
+      ? '<section class="markdownFallback"><h2>Additional Markdown</h2>' + renderMarkdownPreview(additionalMarkdown) + '</section>'
+      : '<p class="subtle">No additional Markdown body content found outside known planning sections.</p>',
     sections.length === 0
       ? '<p class="subtle">No Acceptance Criteria or Questions sections found.</p>'
       : '<div class="sectionList">' + sections.map(renderMarkdownSection).join('') + '</div>',
     '</section>'
   ].join('');
+}
+
+function renderMarkdownPreview(markdown: string): string {
+  const lines = markdown.split(/\r?\n/);
+  const html: string[] = [];
+  let list: string[] = [];
+  let inCode = false;
+  let codeLines: string[] = [];
+
+  for (const line of lines) {
+    if (/^\s*```/.test(line)) {
+      if (inCode) {
+        html.push('<pre><code>' + escapeHtml(codeLines.join('\n')) + '</code></pre>');
+        codeLines = [];
+        inCode = false;
+      } else {
+        flushList();
+        inCode = true;
+      }
+      continue;
+    }
+
+    if (inCode) {
+      codeLines.push(line);
+      continue;
+    }
+
+    const heading = /^(#{1,6})\s+(.+?)\s*#*\s*$/.exec(line);
+    if (heading) {
+      flushList();
+      const level = Math.min(6, heading[1].length + 2);
+      html.push('<h' + level + '>' + escapeHtml(heading[2]) + '</h' + level + '>');
+      continue;
+    }
+
+    const checklist = /^\s*[-*]\s+\[([ xX])\]\s+(.*)$/.exec(line);
+    if (checklist) {
+      list.push('<li><input type="checkbox" disabled' + (checklist[1].toLowerCase() === 'x' ? ' checked' : '') + '> ' + escapeHtml(checklist[2].trim()) + '</li>');
+      continue;
+    }
+
+    const bullet = /^\s*[-*]\s+(.*)$/.exec(line);
+    if (bullet) {
+      list.push('<li>' + escapeHtml(bullet[1].trim()) + '</li>');
+      continue;
+    }
+
+    if (!line.trim()) {
+      flushList();
+      continue;
+    }
+
+    flushList();
+    if (line.trim().startsWith('>')) {
+      html.push('<blockquote>' + escapeHtml(line.trim().replace(/^>\s?/, '')) + '</blockquote>');
+    } else {
+      html.push('<p>' + escapeHtml(line.trim()) + '</p>');
+    }
+  }
+
+  if (inCode) {
+    html.push('<pre><code>' + escapeHtml(codeLines.join('\n')) + '</code></pre>');
+  }
+  flushList();
+
+  return html.join('');
+
+  function flushList(): void {
+    if (list.length === 0) {
+      return;
+    }
+    html.push('<ul>' + list.join('') + '</ul>');
+    list = [];
+  }
 }
 
 function renderMarkdownSection(section: MarkdownSection): string {

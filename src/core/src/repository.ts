@@ -47,7 +47,8 @@ export async function loadRepository(rootPath: string): Promise<Repository> {
     milestones: new Map(),
     decisions: new Map(),
     archivedTasks: new Map(),
-    archivedEpics: new Map()
+    archivedEpics: new Map(),
+    diagnostics: []
   };
 
   // Discover and load all files
@@ -56,7 +57,7 @@ export async function loadRepository(rootPath: string): Promise<Repository> {
   for (const file of files) {
     try {
       const content = await readFile(file.path);
-      const entity = loadEntity(file, content);
+      const entity = loadEntity(file, content, { tolerant: true });
 
       switch (entity.type) {
         case 'task':
@@ -73,9 +74,13 @@ export async function loadRepository(rootPath: string): Promise<Repository> {
           break;
       }
     } catch (error) {
-      console.error(
-        `Failed to load entity from ${file.path}: ${error instanceof Error ? error.message : String(error)}`
-      );
+      const message = `Failed to load entity from ${file.path}: ${error instanceof Error ? error.message : String(error)}`;
+      repository.diagnostics?.push({
+        path: file.path,
+        message: `${message}. Repair by restoring valid YAML frontmatter with id and title fields.`,
+        severity: 'error'
+      });
+      console.error(message);
     }
   }
 
@@ -83,7 +88,7 @@ export async function loadRepository(rootPath: string): Promise<Repository> {
   for (const file of archivedFiles) {
     try {
       const content = await readFile(file.path);
-      const entity = loadEntity(file, content);
+      const entity = loadEntity(file, content, { tolerant: true });
 
       if (entity.type === 'task') {
         repository.archivedTasks?.set(entity.id, entity as Task);
@@ -91,9 +96,13 @@ export async function loadRepository(rootPath: string): Promise<Repository> {
         repository.archivedEpics?.set(entity.id, entity as Epic);
       }
     } catch (error) {
-      console.error(
-        `Failed to load archived entity from ${file.path}: ${error instanceof Error ? error.message : String(error)}`
-      );
+      const message = `Failed to load archived entity from ${file.path}: ${error instanceof Error ? error.message : String(error)}`;
+      repository.diagnostics?.push({
+        path: file.path,
+        message: `${message}. Repair by restoring valid YAML frontmatter with id and title fields.`,
+        severity: 'error'
+      });
+      console.error(message);
     }
   }
 
@@ -135,6 +144,7 @@ export function validateRepositoryState(repository: Repository): ValidationResul
     referenceEntities: archivedEntities
   });
   const errors = [...entityErrors, ...repositoryErrors];
+  errors.push(...repository.diagnostics ?? []);
   return {
     valid: !errors.some(error => error.severity === 'error'),
     errors
@@ -148,6 +158,7 @@ export async function saveEntity(
   rootPath: string,
   entity: Entity
 ): Promise<void> {
+  assertSafeSaveIdentity(entity);
   const dir = entity.archive && (entity.type === 'task' || entity.type === 'epic')
     ? path.join('archive', getEntityDirectory(entity.type))
     : getEntityDirectory(entity.type);
@@ -158,11 +169,28 @@ export async function saveEntity(
   await writeFile(filePath, content);
 }
 
+function assertSafeSaveIdentity(entity: Entity): void {
+  if (!entity.id || typeof entity.id !== 'string') {
+    throw new Error('Refusing to save entity with missing id. Repair the id field before saving.');
+  }
+
+  if (!entity.filePath) {
+    return;
+  }
+
+  const existingId = path.basename(entity.filePath, '.md');
+  if (existingId && existingId !== entity.id) {
+    throw new Error(
+      `Refusing to save ${entity.id}: entity id does not match existing file name ${existingId}. Repair the id field or rename the file before saving.`
+    );
+  }
+}
+
 /**
  * Generate file content from an entity
  */
 export function generateEntityContent(entity: Entity): string {
-  const metadata: Record<string, unknown> = {};
+  const metadata: Record<string, unknown> = { ...entity.metadata };
 
   metadata.id = entity.id;
   metadata.title = entity.title || '';
