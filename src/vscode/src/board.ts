@@ -27,6 +27,7 @@ import {
   renderHelpPanel
 } from './help';
 import { getNonce, renderMessageDocument } from './webview';
+import { PlanFSUiPreferences, UI_PREFERENCES } from './preferences';
 import { getPlanFSWorkspaceFolder } from './workspace';
 
 const TASK_STATUSES: TaskStatus[] = ['todo', 'in-progress', 'review', 'done'];
@@ -67,6 +68,12 @@ interface BoardPayload {
   statuses: TaskStatus[];
   savedFilters: SavedFilter[];
   helpTopics: HelpTopic[];
+  preferences: BoardPreferences;
+}
+
+interface BoardPreferences {
+  detailsPanelWidth: number;
+  detailsPanelCompact: boolean;
 }
 
 interface CreateTaskContext {
@@ -92,7 +99,10 @@ export class BoardProvider {
   private hasRenderedBoard = false;
   private preferredMode: BoardMode = 'status';
 
-  constructor(private readonly extensionUri: vscode.Uri) {}
+  constructor(
+    private readonly extensionUri: vscode.Uri,
+    private readonly uiPreferences?: PlanFSUiPreferences
+  ) {}
 
   async open(mode: BoardMode = 'status'): Promise<void> {
     this.preferredMode = mode;
@@ -159,6 +169,10 @@ export class BoardProvider {
         await this.bulkUpdateTasks(message as Partial<BulkUpdateRequest>);
       }
 
+      if (message?.type === 'setBoardPreference') {
+        await this.setBoardPreference(message);
+      }
+
       await handleHelpMessage(this.extensionUri, message);
     });
 
@@ -186,6 +200,7 @@ export class BoardProvider {
     try {
       const payload = {
         ...await loadBoardPayload(workspaceFolder.uri.fsPath),
+        preferences: this.getPreferences(workspaceFolder),
         helpTopics: createHelpTopics(this.extensionUri, ['board'])
       };
 
@@ -478,9 +493,64 @@ export class BoardProvider {
       await this.render();
     }
   }
+
+  private getPreferences(workspaceFolder: vscode.WorkspaceFolder): BoardPreferences {
+    return {
+      detailsPanelWidth: this.uiPreferences?.get(
+        UI_PREFERENCES.boardDetailsPanelWidth,
+        workspaceFolder
+      ) ?? UI_PREFERENCES.boardDetailsPanelWidth.defaultValue,
+      detailsPanelCompact: this.uiPreferences?.get(
+        UI_PREFERENCES.boardDetailsPanelCompact,
+        workspaceFolder
+      ) ?? UI_PREFERENCES.boardDetailsPanelCompact.defaultValue
+    };
+  }
+
+  private async setBoardPreference(message: unknown): Promise<void> {
+    if (!this.uiPreferences || !message || typeof message !== 'object') {
+      return;
+    }
+
+    const workspaceFolder = getPlanFSWorkspaceFolder();
+    if (!workspaceFolder) {
+      return;
+    }
+
+    const request = message as { key?: unknown; value?: unknown };
+    if (
+      request.key === UI_PREFERENCES.boardDetailsPanelWidth.key
+      && typeof request.value === 'number'
+    ) {
+      await this.uiPreferences.set(
+        UI_PREFERENCES.boardDetailsPanelWidth,
+        clampDetailsPanelWidth(request.value),
+        workspaceFolder
+      );
+    }
+
+    if (
+      request.key === UI_PREFERENCES.boardDetailsPanelCompact.key
+      && typeof request.value === 'boolean'
+    ) {
+      await this.uiPreferences.set(
+        UI_PREFERENCES.boardDetailsPanelCompact,
+        request.value,
+        workspaceFolder
+      );
+    }
+  }
 }
 
-async function loadBoardPayload(rootPath: string): Promise<Omit<BoardPayload, 'helpTopics'>> {
+function clampDetailsPanelWidth(width: number): number {
+  if (!Number.isFinite(width)) {
+    return UI_PREFERENCES.boardDetailsPanelWidth.defaultValue;
+  }
+
+  return Math.min(560, Math.max(280, Math.round(width)));
+}
+
+async function loadBoardPayload(rootPath: string): Promise<Omit<BoardPayload, 'helpTopics' | 'preferences'>> {
   const repository = await loadRepository(rootPath);
   const nextWorkCandidates = getNextWorkCandidates(repository, {
     includeBlocked: true
@@ -906,9 +976,13 @@ function renderBoard(
 
     .content {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) minmax(280px, 340px);
+      grid-template-columns: minmax(0, 1fr) minmax(280px, var(--details-width, 340px));
       gap: var(--gap);
       align-items: start;
+    }
+
+    .content.detailsHidden {
+      grid-template-columns: minmax(0, 1fr);
     }
 
     .boardRegion {
@@ -919,6 +993,7 @@ function renderBoard(
     .detailsDrawer {
       position: sticky;
       top: 18px;
+      align-self: start;
       border: 1px solid var(--border);
       background: var(--panel);
       border-radius: 6px;
@@ -926,7 +1001,39 @@ function renderBoard(
       overflow: hidden;
     }
 
+    .content.detailsHidden .detailsDrawer {
+      display: none;
+    }
+
+    .detailsResizeHandle {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: -5px;
+      width: 10px;
+      cursor: col-resize;
+      z-index: 1;
+    }
+
+    .detailsResizeHandle::after {
+      content: '';
+      position: absolute;
+      top: 12px;
+      bottom: 12px;
+      left: 4px;
+      border-left: 2px solid transparent;
+    }
+
+    .detailsResizeHandle:hover::after,
+    .detailsResizeHandle:focus-visible::after {
+      border-left-color: var(--accent);
+    }
+
     .detailsHeader {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: start;
       border-bottom: 1px solid var(--border);
       background: var(--panel-strong);
       padding: 12px;
@@ -938,10 +1045,51 @@ function renderBoard(
       line-height: 1.25;
     }
 
+    .detailsHeaderActions {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .iconButton {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 26px;
+      height: 26px;
+      color: var(--text);
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: 3px;
+      font: inherit;
+      cursor: pointer;
+    }
+
+    .iconButton:hover,
+    .iconButton:focus-visible,
+    .iconButton.active {
+      background: color-mix(in srgb, var(--accent) 12%, transparent);
+      border-color: var(--border);
+      outline: none;
+    }
+
     .detailsBody {
       padding: 12px;
       display: grid;
       gap: 12px;
+    }
+
+    .detailsDrawer.compact .detailsBody {
+      gap: 8px;
+      padding: 10px;
+    }
+
+    .detailsDrawer.compact .detailSection {
+      display: none;
+    }
+
+    .detailsDrawer.compact .detailSection:first-of-type {
+      display: block;
     }
 
     .detailGrid {
@@ -1235,7 +1383,7 @@ function renderBoard(
       <button type="button" id="bulkApply">Apply</button>
       <button type="button" id="bulkClear">Clear</button>
     </div>
-    <div class="content">
+    <div id="content" class="content">
       <div class="boardRegion">
         <main id="board" class="board"></main>
       </div>
@@ -1249,6 +1397,17 @@ function renderBoard(
     let selectedTaskId = state.tasks[0]?.id || '';
     const selectedBulkTaskIds = new Set();
     const persistedState = typeof vscode.getState === 'function' ? vscode.getState() : {};
+    const minDetailsWidth = 280;
+    const maxDetailsWidth = 560;
+    let detailsPanelWidth = normalizeDetailsPanelWidth(
+      persistedState?.detailsPanelWidth ?? state.preferences?.detailsPanelWidth
+    );
+    let detailsPanelCompact = typeof persistedState?.detailsPanelCompact === 'boolean'
+      ? persistedState.detailsPanelCompact
+      : Boolean(state.preferences?.detailsPanelCompact);
+    let detailsPanelHidden = Boolean(persistedState?.detailsPanelHidden);
+    let resizeStartX = 0;
+    let resizeStartWidth = detailsPanelWidth;
     const initialMode = ${serializedInitialMode};
     let boardMode = initialMode === 'next-work'
       ? 'next-work'
@@ -1282,6 +1441,7 @@ function renderBoard(
     const bulkActionInput = document.getElementById('bulkAction');
     const bulkApplyButton = document.getElementById('bulkApply');
     const bulkClearButton = document.getElementById('bulkClear');
+    const content = document.getElementById('content');
     const board = document.getElementById('board');
     const details = document.getElementById('details');
 
@@ -1352,6 +1512,7 @@ function renderBoard(
       });
       if (!state.tasks.some(task => task.id === selectedTaskId)) {
         selectedTaskId = state.tasks[0]?.id || '';
+        detailsPanelHidden = false;
       }
       renderSavedFilterOptions(selectedFilter);
       render({ animate: true });
@@ -1374,7 +1535,14 @@ function renderBoard(
       }
 
       const currentState = typeof vscode.getState === 'function' ? vscode.getState() : {};
-      vscode.setState({ ...(currentState || {}), boardMode, groupKey: groupInput.value });
+      vscode.setState({
+        ...(currentState || {}),
+        boardMode,
+        groupKey: groupInput.value,
+        detailsPanelWidth,
+        detailsPanelCompact,
+        detailsPanelHidden
+      });
     }
 
     function updateModeButtons() {
@@ -1445,8 +1613,33 @@ function renderBoard(
         animateMovedCards(previousRects);
       }
 
+      applyDetailsLayout();
       renderDetails();
       renderBulkActions();
+    }
+
+    function applyDetailsLayout() {
+      const isHidden = detailsPanelHidden || !selectedTaskId;
+      content.style.setProperty('--details-width', detailsPanelWidth + 'px');
+      content.classList.toggle('detailsHidden', isHidden);
+      details.classList.toggle('compact', detailsPanelCompact);
+    }
+
+    function normalizeDetailsPanelWidth(value) {
+      const parsed = Number(value);
+      if (!Number.isFinite(parsed)) {
+        return 340;
+      }
+
+      return Math.min(maxDetailsWidth, Math.max(minDetailsWidth, Math.round(parsed)));
+    }
+
+    function persistDetailsPanelPreference(key, value) {
+      vscode.postMessage({
+        type: 'setBoardPreference',
+        key,
+        value
+      });
     }
 
     function renderBulkActions() {
@@ -1835,6 +2028,8 @@ function renderBoard(
 
     function selectTask(taskId) {
       selectedTaskId = taskId;
+      detailsPanelHidden = false;
+      persistBoardState();
       render();
     }
 
@@ -1842,16 +2037,23 @@ function renderBoard(
       const task = state.tasks.find(candidate => candidate.id === selectedTaskId);
       if (!task) {
         details.innerHTML = [
-          '<div class="detailsHeader"><h2>Task Details</h2><div class="subtle">Select a task card to inspect it.</div></div>',
+          '<div class="detailsHeader"><div><h2>Task Details</h2><div class="subtle">Select a task card to inspect it.</div></div></div>',
           '<div class="detailsBody"><div class="empty">No task selected</div></div>'
         ].join('');
         return;
       }
 
       details.innerHTML = [
+        '<div class="detailsResizeHandle" role="separator" tabindex="0" aria-orientation="vertical" aria-label="Resize details panel" title="Resize details panel"></div>',
         '<div class="detailsHeader">',
-          '<h2>' + escapeHtml(task.title) + '</h2>',
-          '<div class="subtle">' + escapeHtml(task.id) + '</div>',
+          '<div>',
+            '<h2>' + escapeHtml(task.title) + '</h2>',
+            '<div class="subtle">' + escapeHtml(task.id) + '</div>',
+          '</div>',
+          '<div class="detailsHeaderActions">',
+            '<button type="button" class="iconButton ' + (detailsPanelCompact ? 'active' : '') + '" data-toggle-details-compact aria-pressed="' + String(detailsPanelCompact) + '" aria-label="Toggle compact details" title="Toggle compact details">-</button>',
+            '<button type="button" class="iconButton" data-close-details aria-label="Close details panel" title="Close details panel">x</button>',
+          '</div>',
         '</div>',
         '<div class="detailsBody">',
           '<div class="detailActions">',
@@ -1867,6 +2069,8 @@ function renderBoard(
           renderLinkSection(task.links || {}),
         '</div>'
       ].join('');
+
+      attachDetailsChromeHandlers();
 
       details.querySelectorAll('[data-open-selected]').forEach(button => {
         button.addEventListener('click', () => {
@@ -1884,6 +2088,72 @@ function renderBoard(
         button.addEventListener('click', () => {
           vscode.postMessage({ type: 'copyTaskId', taskId: button.dataset.copySelected });
         });
+      });
+    }
+
+    function attachDetailsChromeHandlers() {
+      const closeButton = details.querySelector('[data-close-details]');
+      if (closeButton) {
+        closeButton.addEventListener('click', () => {
+          selectedTaskId = '';
+          detailsPanelHidden = true;
+          persistBoardState();
+          render();
+        });
+      }
+
+      const compactButton = details.querySelector('[data-toggle-details-compact]');
+      if (compactButton) {
+        compactButton.addEventListener('click', () => {
+          detailsPanelCompact = !detailsPanelCompact;
+          persistBoardState();
+          persistDetailsPanelPreference('board.details.compact', detailsPanelCompact);
+          render();
+        });
+      }
+
+      const resizeHandle = details.querySelector('.detailsResizeHandle');
+      if (!resizeHandle) {
+        return;
+      }
+
+      resizeHandle.addEventListener('pointerdown', event => {
+        event.preventDefault();
+        resizeStartX = event.clientX;
+        resizeStartWidth = detailsPanelWidth;
+        resizeHandle.setPointerCapture(event.pointerId);
+      });
+
+      resizeHandle.addEventListener('pointermove', event => {
+        if (!resizeHandle.hasPointerCapture(event.pointerId)) {
+          return;
+        }
+
+        detailsPanelWidth = normalizeDetailsPanelWidth(resizeStartWidth - (event.clientX - resizeStartX));
+        applyDetailsLayout();
+      });
+
+      resizeHandle.addEventListener('pointerup', event => {
+        if (resizeHandle.hasPointerCapture(event.pointerId)) {
+          resizeHandle.releasePointerCapture(event.pointerId);
+        }
+
+        detailsPanelWidth = normalizeDetailsPanelWidth(detailsPanelWidth);
+        persistBoardState();
+        persistDetailsPanelPreference('board.details.width', detailsPanelWidth);
+      });
+
+      resizeHandle.addEventListener('keydown', event => {
+        if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') {
+          return;
+        }
+
+        event.preventDefault();
+        const direction = event.key === 'ArrowLeft' ? 1 : -1;
+        detailsPanelWidth = normalizeDetailsPanelWidth(detailsPanelWidth + direction * 20);
+        applyDetailsLayout();
+        persistBoardState();
+        persistDetailsPanelPreference('board.details.width', detailsPanelWidth);
       });
     }
 

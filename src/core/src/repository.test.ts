@@ -133,6 +133,31 @@ describe('Repository', () => {
       expect(content).toContain('github:');
     });
 
+    it('should preserve unknown metadata fields while serializing known fields', () => {
+      const task: Task = {
+        id: 'TASK-001',
+        type: 'task',
+        title: 'Test Task',
+        status: 'todo',
+        priority: 'high',
+        body: '',
+        filePath: '',
+        metadata: {
+          externalKey: 'JIRA-123',
+          review: {
+            required: true
+          }
+        }
+      };
+
+      const content = generateEntityContent(task);
+
+      expect(content).toContain('externalKey: JIRA-123');
+      expect(content).toContain('review:');
+      expect(content).toContain('required: true');
+      expect(content).toContain('priority: high');
+    });
+
     it('should generate backlog refinement metadata', () => {
       const task: Task = {
         id: 'TASK-001',

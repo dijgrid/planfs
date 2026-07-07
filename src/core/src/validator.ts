@@ -205,7 +205,7 @@ function validateSupportedMetadata(entity: Entity): ValidationError[] {
       id: entity.id,
       path: entity.filePath,
       message: `Unsupported ${entity.type} metadata field: ${field}`,
-      severity: 'error'
+      severity: 'warning'
     }));
 }
 

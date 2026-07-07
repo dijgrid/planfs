@@ -162,7 +162,7 @@ export async function saveEntity(
  * Generate file content from an entity
  */
 export function generateEntityContent(entity: Entity): string {
-  const metadata: Record<string, unknown> = {};
+  const metadata: Record<string, unknown> = { ...entity.metadata };
 
   metadata.id = entity.id;
   metadata.title = entity.title || '';

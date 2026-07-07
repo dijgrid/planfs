@@ -14,6 +14,16 @@ export const UI_PREFERENCES = {
     key: 'backlog.panelsSwapped',
     defaultValue: false,
     scope: 'workspace' as UiPreferenceScope
+  },
+  boardDetailsPanelWidth: {
+    key: 'board.details.width',
+    defaultValue: 340,
+    scope: 'workspace' as UiPreferenceScope
+  },
+  boardDetailsPanelCompact: {
+    key: 'board.details.compact',
+    defaultValue: false,
+    scope: 'workspace' as UiPreferenceScope
   }
 } as const;
 

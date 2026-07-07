@@ -1,14 +1,14 @@
 ---
 id: TASK-089
 title: Show all Markdown content in structured editors
-status: todo
+status: done
 priority: high
 assignee: justin
 epic: EPIC-phase-5-advanced
 milestone: MILESTONE-phase-5
 refinementState: ready
 createdAt: 2026-07-07T03:51:23.762Z
-updatedAt: 2026-07-07T04:19:05.046Z
+updatedAt: 2026-07-07T04:25:57.882Z
 ---
 
 Ensure task and epic structured editors display all meaningful information present in the underlying Markdown file.
@@ -17,14 +17,14 @@ The editor currently focuses on known schema fields and common planning sections
 
 ## Acceptance Criteria
 
-- [ ] Task editor shows the Markdown body or issue description content in the UI
-- [ ] Epic editor shows the Markdown body or description content in the UI
-- [ ] Known schema fields remain structured and editable through existing controls
-- [ ] Markdown sections or frontmatter data that do not map to known schema fields have a clear fallback display
-- [ ] Fallback display preserves enough formatting and context for users to understand the original file
-- [ ] Users have a clear path from fallback content to opening the raw Markdown when direct editing is safer there
-- [ ] Save flows do not drop, reorder, or overwrite unmodeled Markdown content
-- [ ] Tests cover task and epic files with ordinary bodies, extra sections, unknown metadata, and sparse schema fields
+- [x] Task editor shows the Markdown body or issue description content in the UI
+- [x] Epic editor shows the Markdown body or description content in the UI
+- [x] Known schema fields remain structured and editable through existing controls
+- [x] Markdown sections or frontmatter data that do not map to known schema fields have a clear fallback display
+- [x] Fallback display preserves enough formatting and context for users to understand the original file
+- [x] Users have a clear path from fallback content to opening the raw Markdown when direct editing is safer there
+- [x] Save flows do not drop, reorder, or overwrite unmodeled Markdown content
+- [x] Tests cover task and epic files with ordinary bodies, extra sections, unknown metadata, and sparse schema fields
 
 ## Questions
 

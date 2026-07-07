@@ -80,7 +80,7 @@ Supported fields are:
 - `tags`
 - `estimate`
 
-Applied updates set `updatedAt` and validate the repository before writing. Invalid references, unsupported metadata fields, and broken task metadata fail before partial writes.
+Applied updates set `updatedAt` and validate the repository before writing. Invalid references and broken task metadata fail before partial writes. Unsupported metadata fields are preserved and reported as warnings so human-authored files can be reviewed without losing information.
 
 ## Preview Bulk Task Updates
 

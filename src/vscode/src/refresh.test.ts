@@ -701,6 +701,49 @@ describe('VS Code view refresh workspace selection', () => {
     expect(repository.tasks.get('TASK-033')?.status).toBe('done');
   });
 
+  it('renders a resizable dismissable board details panel with stored layout preferences', async () => {
+    selectPlanFSWorkspaceFolder(firstFolder);
+
+    await saveEntity(firstRoot, {
+      ...createTaskTemplate('TASK-038', 'Resizable details task'),
+      status: 'todo'
+    });
+
+    const preferenceState = new TestMemento();
+    const uiPreferences = new PlanFSUiPreferences(preferenceState);
+    await uiPreferences.set(UI_PREFERENCES.boardDetailsPanelWidth, 420, firstFolder);
+    await uiPreferences.set(UI_PREFERENCES.boardDetailsPanelCompact, true, firstFolder);
+
+    const board = new BoardProvider(vscode.Uri.file('/extension'), uiPreferences);
+    await board.open();
+
+    const boardPanel = jest.mocked(vscode.window.createWebviewPanel).mock.results[0].value;
+    expect(boardPanel.webview.html).toContain('"detailsPanelWidth":420');
+    expect(boardPanel.webview.html).toContain('"detailsPanelCompact":true');
+    expect(boardPanel.webview.html).toContain('id="content" class="content"');
+    expect(boardPanel.webview.html).toContain('detailsResizeHandle');
+    expect(boardPanel.webview.html).toContain('data-close-details');
+    expect(boardPanel.webview.html).toContain('data-toggle-details-compact');
+    expect(boardPanel.webview.html).toContain('detailsPanelHidden = true');
+    expect(boardPanel.webview.html).toContain('persistDetailsPanelPreference');
+    expect(boardPanel.webview.html).toContain("persistDetailsPanelPreference('board.details.width'");
+    expect(boardPanel.webview.html).toContain("persistDetailsPanelPreference('board.details.compact'");
+
+    await boardPanel.webview.postMessage({
+      type: 'setBoardPreference',
+      key: UI_PREFERENCES.boardDetailsPanelWidth.key,
+      value: 999
+    });
+    await boardPanel.webview.postMessage({
+      type: 'setBoardPreference',
+      key: UI_PREFERENCES.boardDetailsPanelCompact.key,
+      value: false
+    });
+
+    expect(uiPreferences.get(UI_PREFERENCES.boardDetailsPanelWidth, firstFolder)).toBe(560);
+    expect(uiPreferences.get(UI_PREFERENCES.boardDetailsPanelCompact, firstFolder)).toBe(false);
+  });
+
   it('renders bulk selection controls and applies transactional bulk updates', async () => {
     selectPlanFSWorkspaceFolder(firstFolder);
 
@@ -1045,10 +1088,17 @@ describe('VS Code view refresh workspace selection', () => {
         '',
         '- [ ] Render criteria in the epic editor',
         '',
+        '## Notes',
+        '',
+        'Extra epic note.',
+        '',
         '## Questions',
         '',
         '- [x] Should epics support archive here? Yes'
-      ].join('\n')
+      ].join('\n'),
+      metadata: {
+        planningModel: 'custom'
+      }
     });
     await saveEntity(firstRoot, {
       ...createTaskTemplate('TASK-031', 'Epic child task'),
@@ -1060,6 +1110,12 @@ describe('VS Code view refresh workspace selection', () => {
 
     const editorPanel = jest.mocked(vscode.window.createWebviewPanel).mock.results[0].value;
     expect(editorPanel.webview.html).toContain('Epic Planning Notes');
+    expect(editorPanel.webview.html).toContain('Additional metadata');
+    expect(editorPanel.webview.html).toContain('planningModel');
+    expect(editorPanel.webview.html).toContain('custom');
+    expect(editorPanel.webview.html).toContain('Additional Markdown');
+    expect(editorPanel.webview.html).toContain('Epic body.');
+    expect(editorPanel.webview.html).toContain('Extra epic note.');
     expect(editorPanel.webview.html).toContain('Acceptance Criteria');
     expect(editorPanel.webview.html).toContain('Render criteria in the epic editor');
     expect(editorPanel.webview.html).toContain('Questions');
@@ -1092,10 +1148,17 @@ describe('VS Code view refresh workspace selection', () => {
         '- [ ] Keep the body in Markdown',
         '- [x] Render common sections',
         '',
+        '## Notes',
+        '',
+        'Extra note preserved for readers.',
+        '',
         '## Questions',
         '',
         '- [ ] Should this be editable later?'
-      ].join('\n')
+      ].join('\n'),
+      metadata: {
+        externalKey: 'JIRA-456'
+      }
     });
 
     const editor = new EntityEditorProvider(vscode.Uri.file('/extension'));
@@ -1116,6 +1179,12 @@ describe('VS Code view refresh workspace selection', () => {
     expect(editorPanel.webview.html).toContain('name="epic"');
     expect(editorPanel.webview.html).toContain('data-help-context="editor"');
     expect(editorPanel.webview.html).toContain('Use the structured editor for safe metadata edits');
+    expect(editorPanel.webview.html).toContain('Additional metadata');
+    expect(editorPanel.webview.html).toContain('externalKey');
+    expect(editorPanel.webview.html).toContain('JIRA-456');
+    expect(editorPanel.webview.html).toContain('Additional Markdown');
+    expect(editorPanel.webview.html).toContain('Body intro.');
+    expect(editorPanel.webview.html).toContain('Extra note preserved for readers.');
     expect(editorPanel.webview.html).toContain('Acceptance Criteria');
     expect(editorPanel.webview.html).toContain('Keep the body in Markdown');
     expect(editorPanel.webview.html).toContain('Questions');
@@ -1134,7 +1203,9 @@ describe('VS Code view refresh workspace selection', () => {
 
     const repository = await loadRepository(firstRoot);
     expect(repository.tasks.get('TASK-020')?.title).toBe('Structured body task edited');
+    expect(repository.tasks.get('TASK-020')?.metadata.externalKey).toBe('JIRA-456');
     expect(repository.tasks.get('TASK-020')?.body).toContain('## Acceptance Criteria');
+    expect(repository.tasks.get('TASK-020')?.body).toContain('Extra note preserved for readers.');
   });
 
   it('renders backlog readiness blockers and refreshes them after saving task metadata', async () => {
