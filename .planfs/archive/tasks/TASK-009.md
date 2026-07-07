@@ -2,6 +2,9 @@
 id: TASK-009
 title: Add Phase 1 test coverage
 status: done
+archive:
+  archivedAt: 2026-07-07T02:20:00.142Z
+  originalPath: .planfs/tasks/TASK-009.md
 priority: high
 assignee: justin
 epic: EPIC-mvp-core
@@ -13,10 +16,10 @@ tags:
   - testing
   - phase-1
 dueDate: 2026-06-15
-createdAt: 2026-06-15T00:00:00Z
-updatedAt: 2026-06-15T00:00:00Z
 refinementState: ready
 backlogOrder: 80
+createdAt: 2026-06-15T00:00:00Z
+updatedAt: 2026-07-07T02:20:00.142Z
 ---
 
 Cover core behavior and CLI command smoke paths.

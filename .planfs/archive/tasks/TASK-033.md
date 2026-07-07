@@ -2,6 +2,9 @@
 id: TASK-033
 title: Improve graph affordances, filtering, and empty states
 status: done
+archive:
+  archivedAt: 2026-07-07T02:20:00.123Z
+  originalPath: .planfs/tasks/TASK-033.md
 priority: medium
 assignee: justin
 epic: EPIC-visual-planning-experience
@@ -13,10 +16,10 @@ tags:
   - vscode
   - usability
 dueDate: 2026-06-19
-createdAt: 2026-06-19T00:00:00Z
-updatedAt: 2026-06-19T20:08:35Z
 refinementState: ready
 backlogOrder: 40
+createdAt: 2026-06-19T00:00:00Z
+updatedAt: 2026-07-07T02:20:00.123Z
 ---
 
 Polish the dependency graph so it remains useful across repositories with many tasks, few dependencies, or incomplete planning metadata.

@@ -2,6 +2,9 @@
 id: TASK-005
 title: Build VS Code explorer basics
 status: done
+archive:
+  archivedAt: 2026-07-07T02:20:00.142Z
+  originalPath: .planfs/tasks/TASK-005.md
 priority: high
 assignee: justin
 epic: EPIC-mvp-core
@@ -12,10 +15,10 @@ tags:
   - vscode
   - phase-1
 dueDate: 2026-06-15
-createdAt: 2026-06-15T00:00:00Z
-updatedAt: 2026-06-15T00:00:00Z
 refinementState: ready
 backlogOrder: 40
+createdAt: 2026-06-15T00:00:00Z
+updatedAt: 2026-07-07T02:20:00.142Z
 ---
 
 Provide the initial VS Code tree view for PlanFS repositories.

@@ -2,11 +2,15 @@
 id: EPIC-visual-planning-experience
 title: Visual Planning Experience
 status: completed
+archive:
+  archivedAt: 2026-07-07T02:20:00.123Z
+  originalPath: .planfs/epics/EPIC-visual-planning-experience.md
 owner: justin
-description: Make dependency, timeline, and epic editor views more useful for day-to-day project planning
+description: Make dependency, timeline, and epic editor views more useful for
+  day-to-day project planning
 targetDate: 2026-12-01
 createdAt: 2026-06-19T00:00:00Z
-updatedAt: 2026-06-19T20:08:35Z
+updatedAt: 2026-07-07T02:20:00.123Z
 ---
 
 Improve the VS Code visual planning experience so developers can understand task flow, schedule direction, and epic-specific work without reading every Markdown file individually.

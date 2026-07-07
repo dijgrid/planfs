@@ -2,6 +2,9 @@
 id: TASK-039
 title: Suggest developers from repository history in UI inputs
 status: done
+archive:
+  archivedAt: 2026-07-07T02:20:00.123Z
+  originalPath: .planfs/tasks/TASK-039.md
 priority: medium
 assignee: justin
 epic: EPIC-visual-planning-experience
@@ -13,10 +16,10 @@ tags:
   - git
   - editor
 dueDate: 2026-06-19
-createdAt: 2026-06-19T00:00:00Z
-updatedAt: 2026-06-19T20:08:35Z
 refinementState: ready
 backlogOrder: 100
+createdAt: 2026-06-19T00:00:00Z
+updatedAt: 2026-07-07T02:20:00.123Z
 ---
 
 Collect developer identities from the Git repository and use them as suggestions in PlanFS UI inputs for task assignees, epic owners, and similar people fields.

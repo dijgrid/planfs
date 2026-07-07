@@ -2,16 +2,19 @@
 id: TASK-001
 title: Initialize PlanFS project repository
 status: done
+archive:
+  archivedAt: 2026-07-07T02:20:27.216Z
+  originalPath: .planfs/tasks/TASK-001.md
 priority: high
 assignee: justin
 tags:
   - setup
   - infrastructure
 dueDate: 2026-06-14
-createdAt: 2026-06-14T10:00:00Z
-updatedAt: 2026-06-14T10:00:00Z
 refinementState: ready
 backlogOrder: 10
+createdAt: 2026-06-14T10:00:00Z
+updatedAt: 2026-07-07T02:20:27.216Z
 ---
 
 Set up the initial project repository structure, documentation, and development environment for PlanFS.

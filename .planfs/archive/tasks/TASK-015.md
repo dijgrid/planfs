@@ -2,6 +2,9 @@
 id: TASK-015
 title: Build dependency graph engine
 status: done
+archive:
+  archivedAt: 2026-07-07T02:20:00.121Z
+  originalPath: .planfs/tasks/TASK-015.md
 priority: high
 assignee: justin
 epic: EPIC-phase-3-visualization
@@ -12,10 +15,10 @@ tags:
   - graph
   - phase-3
 dueDate: 2026-06-15
-createdAt: 2026-06-15T00:00:00Z
-updatedAt: 2026-06-15T00:00:00Z
 refinementState: ready
 backlogOrder: 10
+createdAt: 2026-06-15T00:00:00Z
+updatedAt: 2026-07-07T02:20:00.121Z
 ---
 
 Model task dependency relationships for analysis and visualization.

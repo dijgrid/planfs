@@ -2,6 +2,9 @@
 id: TASK-037
 title: Add epic task board to the structured editor
 status: done
+archive:
+  archivedAt: 2026-07-07T02:20:00.123Z
+  originalPath: .planfs/tasks/TASK-037.md
 priority: high
 assignee: justin
 epic: EPIC-visual-planning-experience
@@ -13,10 +16,10 @@ tags:
   - vscode
   - board
 dueDate: 2026-06-19
-createdAt: 2026-06-19T00:00:00Z
-updatedAt: 2026-06-19T20:08:35Z
 refinementState: ready
 backlogOrder: 80
+createdAt: 2026-06-19T00:00:00Z
+updatedAt: 2026-07-07T02:20:00.123Z
 ---
 
 Improve the epic structured editor by showing an epic-scoped mini-board of related tasks alongside the epic metadata and Markdown body.

@@ -2,6 +2,9 @@
 id: TASK-030
 title: Define shared visual planning view model
 status: done
+archive:
+  archivedAt: 2026-07-07T02:20:00.123Z
+  originalPath: .planfs/tasks/TASK-030.md
 priority: high
 assignee: justin
 epic: EPIC-visual-planning-experience
@@ -15,10 +18,10 @@ tags:
   - visualization
   - planning
 dueDate: 2026-06-19
-createdAt: 2026-06-19T00:00:00Z
-updatedAt: 2026-06-19T20:08:35Z
 refinementState: ready
 backlogOrder: 10
+createdAt: 2026-06-19T00:00:00Z
+updatedAt: 2026-07-07T02:20:00.123Z
 ---
 
 Define a shared data shape for VS Code visual planning views so graph, timeline, and epic editor surfaces use the same task, epic, milestone, dependency, and schedule facts.

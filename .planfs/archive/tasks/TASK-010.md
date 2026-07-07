@@ -2,6 +2,9 @@
 id: TASK-010
 title: Publish MVP documentation and examples
 status: done
+archive:
+  archivedAt: 2026-07-07T02:20:00.142Z
+  originalPath: .planfs/tasks/TASK-010.md
 priority: medium
 assignee: justin
 epic: EPIC-mvp-core
@@ -14,10 +17,10 @@ tags:
   - examples
   - phase-1
 dueDate: 2026-06-15
-createdAt: 2026-06-15T00:00:00Z
-updatedAt: 2026-06-15T00:00:00Z
 refinementState: ready
 backlogOrder: 90
+createdAt: 2026-06-15T00:00:00Z
+updatedAt: 2026-07-07T02:20:00.142Z
 ---
 
 Keep the root docs small, durable, and aligned with real Phase 1 behavior.

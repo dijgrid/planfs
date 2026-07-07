@@ -2,6 +2,9 @@
 id: TASK-034
 title: Replace timeline block list with a real time-axis visualization
 status: done
+archive:
+  archivedAt: 2026-07-07T02:20:00.123Z
+  originalPath: .planfs/tasks/TASK-034.md
 priority: high
 assignee: justin
 epic: EPIC-visual-planning-experience
@@ -13,10 +16,10 @@ tags:
   - vscode
   - visualization
 dueDate: 2026-06-19
-createdAt: 2026-06-19T00:00:00Z
-updatedAt: 2026-06-19T20:08:35Z
 refinementState: ready
 backlogOrder: 50
+createdAt: 2026-06-19T00:00:00Z
+updatedAt: 2026-07-07T02:20:00.123Z
 ---
 
 Redesign the timeline view so time is represented spatially instead of as a list of date-bearing items.

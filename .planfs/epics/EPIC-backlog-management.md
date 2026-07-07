@@ -1,13 +1,13 @@
 ---
 id: EPIC-backlog-management
 title: Backlog Management Workflow
-status: active
+status: completed
 owner: justin
 description: Add backlog intake, refinement, ordering, and hygiene workflows for
   PlanFS tasks
 targetDate: 2026-10-16
 createdAt: 2026-06-20T00:00:00Z
-updatedAt: 2026-06-21T18:44:00Z
+updatedAt: 2026-07-07T02:19:31Z
 ---
 
 Make PlanFS useful before work is ready to start by supporting backlog intake, refinement, ordering, and cleanup.

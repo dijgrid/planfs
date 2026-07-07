@@ -2,11 +2,14 @@
 id: EPIC-mvp-core
 title: MVP - Core Functionality
 status: completed
+archive:
+  archivedAt: 2026-07-07T02:20:00.142Z
+  originalPath: .planfs/epics/EPIC-mvp-core.md
 owner: justin
 description: Establish core parsing, validation, and basic UI for project management
 targetDate: 2026-07-14
 createdAt: 2026-06-14T10:00:00Z
-updatedAt: 2026-06-14T10:00:00Z
+updatedAt: 2026-07-07T02:20:00.142Z
 ---
 
 Build the minimum viable product with core functionality: file parsing, schema validation, and basic VS Code integration.

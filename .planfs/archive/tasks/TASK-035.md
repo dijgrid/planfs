@@ -2,6 +2,9 @@
 id: TASK-035
 title: Add timeline navigation, grouping, and schedule context
 status: done
+archive:
+  archivedAt: 2026-07-07T02:20:00.123Z
+  originalPath: .planfs/tasks/TASK-035.md
 priority: medium
 assignee: justin
 epic: EPIC-visual-planning-experience
@@ -13,10 +16,10 @@ tags:
   - vscode
   - usability
 dueDate: 2026-06-19
-createdAt: 2026-06-19T00:00:00Z
-updatedAt: 2026-06-19T20:08:35Z
 refinementState: ready
 backlogOrder: 60
+createdAt: 2026-06-19T00:00:00Z
+updatedAt: 2026-07-07T02:20:00.123Z
 ---
 
 Add timeline controls and context so developers can move through project history and upcoming work without losing orientation.
