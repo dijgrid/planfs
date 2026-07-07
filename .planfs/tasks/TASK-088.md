@@ -1,14 +1,14 @@
 ---
 id: TASK-088
 title: Review milestone concept and task association model
-status: todo
+status: done
 priority: low
 assignee: justin
 epic: EPIC-phase-5-advanced
 milestone: MILESTONE-phase-5
 refinementState: ready
 createdAt: 2026-07-07T03:04:55.399Z
-updatedAt: 2026-07-07T04:19:05.040Z
+updatedAt: 2026-07-07T05:09:05.423Z
 ---
 
 Review whether milestones are carrying their weight in PlanFS and how they should relate to tasks, epics, timelines, and planning views.
@@ -17,11 +17,11 @@ Milestones currently exist as planning entities, but they do not strongly shape 
 
 ## Acceptance Criteria
 
-- [ ] Current milestone usage in CLI, core APIs, validation, timeline, board, and editor surfaces is reviewed
-- [ ] Gaps between milestones and task planning workflows are documented
-- [ ] Recommendation explains whether milestones should become stronger delivery containers, remain lightweight labels, or be deemphasized
-- [ ] Options include how tasks should associate with milestones directly or through epics
-- [ ] Follow-up tasks are created for any chosen schema, UI, validation, or documentation changes
+- [x] Current milestone usage in CLI, core APIs, validation, timeline, board, and editor surfaces is reviewed
+- [x] Gaps between milestones and task planning workflows are documented
+- [x] Recommendation explains whether milestones should become stronger delivery containers, remain lightweight labels, or be deemphasized
+- [x] Options include how tasks should associate with milestones directly or through epics
+- [x] Follow-up tasks are created for any chosen schema, UI, validation, or documentation changes
 
 ## Questions
 
