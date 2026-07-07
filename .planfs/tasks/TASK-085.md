@@ -1,14 +1,14 @@
 ---
 id: TASK-085
 title: Research board scope management workflows
-status: todo
+status: done
 priority: medium
 assignee: justin
 epic: EPIC-phase-5-advanced
 milestone: MILESTONE-phase-5
 refinementState: ready
 createdAt: 2026-07-07T03:04:35.546Z
-updatedAt: 2026-07-07T04:19:05.016Z
+updatedAt: 2026-07-07T04:41:14.710Z
 ---
 
 Research common ways planning boards keep the active board focused without hiding important work.
@@ -17,11 +17,11 @@ The current board can become crowded because many task states and planning conte
 
 ## Acceptance Criteria
 
-- [ ] Common board-scope workflows are documented with tradeoffs for PlanFS
-- [ ] Recommendation covers whether board membership should be explicit, filter-driven, backlog-driven, or a combination
-- [ ] Right-click or quick-action options such as "move to backlog" are evaluated
-- [ ] Recommendation preserves Markdown as the source of truth and avoids hidden board-only state where possible
-- [ ] Follow-up implementation tasks are created if the recommended workflow is larger than this research task
+- [x] Common board-scope workflows are documented with tradeoffs for PlanFS
+- [x] Recommendation covers whether board membership should be explicit, filter-driven, backlog-driven, or a combination
+- [x] Right-click or quick-action options such as "move to backlog" are evaluated
+- [x] Recommendation preserves Markdown as the source of truth and avoids hidden board-only state where possible
+- [x] Follow-up implementation tasks are created if the recommended workflow is larger than this research task
 
 ## Questions
 
