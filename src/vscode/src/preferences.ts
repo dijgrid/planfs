@@ -24,6 +24,11 @@ export const UI_PREFERENCES = {
     key: 'board.details.compact',
     defaultValue: false,
     scope: 'workspace' as UiPreferenceScope
+  },
+  boardScope: {
+    key: 'board.scope',
+    defaultValue: 'actionable',
+    scope: 'workspace' as UiPreferenceScope
   }
 } as const;
 

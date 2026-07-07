@@ -14,7 +14,7 @@ import {
 } from 'planfs-core';
 import { BacklogProvider } from './backlog';
 import { ArchiveProvider } from './archive';
-import { BoardProvider } from './board';
+import { BoardProvider, taskMatchesBoardScope } from './board';
 import { createEpicCommand, createMilestoneCommand } from './commands/create';
 import { EntityEditorProvider } from './editor';
 import { ExplorerProvider } from './explorer';
@@ -699,6 +699,109 @@ describe('VS Code view refresh workspace selection', () => {
     );
     repository = await loadRepository(firstRoot);
     expect(repository.tasks.get('TASK-033')?.status).toBe('done');
+  });
+
+  it('matches task membership for board scope presets', () => {
+    expect(taskMatchesBoardScope({ status: 'todo', refinementState: 'ready' }, 'actionable')).toBe(true);
+    expect(taskMatchesBoardScope({ status: 'todo', refinementState: 'needs-refinement' }, 'actionable')).toBe(false);
+    expect(taskMatchesBoardScope({ status: 'in-progress' }, 'actionable')).toBe(true);
+    expect(taskMatchesBoardScope({ status: 'review', refinementState: 'deferred' }, 'actionable')).toBe(true);
+    expect(taskMatchesBoardScope({ status: 'done', refinementState: 'ready' }, 'actionable')).toBe(false);
+
+    expect(taskMatchesBoardScope({ status: 'todo', refinementState: 'needs-refinement' }, 'all-open')).toBe(true);
+    expect(taskMatchesBoardScope({ status: 'done', refinementState: 'ready' }, 'all-open')).toBe(false);
+
+    expect(taskMatchesBoardScope({ status: 'todo', refinementState: 'captured' }, 'backlog')).toBe(true);
+    expect(taskMatchesBoardScope({ status: 'todo', refinementState: 'deferred' }, 'backlog')).toBe(true);
+    expect(taskMatchesBoardScope({ status: 'todo', refinementState: 'discarded' }, 'backlog')).toBe(true);
+    expect(taskMatchesBoardScope({ status: 'todo', refinementState: 'ready' }, 'backlog')).toBe(false);
+
+    expect(taskMatchesBoardScope({ status: 'done', refinementState: 'discarded' }, 'saved-filter')).toBe(true);
+  });
+
+  it('renders board scope presets and persists selected scope', async () => {
+    selectPlanFSWorkspaceFolder(firstFolder);
+
+    await saveEntity(firstRoot, {
+      ...createTaskTemplate('TASK-039', 'Scoped board task'),
+      refinementState: 'ready' as const
+    });
+
+    const preferenceState = new TestMemento();
+    const uiPreferences = new PlanFSUiPreferences(preferenceState);
+    await uiPreferences.set(UI_PREFERENCES.boardScope, 'backlog', firstFolder);
+
+    const board = new BoardProvider(vscode.Uri.file('/extension'), uiPreferences);
+    await board.open();
+
+    const boardPanel = jest.mocked(vscode.window.createWebviewPanel).mock.results[0].value;
+    expect(boardPanel.webview.html).toContain('id="boardScope"');
+    expect(boardPanel.webview.html).toContain('value="actionable">Actionable');
+    expect(boardPanel.webview.html).toContain('value="all-open">All open');
+    expect(boardPanel.webview.html).toContain('value="backlog">Backlog');
+    expect(boardPanel.webview.html).toContain('value="saved-filter">Saved filter');
+    expect(boardPanel.webview.html).toContain('"boardScope":"backlog"');
+    expect(boardPanel.webview.html).toContain("persistDetailsPanelPreference('board.scope'");
+    expect(boardPanel.webview.html).toContain('matchesBoardScope(task, boardScope)');
+
+    await boardPanel.webview.postMessage({
+      type: 'setBoardPreference',
+      key: UI_PREFERENCES.boardScope.key,
+      value: 'all-open'
+    });
+
+    expect(uiPreferences.get(UI_PREFERENCES.boardScope, firstFolder)).toBe('all-open');
+  });
+
+  it('updates board task refinement state without changing execution status', async () => {
+    selectPlanFSWorkspaceFolder(firstFolder);
+
+    await saveEntity(firstRoot, {
+      ...createTaskTemplate('TASK-042', 'Backlog movement task'),
+      status: 'todo',
+      refinementState: 'ready' as const
+    });
+
+    const board = new BoardProvider(vscode.Uri.file('/extension'));
+    await board.open();
+
+    const boardPanel = jest.mocked(vscode.window.createWebviewPanel).mock.results[0].value;
+    expect(boardPanel.webview.html).toContain('data-refinement-task');
+    expect(boardPanel.webview.html).toContain('Move to backlog');
+    expect(boardPanel.webview.html).toContain('Mark ready');
+    expect(boardPanel.webview.html).toContain('Discard');
+
+    await boardPanel.webview.postMessage({
+      type: 'updateTaskRefinementState',
+      taskId: 'TASK-042',
+      refinementState: 'needs-refinement'
+    });
+    await boardPanel.webview.postMessage({
+      type: 'updateTaskRefinementState',
+      taskId: 'TASK-042',
+      refinementState: 'deferred'
+    });
+    await boardPanel.webview.postMessage({
+      type: 'updateTaskRefinementState',
+      taskId: 'TASK-042',
+      refinementState: 'ready'
+    });
+
+    jest.mocked(vscode.window.showWarningMessage).mockResolvedValueOnce('Discard' as never);
+    await boardPanel.webview.postMessage({
+      type: 'updateTaskRefinementState',
+      taskId: 'TASK-042',
+      refinementState: 'discarded'
+    });
+
+    const repository = await loadRepository(firstRoot);
+    expect(repository.tasks.get('TASK-042')?.status).toBe('todo');
+    expect(repository.tasks.get('TASK-042')?.refinementState).toBe('discarded');
+    expect(vscode.window.showWarningMessage).toHaveBeenCalledWith(
+      'Discard TASK-042 from active planning?',
+      { modal: true },
+      'Discard'
+    );
   });
 
   it('renders a resizable dismissable board details panel with stored layout preferences', async () => {

@@ -15,6 +15,7 @@ import {
   saveEntity,
   Task,
   TaskReadiness,
+  RefinementState,
   TaskStatus
 } from 'planfs-core';
 import {
@@ -37,6 +38,7 @@ const QUICK_TRANSITIONS: Record<TaskStatus, TaskStatus[]> = {
   review: ['done'],
   done: []
 };
+const REFINEMENT_STATES: RefinementState[] = ['captured', 'needs-refinement', 'ready', 'deferred', 'discarded'];
 
 interface BoardTask {
   id: string;
@@ -53,6 +55,7 @@ interface BoardTask {
   tags?: string[];
   dueDate?: string;
   estimate?: string;
+  refinementState?: RefinementState;
   links?: Record<string, string>;
   metadata: Record<string, unknown>;
   body: string;
@@ -74,6 +77,7 @@ interface BoardPayload {
 interface BoardPreferences {
   detailsPanelWidth: number;
   detailsPanelCompact: boolean;
+  boardScope: BoardScope;
 }
 
 interface CreateTaskContext {
@@ -87,6 +91,7 @@ interface CreateTaskContext {
 
 type BulkUpdateAction = 'status' | 'assignee' | 'milestone' | 'priority' | 'estimate';
 type BoardMode = 'status' | 'next-work';
+export type BoardScope = 'actionable' | 'all-open' | 'backlog' | 'saved-filter';
 
 interface BulkUpdateRequest {
   taskIds: string[];
@@ -146,6 +151,13 @@ export class BoardProvider {
         await this.transitionTaskStatus(
           String(message.taskId),
           message.status as TaskStatus
+        );
+      }
+
+      if (message?.type === 'updateTaskRefinementState') {
+        await this.updateTaskRefinementState(
+          String(message.taskId),
+          message.refinementState as RefinementState
         );
       }
 
@@ -310,6 +322,58 @@ export class BoardProvider {
     }
   }
 
+  private async updateTaskRefinementState(
+    taskId: string,
+    refinementState: RefinementState
+  ): Promise<void> {
+    if (!REFINEMENT_STATES.includes(refinementState)) {
+      vscode.window.showErrorMessage(`Invalid refinement state: ${refinementState}`);
+      await this.render();
+      return;
+    }
+
+    const workspaceFolder = getPlanFSWorkspaceFolder();
+    if (!workspaceFolder) {
+      vscode.window.showErrorMessage('No workspace folder open');
+      return;
+    }
+
+    if (refinementState === 'discarded') {
+      const answer = await vscode.window.showWarningMessage(
+        `Discard ${taskId} from active planning?`,
+        { modal: true },
+        'Discard'
+      );
+      if (answer !== 'Discard') {
+        await this.render();
+        return;
+      }
+    }
+
+    try {
+      const repository = await loadRepository(workspaceFolder.uri.fsPath);
+      const task = repository.tasks.get(taskId);
+
+      if (!task) {
+        vscode.window.showErrorMessage(`Task not found: ${taskId}`);
+        return;
+      }
+
+      if (task.refinementState !== refinementState) {
+        task.refinementState = refinementState;
+        task.updatedAt = new Date().toISOString();
+        await saveEntity(workspaceFolder.uri.fsPath, task);
+      }
+
+      await this.render();
+    } catch (error) {
+      vscode.window.showErrorMessage(
+        `Failed to update task refinement state: ${error instanceof Error ? error.message : String(error)}`
+      );
+      await this.render();
+    }
+  }
+
   private async openEntity(entityId: string): Promise<void> {
     if (!entityId) {
       return;
@@ -413,6 +477,7 @@ export class BoardProvider {
       task.milestone = reviewedContext.milestone;
       task.priority = reviewedContext.priority as Task['priority'];
       task.tags = reviewedContext.tags;
+      task.refinementState = 'ready';
       task.updatedAt = new Date().toISOString();
 
       await saveEntity(workspaceFolder.uri.fsPath, task);
@@ -503,7 +568,11 @@ export class BoardProvider {
       detailsPanelCompact: this.uiPreferences?.get(
         UI_PREFERENCES.boardDetailsPanelCompact,
         workspaceFolder
-      ) ?? UI_PREFERENCES.boardDetailsPanelCompact.defaultValue
+      ) ?? UI_PREFERENCES.boardDetailsPanelCompact.defaultValue,
+      boardScope: normalizeBoardScope(this.uiPreferences?.get(
+        UI_PREFERENCES.boardScope,
+        workspaceFolder
+      ))
     };
   }
 
@@ -539,7 +608,45 @@ export class BoardProvider {
         workspaceFolder
       );
     }
+
+    if (
+      request.key === UI_PREFERENCES.boardScope.key
+      && typeof request.value === 'string'
+    ) {
+      await this.uiPreferences.set(
+        UI_PREFERENCES.boardScope,
+        normalizeBoardScope(request.value),
+        workspaceFolder
+      );
+    }
   }
+}
+
+function normalizeBoardScope(value: unknown): BoardScope {
+  return value === 'all-open' || value === 'backlog' || value === 'saved-filter'
+    ? value
+    : 'actionable';
+}
+
+export function taskMatchesBoardScope(
+  task: { status: TaskStatus; refinementState?: RefinementState },
+  scope: BoardScope
+): boolean {
+  if (scope === 'saved-filter') {
+    return true;
+  }
+
+  if (scope === 'all-open') {
+    return task.status !== 'done';
+  }
+
+  if (scope === 'backlog') {
+    return task.status !== 'done'
+      && ['captured', 'needs-refinement', 'deferred', 'discarded'].includes(task.refinementState ?? '');
+  }
+
+  return task.status !== 'done'
+    && (task.refinementState === 'ready' || task.status === 'in-progress' || task.status === 'review');
 }
 
 function clampDetailsPanelWidth(width: number): number {
@@ -609,6 +716,7 @@ function toBoardTask(
     tags: task.tags,
     dueDate: task.dueDate,
     estimate: task.estimate,
+    refinementState: task.refinementState,
     links: task.links,
     metadata: task.metadata,
     body: task.body,
@@ -1354,6 +1462,12 @@ function renderBoard(
         <button type="button" class="modeTab active" role="tab" aria-selected="true" data-mode="status">Status Board</button>
         <button type="button" class="modeTab" role="tab" aria-selected="false" data-mode="next-work">Next Work</button>
       </div>
+      <select id="boardScope" aria-label="Board scope">
+        <option value="actionable">Actionable</option>
+        <option value="all-open">All open</option>
+        <option value="backlog">Backlog</option>
+        <option value="saved-filter">Saved filter</option>
+      </select>
       <select id="savedFilter" aria-label="Saved filter">
         <option value="">All tasks</option>
       </select>
@@ -1406,6 +1520,7 @@ function renderBoard(
       ? persistedState.detailsPanelCompact
       : Boolean(state.preferences?.detailsPanelCompact);
     let detailsPanelHidden = Boolean(persistedState?.detailsPanelHidden);
+    let boardScope = normalizeBoardScope(persistedState?.boardScope ?? state.preferences?.boardScope);
     let resizeStartX = 0;
     let resizeStartWidth = detailsPanelWidth;
     const initialMode = ${serializedInitialMode};
@@ -1433,6 +1548,7 @@ function renderBoard(
 
     const filterInput = document.getElementById('filter');
     const modeButtons = Array.from(document.querySelectorAll('[data-mode]'));
+    const boardScopeInput = document.getElementById('boardScope');
     const savedFilterInput = document.getElementById('savedFilter');
     const groupInput = document.getElementById('group');
     const sortInput = document.getElementById('sort');
@@ -1448,6 +1564,7 @@ function renderBoard(
     groupInput.value = groupingModes.includes(persistedState?.groupKey)
       ? persistedState.groupKey
       : 'none';
+    boardScopeInput.value = boardScope;
     renderSavedFilterOptions();
     updateModeButtons();
 
@@ -1466,6 +1583,12 @@ function renderBoard(
         nextButton.focus();
         setBoardMode(nextButton.dataset.mode);
       });
+    });
+    boardScopeInput.addEventListener('change', () => {
+      boardScope = normalizeBoardScope(boardScopeInput.value);
+      persistBoardState();
+      persistDetailsPanelPreference('board.scope', boardScope);
+      render();
     });
     savedFilterInput.addEventListener('change', () => render());
     groupInput.addEventListener('change', () => {
@@ -1539,6 +1662,7 @@ function renderBoard(
         ...(currentState || {}),
         boardMode,
         groupKey: groupInput.value,
+        boardScope,
         detailsPanelWidth,
         detailsPanelCompact,
         detailsPanelHidden
@@ -1578,8 +1702,12 @@ function renderBoard(
       const groupKey = groupInput.value;
       const sortKey = sortInput.value;
       const filtered = state.tasks
+        .filter(task => matchesBoardScope(task, boardScope))
         .filter(task => matchesSavedFilter(task, savedFilter?.criteria))
         .filter(task => matchesFilter(task, filterText));
+      if (!filtered.some(task => task.id === selectedTaskId)) {
+        selectedTaskId = filtered[0]?.id || '';
+      }
 
       if (boardMode === 'next-work') {
         board.classList.add('nextWork');
@@ -1668,6 +1796,30 @@ function renderBoard(
       ].filter(Boolean).join(' ').toLowerCase();
 
       return searchable.includes(filterText);
+    }
+
+    function normalizeBoardScope(value) {
+      return value === 'all-open' || value === 'backlog' || value === 'saved-filter'
+        ? value
+        : 'actionable';
+    }
+
+    function matchesBoardScope(task, scope) {
+      if (scope === 'saved-filter') {
+        return true;
+      }
+
+      if (scope === 'all-open') {
+        return task.status !== 'done';
+      }
+
+      if (scope === 'backlog') {
+        return task.status !== 'done'
+          && ['captured', 'needs-refinement', 'deferred', 'discarded'].includes(task.refinementState);
+      }
+
+      return task.status !== 'done'
+        && (task.refinementState === 'ready' || task.status === 'in-progress' || task.status === 'review');
     }
 
     function matchesSavedFilter(task, criteria) {
@@ -1977,7 +2129,8 @@ function renderBoard(
           : '',
         task.status === 'in-progress' || task.status === 'review'
           ? '<button type="button" data-transition-task="' + escapeHtml(task.id) + '" data-status="done">Mark done</button>'
-          : ''
+          : '',
+        ...renderRefinementActions(task)
       ].filter(Boolean).join('');
       card.innerHTML = [
         '<label class="bulkSelect"><input type="checkbox" data-bulk-select="' + escapeHtml(task.id) + '"' + (selectedBulkTaskIds.has(task.id) ? ' checked' : '') + '>Select</label>',
@@ -2023,7 +2176,39 @@ function renderBoard(
         });
       });
 
+      card.querySelectorAll('[data-refinement-task]').forEach(button => {
+        button.addEventListener('click', event => {
+          event.stopPropagation();
+          vscode.postMessage({
+            type: 'updateTaskRefinementState',
+            taskId: button.dataset.refinementTask,
+            refinementState: button.dataset.refinementState
+          });
+        });
+      });
+
       return card;
+    }
+
+    function renderRefinementActions(task) {
+      return [
+        task.refinementState !== 'needs-refinement'
+          ? refinementButton(task, 'needs-refinement', 'Move to backlog')
+          : '',
+        task.refinementState !== 'deferred'
+          ? refinementButton(task, 'deferred', 'Defer')
+          : '',
+        task.refinementState !== 'ready'
+          ? refinementButton(task, 'ready', 'Mark ready')
+          : '',
+        task.refinementState !== 'discarded'
+          ? refinementButton(task, 'discarded', 'Discard')
+          : ''
+      ];
+    }
+
+    function refinementButton(task, refinementState, label) {
+      return '<button type="button" data-refinement-task="' + escapeHtml(task.id) + '" data-refinement-state="' + escapeHtml(refinementState) + '">' + escapeHtml(label) + '</button>';
     }
 
     function selectTask(taskId) {
@@ -2061,6 +2246,7 @@ function renderBoard(
             '<button type="button" data-open-file="' + escapeHtml(task.id) + '">Open Markdown</button>',
             '<button type="button" data-copy-selected="' + escapeHtml(task.id) + '">Copy ID</button>',
             task.epic ? '<button type="button" data-open-selected="' + escapeHtml(task.epic) + '">Open epic</button>' : '',
+            ...renderRefinementActions(task),
           '</div>',
           renderDetailGrid(task),
           renderDetailSection('Next Work', task.nextWorkReasons || []),
@@ -2087,6 +2273,16 @@ function renderBoard(
       details.querySelectorAll('[data-copy-selected]').forEach(button => {
         button.addEventListener('click', () => {
           vscode.postMessage({ type: 'copyTaskId', taskId: button.dataset.copySelected });
+        });
+      });
+
+      details.querySelectorAll('[data-refinement-task]').forEach(button => {
+        button.addEventListener('click', () => {
+          vscode.postMessage({
+            type: 'updateTaskRefinementState',
+            taskId: button.dataset.refinementTask,
+            refinementState: button.dataset.refinementState
+          });
         });
       });
     }
@@ -2161,6 +2357,7 @@ function renderBoard(
       const rows = [
         ['Status', task.status],
         ['Readiness', task.readiness],
+        ['Refinement', task.refinementState],
         ['Priority', task.priority],
         ['Assignee', task.assignee],
         ['Epic', task.epic],
