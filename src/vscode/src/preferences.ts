@@ -29,6 +29,11 @@ export const UI_PREFERENCES = {
     key: 'board.scope',
     defaultValue: 'actionable',
     scope: 'workspace' as UiPreferenceScope
+  },
+  boardMilestoneFocus: {
+    key: 'board.milestoneFocus',
+    defaultValue: '',
+    scope: 'workspace' as UiPreferenceScope
   }
 } as const;
 

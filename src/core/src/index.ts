@@ -13,6 +13,7 @@ export * from './graph';
 export * from './git';
 export * from './search';
 export * from './next-work';
+export * from './milestone';
 export * from './backlog';
 export * from './bulk';
 export * from './pull-request';

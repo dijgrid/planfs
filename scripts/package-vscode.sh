@@ -25,7 +25,7 @@ npm run build --workspaces
 
 echo "Preparing clean VS Code extension package directory..."
 mkdir -p "$PACKAGE_DIR"
-rsync -a --delete --exclude node_modules "$ROOT_DIR/src/vscode/" "$PACKAGE_DIR/"
+rsync -a --delete --delete-excluded --exclude node_modules "$ROOT_DIR/src/vscode/" "$PACKAGE_DIR/"
 npm pkg delete scripts.vscode:prepublish --prefix "$PACKAGE_DIR"
 
 echo "Packing local workspace dependencies..."

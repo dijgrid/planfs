@@ -7,7 +7,7 @@ import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 import type { PullRequestProviderId } from 'planfs-core';
 import { validateCommand } from './commands/validate';
-import { aiCommand, AiAction } from './commands/ai';
+import { aiCommand, AiAction, AiSummarySection } from './commands/ai';
 import { initCommand } from './commands/init';
 import { listCommand } from './commands/list';
 import { nextCommand } from './commands/next';
@@ -86,6 +86,24 @@ export async function main(): Promise<void> {
             type: 'number',
             description: 'Maximum number of summary items per list'
           })
+          .option('only', {
+            type: 'string',
+            choices: ['open', 'ready', 'blocked', 'review', 'stale', 'recent'],
+            description: 'Return only one planning summary section'
+          })
+          .option('compact', {
+            type: 'boolean',
+            default: false,
+            description: 'Emit minified JSON for lower-overhead agent context'
+          })
+          .option('expected-updated-at', {
+            type: 'string',
+            description: 'Refuse a task update if updatedAt changed since preview (use none for an unset timestamp)'
+          })
+          .option('command', {
+            type: 'string',
+            description: 'CLI command written by ai initialize (default: planfs)'
+          })
           .option('dry-run', {
             type: 'boolean',
             default: false,
@@ -121,7 +139,11 @@ export async function main(): Promise<void> {
             limit: args.limit as number | undefined,
             dryRun: args.dryRun as boolean,
             file: args.file as string | undefined,
-            format: args.format as 'json' | 'text'
+            format: args.format as 'json' | 'text',
+            only: args.only as AiSummarySection | undefined,
+            compact: args.compact as boolean,
+            expectedUpdatedAt: args.expectedUpdatedAt as string | undefined,
+            command: args.command as string | undefined
           }
         );
         process.exit(exitCode);

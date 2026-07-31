@@ -81,11 +81,15 @@ node src/cli/dist/cli.js ai summary
 
 Use the returned IDs and file paths for targeted follow-up reads instead of scanning all of `.planfs`.
 
+Use `node src/cli/dist/cli.js ai summary --only ready --compact` when only one low-overhead planning section is needed.
+
 Preview metadata updates before writing. Use `update-task` for one task:
 
 ```sh
 node src/cli/dist/cli.js ai update-task --id TASK-061 --status in-progress --dry-run
 ```
+
+When replaying a JSON preview, pass its `expectedUpdatedAt` value through `--expected-updated-at` so newer human edits are refused. Use `none` when the preview token is `null`.
 
 Use `bulk-update-tasks` when applying the same bounded metadata change to multiple tasks:
 

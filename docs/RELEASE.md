@@ -9,6 +9,7 @@ Before publishing:
 - [ ] Confirm the working tree is clean.
 - [ ] Confirm the target version in package metadata.
 - [ ] Run lint, build, tests, and PlanFS validation.
+- [ ] Inspect and publish the public npm packages in dependency order.
 - [ ] Build a local VSIX.
 - [ ] Install and smoke test the VSIX in VS Code.
 - [ ] Publish the VS Code extension when ready.
@@ -70,7 +71,52 @@ For CI-style validation output:
 node src/cli/dist/cli.js validate --format json
 ```
 
-## 4. Build The VS Code Extension
+## 4. Publish The Public npm Packages
+
+The CLI is distributed separately from the VS Code extension. Publishing requires a verified npm account and either two-factor authentication or a publishing token that satisfies npm's current 2FA requirements.
+
+Authenticate and confirm the account that will own the unscoped PlanFS packages:
+
+```sh
+npm login
+npm whoami
+```
+
+Before publishing, inspect exactly what each package will contain:
+
+```sh
+npm pack --workspace planfs-schema --dry-run
+npm pack --workspace planfs-core --dry-run
+npm pack --workspace planfs-cli --dry-run
+```
+
+Publish in dependency order so every internal dependency is available when consumers install the CLI:
+
+```sh
+npm publish --workspace planfs-schema --access public
+npm publish --workspace planfs-core --access public
+npm publish --workspace planfs-cli --access public
+```
+
+Each package name and version can be published only once. If part of the sequence fails, do not bump or republish packages that already succeeded; fix the unpublished package, choose the appropriate new version if its contents must change, realign internal dependency versions, and rerun verification.
+
+Confirm the registry exposes the expected versions and that the CLI installs outside the monorepo:
+
+```sh
+npm view planfs-schema version
+npm view planfs-core version
+npm view planfs-cli version
+
+PLANFS_SMOKE_DIR="$(mktemp -d)"
+npm install --prefix "$PLANFS_SMOKE_DIR" planfs-cli
+"$PLANFS_SMOKE_DIR/node_modules/.bin/planfs" --version
+```
+
+Do not publish the Marketplace update that advertises `npm install --global planfs-cli` until this registry smoke test succeeds.
+
+For a future automated release, prefer npm trusted publishing instead of storing a long-lived registry token in CI.
+
+## 5. Build The VS Code Extension
 
 Use the staging workflow. Do not package directly from `src/vscode` because local workspace symlinks can produce invalid VSIX contents.
 
@@ -90,7 +136,7 @@ The script also prints the local install command:
 code --install-extension "/absolute/path/to/dist/planfs-vscode-0.1.0.vsix" --force
 ```
 
-## 5. Smoke Test The VSIX
+## 6. Smoke Test The VSIX
 
 Install the generated VSIX into a normal VS Code instance:
 
@@ -130,12 +176,18 @@ To remove a local VSIX install:
 code --uninstall-extension dijgrid.planfs-vscode
 ```
 
-## 6. Publish To The VS Code Marketplace
+## 7. Publish To The VS Code Marketplace
 
 Confirm the publisher in `src/vscode/package.json` matches the Marketplace publisher account:
 
 ```json
 "publisher": "dijgrid"
+```
+
+Confirm the extension is being published as a stable Marketplace release. The manifest must not contain `"preview": true` unless a future release intentionally returns to Preview status:
+
+```sh
+node -e "const manifest = require('./src/vscode/package.json'); if (manifest.preview === true) process.exit(1)"
 ```
 
 Authenticate if needed:
@@ -169,7 +221,7 @@ VS Code search can lag behind the Marketplace page. Search by full extension ID 
 @id:dijgrid.planfs-vscode
 ```
 
-## 7. Tag The Release
+## 8. Tag The Release
 
 After publishing succeeds, tag the release from the commit that produced the published artifact:
 
@@ -181,11 +233,15 @@ git push origin v0.1.0
 
 If a release branch was used, open and merge the release pull request before tagging from `main`, unless the team intentionally tags before merge.
 
-## 8. Post-Release Checks
+## 9. Post-Release Checks
 
 After publishing:
 
 - Confirm the Marketplace page renders with the expected README and icon.
+- Confirm the Marketplace page does not show a Preview designation for a stable release.
+- Confirm the Marketplace Overview leads with VS Code features and does not imply the extension installs the PlanFS CLI.
+- Confirm `npm install --global planfs-cli` installs the advertised CLI version.
+- Open the extension inside VS Code and confirm Feature Contributions lists the registered PlanFS commands and views from `package.json`.
 - Install the extension from Marketplace in VS Code.
 - Run a quick PlanFS workflow in a test repository.
 - Update `.planfs` release or follow-up tasks if anything remains.

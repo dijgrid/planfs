@@ -133,6 +133,26 @@ describe('AI planning helpers', () => {
       await fs.rm(rootPath, { recursive: true, force: true });
     }
   });
+
+  it('rejects a stale update when updatedAt changed since preview', async () => {
+    const rootPath = await fs.mkdtemp(path.join(os.tmpdir(), 'planfs-ai-conflict-'));
+    try {
+      await ensurePlanfsStructure(rootPath);
+      await saveEntity(rootPath, { ...createTaskTemplate('TASK-001', 'Update me'), updatedAt: '2026-06-20T00:00:00Z' });
+      const repository = await loadRepository(rootPath);
+
+      await expect(updateTaskPlanning(rootPath, repository, {
+        id: 'TASK-001',
+        patch: { status: 'review' },
+        expectedUpdatedAt: '2026-06-19T00:00:00Z',
+        now
+      })).rejects.toThrow('TASK-001 changed since preview');
+
+      expect((await loadRepository(rootPath)).tasks.get('TASK-001')?.status).toBe('todo');
+    } finally {
+      await fs.rm(rootPath, { recursive: true, force: true });
+    }
+  });
 });
 
 function createTask(
