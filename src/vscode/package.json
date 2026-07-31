@@ -1,12 +1,11 @@
 {
   "name": "planfs-vscode",
   "displayName": "PlanFS",
-  "description": "Git-native project management for VS Code",
-  "version": "1.1.0",
+  "description": "Git-native planning in VS Code with a backlog, task board, next-work guidance, and roadmap insights",
+  "version": "1.2.0",
   "publisher": "dijgrid",
   "license": "MIT",
   "icon": "resources/icon.png",
-  "preview": true,
   "repository": {
     "type": "git",
     "url": "https://github.com/dijgrid/planfs.git",
@@ -163,7 +162,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "planfs-core": "1.1.0"
+    "planfs-core": "1.2.0"
   },
   "devDependencies": {
     "@types/jest": "^30.0.0",

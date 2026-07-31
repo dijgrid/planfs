@@ -8,8 +8,10 @@ import {
   Entity,
   Epic,
   getRepositoryDevelopers,
+  getMilestoneRollup,
   loadRepository,
   Milestone,
+  MilestoneRollup,
   Repository,
   reviewBacklog,
   saveEntity,
@@ -41,6 +43,7 @@ interface EditorPayload {
   };
   epicBoard?: EpicBoardColumn[];
   backlogReadiness?: BacklogReadinessInfo;
+  milestoneRollup?: MilestoneRollup;
   helpTopics: HelpTopic[];
 }
 
@@ -121,6 +124,10 @@ export class EntityEditorProvider {
 
         if (message?.type === 'openEntity') {
           await this.open(String(message.entityId));
+        }
+
+        if (message?.type === 'setMilestoneTask') {
+          await this.setMilestoneTask(String(entity.id), String(message.taskId), Boolean(message.assigned), panel);
         }
 
         if (message?.type === 'archiveEntity' || message?.type === 'archiveTask') {
@@ -213,6 +220,48 @@ export class EntityEditorProvider {
       const message = error instanceof Error ? error.message : String(error);
       panel.webview.postMessage({ type: 'validation', errors: [message] });
       vscode.window.showErrorMessage(`Failed to save entity: ${message}`);
+    }
+  }
+
+  private async setMilestoneTask(
+    milestoneId: string,
+    taskId: string,
+    assigned: boolean,
+    panel: vscode.WebviewPanel
+  ): Promise<void> {
+    const workspaceFolder = getPlanFSWorkspaceFolder();
+    if (!workspaceFolder) return;
+    try {
+      const repository = await loadRepository(workspaceFolder.uri.fsPath);
+      const milestone = repository.milestones.get(milestoneId);
+      const task = repository.tasks.get(taskId);
+      if (!milestone || !task) throw new Error('Milestone or task was not found');
+      if (assigned && task.milestone && task.milestone !== milestoneId) {
+        const answer = await vscode.window.showWarningMessage(
+          `${task.id} is assigned to ${task.milestone}. Move it to ${milestoneId}?`,
+          { modal: true },
+          'Move task'
+        );
+        if (answer !== 'Move task') return;
+      }
+      task.milestone = assigned ? milestoneId : undefined;
+      task.metadata = { ...task.metadata };
+      if (assigned) {
+        task.metadata.milestone = milestoneId;
+      } else {
+        delete task.metadata.milestone;
+      }
+      task.updatedAt = new Date().toISOString();
+      const errors = validateEntity(task).filter(error => error.severity === 'error');
+      if (errors.length > 0) {
+        throw new Error(`Task update failed validation: ${errors.map(error => error.message).join('; ')}`);
+      }
+      await saveEntity(workspaceFolder.uri.fsPath, task);
+      const refreshed = await loadRepository(workspaceFolder.uri.fsPath);
+      panel.webview.html = renderEditor(panel.webview, await createPayload(refreshed, milestone, this.extensionUri));
+      vscode.window.showInformationMessage(`${assigned ? 'Added' : 'Removed'} ${task.id} ${assigned ? 'to' : 'from'} ${milestoneId}`);
+    } catch (error) {
+      vscode.window.showErrorMessage(`Failed to update milestone tasks: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
@@ -383,6 +432,10 @@ async function createPayload(
 
   if (entity.type === 'task') {
     payload.backlogReadiness = createBacklogReadinessInfo(repository, entity.id);
+  }
+
+  if (entity.type === 'milestone') {
+    payload.milestoneRollup = getMilestoneRollup(repository, entity.id);
   }
 
   return payload;
@@ -891,6 +944,19 @@ function renderEditor(webview: vscode.Webview, payload: EditorPayload): string {
         vscode.postMessage({ type: 'openEntity', entityId: button.dataset.openEntity });
       });
     });
+    document.querySelectorAll('[data-set-milestone-task]').forEach(button => {
+      button.addEventListener('click', () => {
+        vscode.postMessage({
+          type: 'setMilestoneTask',
+          taskId: button.dataset.setMilestoneTask,
+          assigned: button.dataset.assigned === 'true'
+        });
+      });
+    });
+    document.getElementById('addMilestoneTask')?.addEventListener('click', () => {
+      const taskId = document.getElementById('milestoneTaskToAdd')?.value;
+      if (taskId) vscode.postMessage({ type: 'setMilestoneTask', taskId, assigned: true });
+    });
     window.addEventListener('message', event => {
       if (event.data?.type === 'validation') {
         renderErrors(event.data.errors || []);
@@ -1013,7 +1079,7 @@ function renderEntityFields(payload: EditorPayload): string {
       compactMeta([
         common[0],
         compactSelect('Status', 'status', epic.status, ['active', 'completed', 'on-hold', 'archived']),
-        compactInput('Target Date', 'targetDate', toDateInput(epic.targetDate), 'date')
+        compactInput('Epic Planning Date', 'targetDate', toDateInput(epic.targetDate), 'date')
       ]),
       common[1],
       input('Owner', 'owner', epic.owner ?? '', 'text', false, 'developer-options'),
@@ -1034,7 +1100,7 @@ function renderEntityFields(payload: EditorPayload): string {
     compactMeta([
       common[0],
       compactSelect('Status', 'status', milestone.status, ['active', 'completed', 'delayed']),
-      compactInput('Target Date', 'targetDate', toDateInput(milestone.targetDate), 'date')
+      compactInput('Milestone Target Date', 'targetDate', toDateInput(milestone.targetDate), 'date')
     ]),
     common[1],
     input('Owner', 'owner', milestone.owner ?? '', 'text', false, 'developer-options'),
@@ -1042,8 +1108,28 @@ function renderEntityFields(payload: EditorPayload): string {
     textarea('Description', 'description', milestone.description ?? '', 'full'),
     textarea('Links JSON', 'links', formatJson(milestone.links), 'full'),
     renderAdditionalMetadata(milestone),
+    renderMilestoneRollup(payload),
     renderBodySections(milestone.body)
   ].join('');
+}
+
+function renderMilestoneRollup(payload: EditorPayload): string {
+  const rollup = payload.milestoneRollup;
+  if (!rollup) return '';
+  const assigned = new Set(rollup.tasks.map(item => item.task.id));
+  const available = payload.options.tasks.filter(task => !assigned.has(task.id));
+  const stats = [
+    ['Total', rollup.total], ['Open', rollup.open], ['Done', rollup.done],
+    ['Blocked', rollup.blocked], ['Overdue', rollup.overdue], ['At risk', rollup.atRisk]
+  ].map(([label, value]) => `<span><strong>${value}</strong> ${label}</span>`).join('');
+  const tasks = rollup.tasks.length === 0
+    ? '<p class="subtle">No tasks currently reference this milestone.</p>'
+    : rollup.tasks.map(item => {
+      const flags = [item.blocked && 'blocked', item.overdue && 'overdue', item.atRisk && 'at risk'].filter(Boolean).join(' · ');
+      return `<div class="taskMini"><button type="button" data-open-entity="${escapeHtml(item.task.id)}"><strong>${escapeHtml(item.task.id)}</strong> ${escapeHtml(item.task.title)}</button><span class="taskMeta">${escapeHtml(item.task.status)}${flags ? ` · ${escapeHtml(flags)}` : ''}</span><button type="button" data-set-milestone-task="${escapeHtml(item.task.id)}" data-assigned="false">Remove</button></div>`;
+    }).join('');
+  const options = available.map(task => `<option value="${escapeHtml(task.id)}">${escapeHtml(task.id)} · ${escapeHtml(task.title)}</option>`).join('');
+  return `<section class="card full"><h2>Milestone Task Rollup</h2><div class="compactMeta">${stats}</div><p class="subtle">${rollup.completionPercentage === undefined ? 'No completion percentage until tasks are assigned.' : `${rollup.completionPercentage}% complete`}</p>${tasks}<div class="fieldRow"><select id="milestoneTaskToAdd" aria-label="Task to add"><option value="">Select a task</option>${options}</select><button type="button" id="addMilestoneTask"${available.length === 0 ? ' disabled' : ''}>Add task</button></div></section>`;
 }
 
 function renderDiagnostics(payload: EditorPayload): string {

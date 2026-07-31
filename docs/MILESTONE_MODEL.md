@@ -37,6 +37,13 @@ Milestones should own delivery timing and derived health:
 
 Epics should describe scope and narrative. Milestones should describe delivery timing. Existing epic `targetDate` support can remain for compatibility, but primary planning UI should avoid making epic dates compete with milestone dates.
 
+In practice:
+
+- Use a milestone date when the team is committing to a release, sprint, launch, or checkpoint.
+- Use an epic date as an optional horizon for a body of scope.
+- Use both when they communicate different things: the epic horizon provides context and the milestone carries the delivery commitment.
+- Use neither when the epic has no useful horizon and the work does not need a delivery container. A milestone entity, when created, still requires its target date.
+
 ## Process Agnosticism
 
 Milestones should support sprint/release workflows without forcing them.

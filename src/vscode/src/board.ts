@@ -11,6 +11,7 @@ import {
   getTaskReadiness,
   loadRepository,
   loadSavedFilters,
+  searchTasks,
   SavedFilter,
   saveEntity,
   Task,
@@ -68,6 +69,7 @@ interface BoardTask {
 
 interface BoardPayload {
   tasks: BoardTask[];
+  milestones: Array<{ id: string; title: string }>;
   statuses: TaskStatus[];
   savedFilters: SavedFilter[];
   helpTopics: HelpTopic[];
@@ -78,6 +80,7 @@ interface BoardPreferences {
   detailsPanelWidth: number;
   detailsPanelCompact: boolean;
   boardScope: BoardScope;
+  milestoneFocus: string;
 }
 
 interface CreateTaskContext {
@@ -210,9 +213,18 @@ export class BoardProvider {
     }
 
     try {
+      const preferences = this.getPreferences(workspaceFolder);
+      const boardPayload = await loadBoardPayload(workspaceFolder.uri.fsPath, preferences.milestoneFocus);
+      if (
+        preferences.milestoneFocus
+        && !boardPayload.milestones.some(milestone => milestone.id === preferences.milestoneFocus)
+      ) {
+        preferences.milestoneFocus = '';
+        await this.uiPreferences?.clear(UI_PREFERENCES.boardMilestoneFocus, workspaceFolder);
+      }
       const payload = {
-        ...await loadBoardPayload(workspaceFolder.uri.fsPath),
-        preferences: this.getPreferences(workspaceFolder),
+        ...boardPayload,
+        preferences,
         helpTopics: createHelpTopics(this.extensionUri, ['board'])
       };
 
@@ -572,7 +584,11 @@ export class BoardProvider {
       boardScope: normalizeBoardScope(this.uiPreferences?.get(
         UI_PREFERENCES.boardScope,
         workspaceFolder
-      ))
+      )),
+      milestoneFocus: this.uiPreferences?.get(
+        UI_PREFERENCES.boardMilestoneFocus,
+        workspaceFolder
+      ) ?? ''
     };
   }
 
@@ -619,6 +635,11 @@ export class BoardProvider {
         workspaceFolder
       );
     }
+
+    if (request.key === UI_PREFERENCES.boardMilestoneFocus.key && typeof request.value === 'string') {
+      await this.uiPreferences.set(UI_PREFERENCES.boardMilestoneFocus, request.value, workspaceFolder);
+      await this.render();
+    }
   }
 }
 
@@ -657,10 +678,21 @@ function clampDetailsPanelWidth(width: number): number {
   return Math.min(560, Math.max(280, Math.round(width)));
 }
 
-async function loadBoardPayload(rootPath: string): Promise<Omit<BoardPayload, 'helpTopics' | 'preferences'>> {
+async function loadBoardPayload(
+  rootPath: string,
+  requestedMilestoneFocus = ''
+): Promise<Omit<BoardPayload, 'helpTopics' | 'preferences'>> {
   const repository = await loadRepository(rootPath);
+  const milestones = Array.from(repository.milestones.values())
+    .filter(milestone => milestone.status === 'active')
+    .map(milestone => ({ id: milestone.id, title: milestone.title }))
+    .sort((a, b) => a.id.localeCompare(b.id));
+  const milestoneFocus = milestones.some(milestone => milestone.id === requestedMilestoneFocus)
+    ? requestedMilestoneFocus
+    : '';
   const nextWorkCandidates = getNextWorkCandidates(repository, {
-    includeBlocked: true
+    includeBlocked: true,
+    milestone: milestoneFocus || undefined
   });
   const nextWorkByTask = new Map(
     nextWorkCandidates.map((candidate, index) => [
@@ -671,14 +703,17 @@ async function loadBoardPayload(rootPath: string): Promise<Omit<BoardPayload, 'h
       }
     ])
   );
-  const tasks = Array.from(repository.tasks.values()).map(task => {
+  const tasks = searchTasks(repository, { milestone: milestoneFocus || undefined }).map(task => {
     const nextWork = nextWorkByTask.get(task.id);
     const readiness = nextWork?.candidate.readiness
       ?? getTaskReadiness(task, repository);
 
     return toBoardTask(task, {
       readiness: readiness.status,
-      nextWorkReasons: nextWork?.candidate.reasons ?? ['Done'],
+      nextWorkReasons: [
+        ...(nextWork?.candidate.reasons ?? ['Done']),
+        ...(milestoneFocus ? [`Milestone focus: ${milestoneFocus}`] : [])
+      ],
       downstreamCount: nextWork?.candidate.downstreamCount ?? 0,
       critical: nextWork?.candidate.critical ?? false,
       nextWorkRank: nextWork?.rank,
@@ -692,6 +727,7 @@ async function loadBoardPayload(rootPath: string): Promise<Omit<BoardPayload, 'h
 
   return {
     tasks,
+    milestones,
     statuses: TASK_STATUSES,
     savedFilters: savedFilters.map(toBoardSavedFilter)
   };
@@ -1471,6 +1507,10 @@ function renderBoard(
       <select id="savedFilter" aria-label="Saved filter">
         <option value="">All tasks</option>
       </select>
+      <select id="milestoneFocus" aria-label="Milestone focus">
+        <option value="">All milestones</option>
+      </select>
+      <button type="button" id="clearMilestoneFocus" hidden>Clear milestone</button>
       <select id="group" aria-label="Group tasks">
         <option value="none">No grouping</option>
         <option value="epic">Group by epic</option>
@@ -1497,6 +1537,7 @@ function renderBoard(
       <button type="button" id="bulkApply">Apply</button>
       <button type="button" id="bulkClear">Clear</button>
     </div>
+    <div id="scopeNotice" class="subtle" aria-live="polite"></div>
     <div id="content" class="content">
       <div class="boardRegion">
         <main id="board" class="board"></main>
@@ -1521,6 +1562,7 @@ function renderBoard(
       : Boolean(state.preferences?.detailsPanelCompact);
     let detailsPanelHidden = Boolean(persistedState?.detailsPanelHidden);
     let boardScope = normalizeBoardScope(persistedState?.boardScope ?? state.preferences?.boardScope);
+    let milestoneFocus = String(state.preferences?.milestoneFocus ?? '');
     let resizeStartX = 0;
     let resizeStartWidth = detailsPanelWidth;
     const initialMode = ${serializedInitialMode};
@@ -1550,6 +1592,8 @@ function renderBoard(
     const modeButtons = Array.from(document.querySelectorAll('[data-mode]'));
     const boardScopeInput = document.getElementById('boardScope');
     const savedFilterInput = document.getElementById('savedFilter');
+    const milestoneFocusInput = document.getElementById('milestoneFocus');
+    const clearMilestoneFocusButton = document.getElementById('clearMilestoneFocus');
     const groupInput = document.getElementById('group');
     const sortInput = document.getElementById('sort');
     const bulkBar = document.getElementById('bulkBar');
@@ -1557,6 +1601,7 @@ function renderBoard(
     const bulkActionInput = document.getElementById('bulkAction');
     const bulkApplyButton = document.getElementById('bulkApply');
     const bulkClearButton = document.getElementById('bulkClear');
+    const scopeNotice = document.getElementById('scopeNotice');
     const content = document.getElementById('content');
     const board = document.getElementById('board');
     const details = document.getElementById('details');
@@ -1566,6 +1611,7 @@ function renderBoard(
       : 'none';
     boardScopeInput.value = boardScope;
     renderSavedFilterOptions();
+    renderMilestoneOptions();
     updateModeButtons();
 
     filterInput.addEventListener('input', () => render());
@@ -1591,6 +1637,19 @@ function renderBoard(
       render();
     });
     savedFilterInput.addEventListener('change', () => render());
+    milestoneFocusInput.addEventListener('change', () => {
+      milestoneFocus = milestoneFocusInput.value;
+      persistBoardState();
+      persistDetailsPanelPreference('board.milestoneFocus', milestoneFocus);
+      render();
+    });
+    clearMilestoneFocusButton.addEventListener('click', () => {
+      milestoneFocus = '';
+      milestoneFocusInput.value = '';
+      persistBoardState();
+      persistDetailsPanelPreference('board.milestoneFocus', '');
+      render();
+    });
     groupInput.addEventListener('change', () => {
       persistBoardState();
       render();
@@ -1627,6 +1686,7 @@ function renderBoard(
 
       const selectedFilter = savedFilterInput.value;
       state = event.data.payload;
+      milestoneFocus = String(state.preferences?.milestoneFocus ?? '');
       const taskIds = new Set(state.tasks.map(task => task.id));
       Array.from(selectedBulkTaskIds).forEach(taskId => {
         if (!taskIds.has(taskId)) {
@@ -1638,6 +1698,7 @@ function renderBoard(
         detailsPanelHidden = false;
       }
       renderSavedFilterOptions(selectedFilter);
+      renderMilestoneOptions();
       render({ animate: true });
     });
 
@@ -1694,6 +1755,22 @@ function renderBoard(
         : '';
     }
 
+    function renderMilestoneOptions() {
+      const all = document.createElement('option');
+      all.value = '';
+      all.textContent = 'All milestones';
+      const options = state.milestones.map(milestone => {
+        const option = document.createElement('option');
+        option.value = milestone.id;
+        option.textContent = milestone.id + ' · ' + milestone.title;
+        return option;
+      });
+      if (!state.milestones.some(milestone => milestone.id === milestoneFocus)) milestoneFocus = '';
+      milestoneFocusInput.replaceChildren(all, ...options);
+      milestoneFocusInput.value = milestoneFocus;
+      clearMilestoneFocusButton.hidden = !milestoneFocus;
+    }
+
     function render(options = {}) {
       const previousRects = options.animate ? measureCards() : new Map();
       const filterText = filterInput.value.trim().toLowerCase();
@@ -1705,6 +1782,16 @@ function renderBoard(
         .filter(task => matchesBoardScope(task, boardScope))
         .filter(task => matchesSavedFilter(task, savedFilter?.criteria))
         .filter(task => matchesFilter(task, filterText));
+      clearMilestoneFocusButton.hidden = !milestoneFocus;
+      milestoneFocusInput.title = milestoneFocus
+        ? 'Showing only tasks in ' + milestoneFocus + '; board scope, search, and saved filters still apply.'
+        : 'Optionally focus the board and Next Work on one active milestone.';
+      const focusedMilestone = state.milestones.find(milestone => milestone.id === milestoneFocus);
+      scopeNotice.textContent = focusedMilestone
+        ? (filtered.length === 0
+          ? 'No tasks match ' + focusedMilestone.id + ' and the current scope, search, and saved filters.'
+          : 'Milestone focus: ' + focusedMilestone.id + ' · ' + focusedMilestone.title)
+        : '';
       if (!filtered.some(task => task.id === selectedTaskId)) {
         selectedTaskId = filtered[0]?.id || '';
       }
@@ -1840,6 +1927,10 @@ function renderBoard(
       }
 
       if (criteria.epic && task.epic !== criteria.epic) {
+        return false;
+      }
+
+      if (criteria.milestone && task.milestone !== criteria.milestone) {
         return false;
       }
 

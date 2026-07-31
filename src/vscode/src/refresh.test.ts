@@ -7,6 +7,7 @@ import * as vscode from 'vscode';
 import {
   archiveEntity,
   createEpicTemplate,
+  createMilestoneTemplate,
   createTaskTemplate,
   ensurePlanfsStructure,
   loadRepository,
@@ -179,6 +180,9 @@ describe('VS Code view refresh workspace selection', () => {
     expect(Array.from(repository.milestones.values()).map(milestone => milestone.targetDate)).toContain('2026-09-30');
     expect(vscode.window.showInformationMessage).toHaveBeenCalledWith(expect.stringMatching(/^Created epic: EPIC-/));
     expect(vscode.window.showInformationMessage).toHaveBeenCalledWith(expect.stringMatching(/^Created milestone: MILESTONE-/));
+    expect(vscode.window.showInputBox).toHaveBeenCalledWith(expect.objectContaining({
+      prompt: 'Enter milestone delivery target date'
+    }));
   });
 
   it('renders and updates the backlog view as a separate command surface', async () => {
@@ -320,7 +324,9 @@ describe('VS Code view refresh workspace selection', () => {
     expect(insightsPanel.webview.html).toContain('"context":"insights.graph"');
     expect(insightsPanel.webview.html).toContain('"context":"insights.reports"');
     expect(insightsPanel.webview.html).toContain('"context":"insights.branch"');
-    expect(insightsPanel.webview.html).toContain('Use the window and card density controls');
+    expect(insightsPanel.webview.html).toContain('Milestones carry delivery commitments');
+    expect(insightsPanel.webview.html).toContain("return 'Milestone target date'");
+    expect(insightsPanel.webview.html).toContain("return 'Epic planning date'");
     expect(insightsPanel.webview.html).toContain('Trace prerequisite flow');
     expect(insightsPanel.webview.html).toContain('renderTimelineDetails');
   });
@@ -751,6 +757,62 @@ describe('VS Code view refresh workspace selection', () => {
     });
 
     expect(uiPreferences.get(UI_PREFERENCES.boardScope, firstFolder)).toBe('all-open');
+  });
+
+  it('offers active milestone focus and persists it independently of board scope', async () => {
+    selectPlanFSWorkspaceFolder(firstFolder);
+    const active = createMilestoneTemplate('MILESTONE-focus', 'Focused release', '2026-10-01');
+    const completed = { ...createMilestoneTemplate('MILESTONE-done', 'Shipped', '2026-01-01'), status: 'completed' as const };
+    await saveEntity(firstRoot, active);
+    await saveEntity(firstRoot, completed);
+    await saveEntity(firstRoot, { ...createTaskTemplate('TASK-040', 'Focused task'), milestone: active.id, refinementState: 'ready' as const });
+    await saveEntity(firstRoot, { ...createTaskTemplate('TASK-041', 'Outside focus'), refinementState: 'ready' as const });
+
+    const uiPreferences = new PlanFSUiPreferences(new TestMemento());
+    await uiPreferences.set(UI_PREFERENCES.boardMilestoneFocus, active.id, firstFolder);
+    const board = new BoardProvider(vscode.Uri.file('/extension'), uiPreferences);
+    await board.open('next-work');
+
+    const boardPanel = jest.mocked(vscode.window.createWebviewPanel).mock.results[0].value;
+    expect(boardPanel.webview.html).toContain('id="milestoneFocus"');
+    expect(boardPanel.webview.html).toContain('MILESTONE-focus');
+    expect(boardPanel.webview.html).not.toContain('MILESTONE-done · Shipped');
+    expect(boardPanel.webview.html).toContain('Focused task');
+    expect(boardPanel.webview.html).not.toContain('Outside focus');
+    expect(boardPanel.webview.html).toContain('Milestone focus: MILESTONE-focus');
+    expect(boardPanel.webview.html).not.toContain('.filter(task => !milestoneFocus || task.milestone === milestoneFocus)');
+    expect(boardPanel.webview.html).toContain('criteria.milestone');
+    expect(boardPanel.webview.html).toContain('No tasks match ');
+
+    await boardPanel.webview.postMessage({ type: 'setBoardPreference', key: UI_PREFERENCES.boardMilestoneFocus.key, value: '' });
+    expect(uiPreferences.get(UI_PREFERENCES.boardMilestoneFocus, firstFolder)).toBe('');
+    expect(boardPanel.webview.postedMessages).toContainEqual(expect.objectContaining({
+      type: 'updateBoard',
+      payload: expect.objectContaining({
+        tasks: expect.arrayContaining([expect.objectContaining({ id: 'TASK-041' })]),
+        preferences: expect.objectContaining({ milestoneFocus: '' })
+      })
+    }));
+  });
+
+  it('clears a stale milestone focus preference instead of applying a hidden filter', async () => {
+    selectPlanFSWorkspaceFolder(firstFolder);
+    await saveEntity(firstRoot, {
+      ...createMilestoneTemplate('MILESTONE-old-focus', 'Old release', '2026-01-01'),
+      status: 'completed' as const
+    });
+    await saveEntity(firstRoot, { ...createTaskTemplate('TASK-043', 'Still visible'), refinementState: 'ready' as const });
+
+    const uiPreferences = new PlanFSUiPreferences(new TestMemento());
+    await uiPreferences.set(UI_PREFERENCES.boardMilestoneFocus, 'MILESTONE-old-focus', firstFolder);
+    const board = new BoardProvider(vscode.Uri.file('/extension'), uiPreferences);
+    await board.open();
+
+    const boardPanel = jest.mocked(vscode.window.createWebviewPanel).mock.results[0].value;
+    expect(uiPreferences.get(UI_PREFERENCES.boardMilestoneFocus, firstFolder)).toBe('');
+    expect(boardPanel.webview.html).toContain('Still visible');
+    expect(boardPanel.webview.html).toContain('"milestoneFocus":""');
+    expect(boardPanel.webview.html).not.toContain('MILESTONE-old-focus · Old release');
   });
 
   it('updates board task refinement state without changing execution status', async () => {
@@ -1213,6 +1275,7 @@ describe('VS Code view refresh workspace selection', () => {
 
     const editorPanel = jest.mocked(vscode.window.createWebviewPanel).mock.results[0].value;
     expect(editorPanel.webview.html).toContain('Epic Planning Notes');
+    expect(editorPanel.webview.html).toContain('Epic Planning Date');
     expect(editorPanel.webview.html).toContain('Additional metadata');
     expect(editorPanel.webview.html).toContain('planningModel');
     expect(editorPanel.webview.html).toContain('custom');

@@ -223,6 +223,42 @@ describe('VS Code lifecycle integration', () => {
     expect(vscode.workspace.openTextDocument).toHaveBeenCalledWith(
       path.join(rootPath, '.planfs', 'tasks', 'TASK-002.md')
     );
+
+    await editor.open('MILESTONE-v1-launch');
+    const milestonePanel = jest.mocked(vscode.window.createWebviewPanel).mock.results[2].value;
+    expect(milestonePanel.webview.html).toContain('Milestone Task Rollup');
+    expect(milestonePanel.webview.html).toContain('Milestone Target Date');
+    expect(milestonePanel.webview.html).toContain('TASK-001');
+    expect(milestonePanel.webview.html).toContain('data-set-milestone-task="TASK-001"');
+
+    await milestonePanel.webview.postMessage({
+      type: 'setMilestoneTask', taskId: 'TASK-001', assigned: false
+    });
+    repository = await loadRepository(rootPath);
+    expect(repository.tasks.get('TASK-001')?.milestone).toBeUndefined();
+
+    await milestonePanel.webview.postMessage({
+      type: 'setMilestoneTask', taskId: 'TASK-001', assigned: true
+    });
+    repository = await loadRepository(rootPath);
+    expect(repository.tasks.get('TASK-001')?.milestone).toBe('MILESTONE-v1-launch');
+
+    const taskPath = path.join(rootPath, '.planfs', 'tasks', 'TASK-001.md');
+    const validTaskContent = await fs.readFile(taskPath, 'utf-8');
+    await fs.writeFile(taskPath, validTaskContent.replace('status: review', 'status: invalid-status'));
+    jest.mocked(vscode.window.showErrorMessage).mockClear();
+    await milestonePanel.webview.postMessage({
+      type: 'setMilestoneTask', taskId: 'TASK-001', assigned: false
+    });
+    repository = await loadRepository(rootPath);
+    expect(repository.tasks.get('TASK-001')?.milestone).toBe('MILESTONE-v1-launch');
+    expect(vscode.window.showErrorMessage).toHaveBeenCalledWith(
+      expect.stringContaining('Task update failed validation:')
+    );
+    expect(vscode.window.showErrorMessage).toHaveBeenCalledWith(
+      expect.stringContaining('invalid-status')
+    );
+    await fs.writeFile(taskPath, validTaskContent);
   });
 });
 

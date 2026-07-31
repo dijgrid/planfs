@@ -223,11 +223,13 @@ planfs next --include-blocked
 planfs ai initialize
 planfs ai summary
 planfs ai summary --assignee justin --limit 10
+planfs ai summary --only review --compact
+planfs ai summary --only blocked --format text
 planfs ai update-task --id TASK-001 --status in-progress --dry-run
-planfs ai update-task --id TASK-001 --status in-progress
+planfs ai update-task --id TASK-001 --status in-progress --expected-updated-at 2026-06-20T00:00:00.000Z
 ```
 
-`planfs ai summary` emits compact JSON with open work, active epics and milestones, ready and blocked tasks, stale indicators, recently completed work, and file paths for targeted follow-up reads. `planfs ai update-task` supports safe metadata updates with validation and dry-run previews. See [AI-Assisted Planning Workflows](./AI_WORKFLOWS.md).
+`planfs ai summary` emits structured planning context and can select one section with `--only`, minify JSON with `--compact`, or produce concise text. `planfs ai update-task` supports validated dry-run previews and optional `updatedAt` conflict checks before applying. See [AI-Assisted Planning Workflows](./AI_WORKFLOWS.md).
 
 ### Create Planning Artifacts from CLI
 
@@ -321,6 +323,8 @@ Description of the epic and its goals.
 
 Epic priority uses the same generic values as task priority and can lift related tasks in next-work ranking without replacing task-level priority.
 
+An epic may also include `targetDate` as an optional planning horizon for its scope. Treat it as context, not as the preferred release commitment.
+
 ### Milestone
 
 ```yaml
@@ -333,6 +337,8 @@ status: active        # active | completed | delayed
 
 What needs to be delivered.
 ```
+
+Use the milestone `targetDate` for a release, sprint, launch, or checkpoint commitment. Use both an epic planning date and a milestone target date only when the epic horizon adds useful scope context; the milestone remains the delivery date. An epic can omit its date, and tasks can omit milestone membership when neither model helps the work.
 
 See [File Format](./FILE_FORMAT.md) for complete specification.
 

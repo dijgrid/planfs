@@ -168,7 +168,7 @@ Epics represent larger bodies of work comprising multiple tasks.
 | `tags` | array | Labels for categorization |
 | `createdAt` | datetime | ISO 8601 timestamp |
 | `updatedAt` | datetime | ISO 8601 timestamp |
-| `targetDate` | datetime | Optional target completion |
+| `targetDate` | datetime | Optional epic planning horizon; retained for compatibility |
 | `links` | object | External references |
 | `archive` | object | Archive metadata when the epic has been moved to `.planfs/archive/epics/` |
 
@@ -200,6 +200,8 @@ Epics are stored in `.planfs/epics/`:
 .planfs/epics/EPIC-payment-processing.md
 ```
 
+An epic `targetDate` is an optional planning hint for the scope described by the epic. When tasks also belong to a milestone, use the milestone `targetDate` as the delivery commitment; the epic date should not be interpreted as a competing release date.
+
 ### Archived Epics
 
 Archived epics are moved to `.planfs/archive/epics/` and use the same `archive` metadata object as archived tasks. Archiving an epic can also archive its child tasks when the user confirms that action. Archived epics are hidden from normal planning surfaces by default, but archive views can still display them for inspection, restore, or permanent deletion.
@@ -216,7 +218,7 @@ Milestones represent delivery targets or release points.
 |-------|------|-------------|
 | `id` | string | Unique identifier (e.g., `MILESTONE-v1-beta`) |
 | `title` | string | Milestone title |
-| `targetDate` | datetime | Target delivery date |
+| `targetDate` | datetime | Preferred delivery commitment for the milestone |
 | `status` | enum | One of: `active`, `completed`, `delayed` |
 
 ### Optional Fields
@@ -252,6 +254,13 @@ Milestones are stored in `.planfs/milestones/`:
 .planfs/milestones/MILESTONE-v1-beta.md
 .planfs/milestones/MILESTONE-v1-release.md
 ```
+
+### Choosing Epic and Milestone Dates
+
+- Use a milestone target date for a release, sprint, launch, external commitment, or checkpoint.
+- Use an epic target date only when a scope-oriented planning horizon is useful.
+- Use both when the epic horizon provides useful context and the milestone carries the actual delivery commitment.
+- Use neither for an epic without a meaningful planning horizon and for tasks that do not need a milestone. Milestones themselves still require `targetDate`.
 
 ---
 

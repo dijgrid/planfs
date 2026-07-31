@@ -94,6 +94,7 @@ export interface TaskUpdateOptions {
   patch: TaskUpdatePatch;
   dryRun?: boolean;
   now?: Date;
+  expectedUpdatedAt?: string | null;
 }
 
 export interface TaskUpdateResult {
@@ -202,6 +203,10 @@ export async function updateTaskPlanning(
   const task = repository.tasks.get(options.id);
   if (!task) {
     throw new Error(`Task not found: ${options.id}`);
+  }
+  const expectedUpdatedAt = options.expectedUpdatedAt === null ? undefined : options.expectedUpdatedAt;
+  if (options.expectedUpdatedAt !== undefined && task.updatedAt !== expectedUpdatedAt) {
+    throw new Error(`Update conflict: ${options.id} changed since preview`);
   }
 
   const before = cloneTask(task);

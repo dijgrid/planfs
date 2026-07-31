@@ -47,7 +47,7 @@ export async function createMilestoneCommand(explorer: ExplorerProvider): Promis
     titlePlaceholder: 'e.g., Public beta',
     collectDetails: async () => {
       const targetDate = await vscode.window.showInputBox({
-        prompt: 'Enter target date',
+        prompt: 'Enter milestone delivery target date',
         placeHolder: 'YYYY-MM-DD',
         validateInput: value => /^\d{4}-\d{2}-\d{2}$/.test(value)
           ? undefined

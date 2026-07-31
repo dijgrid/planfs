@@ -7,7 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Milestone structured editors now show derived completion and delivery-health rollups and allow tasks to be assigned or removed without duplicating membership in milestone files.
+- Board and Next Work views now support a workspace-local active milestone focus that composes with scope, search, and saved filters.
+- AI planning helpers now support portable generated commands, optimistic concurrency for task updates, selective summary sections, minified JSON, and concise text summaries.
+
 ### Changed
+- Refocused the VS Code Marketplace README on extension workflows, clarified that the Marketplace extension does not install the CLI, and removed the extension's Preview designation for the next stable release.
+- Clarified milestone target dates as delivery commitments and epic target dates as optional planning horizons across documentation and VS Code planning surfaces.
 - VS Code backlog view now supports a browse-and-edit workflow with a selected-item editor, ordered card list, grouping/filter controls, and Markdown section rendering.
 - VS Code structured editors no longer expose a raw Markdown body textarea; full body editing stays in Markdown files while common sections render in the editor.
 

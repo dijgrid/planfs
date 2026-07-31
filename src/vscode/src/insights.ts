@@ -1447,7 +1447,7 @@ function renderInsights(webview: vscode.Webview, payload: InsightsPayload): stri
     function renderTimeline() {
       const root = document.getElementById('timeline');
       root.innerHTML = [
-        '<p class="tabIntro"><span>Scan dated work across tasks, epics, and milestones. Use the window and card density controls to reduce overlap when dates are clustered.</span>' + helpButtons.timeline + '</p>',
+        '<p class="tabIntro"><span>Scan task due dates, milestone delivery targets, and optional epic planning dates. Milestones carry delivery commitments; epic dates remain lightweight planning horizons.</span>' + helpButtons.timeline + '</p>',
         '<div class="timelineTools">',
         '<input id="timelineFilter" type="search" placeholder="Filter task, milestone, or epic" aria-label="Filter timeline">',
         '<select id="timelineWindow" aria-label="Timeline window">',
@@ -1656,7 +1656,7 @@ function renderInsights(webview: vscode.Webview, payload: InsightsPayload): stri
       return '<button type="button" title="' + escapeHtml(item.id + ': ' + item.title) + '" data-timeline-item="' + escapeHtml(item.id) + '" class="timelineItem ' + density + ' ' + item.kind + ' ' + item.health + (selectedTimelineItem === item.id ? ' selected' : '') + '" style="left:' + item.x + '%; top:' + item.y + 'px">' +
         '<div class="nodeHead"><span>' + escapeHtml(item.id) + '</span><span class="lane">' + escapeHtml(item.kind) + '</span></div>' +
         '<div class="timelineTitle">' + escapeHtml(item.title) + '</div>' +
-        '<div class="subtle timelineDate">' + escapeHtml(toDateInput(item.date)) + ' · ' + escapeHtml(item.status) + '</div>' +
+        '<div class="subtle timelineDate">' + escapeHtml(timelineDateLabel(item)) + ': ' + escapeHtml(toDateInput(item.date)) + ' · ' + escapeHtml(item.status) + '</div>' +
         renderTimelineProgress(item) +
       '</button>';
     }
@@ -1671,8 +1671,15 @@ function renderInsights(webview: vscode.Webview, payload: InsightsPayload): stri
 
     function renderTimelineDetails(item) {
       return '<strong>' + escapeHtml(item.id) + ': ' + escapeHtml(item.title) + '</strong>' +
+        '<p class="subtle">' + escapeHtml(timelineDateLabel(item)) + ': ' + escapeHtml(toDateInput(item.date) || 'not set') + '</p>' +
         '<p class="subtle">' + escapeHtml([item.kind, item.status, item.health, item.date, item.assignee, item.epic, item.milestone].filter(Boolean).join(' · ')) + '</p>' +
         '<button type="button" data-open-entity="' + escapeHtml(item.id) + '">Open file</button>';
+    }
+
+    function timelineDateLabel(item) {
+      if (item.kind === 'milestone') return 'Milestone target date';
+      if (item.kind === 'epic') return 'Epic planning date';
+      return 'Task due date';
     }
 
     function renderTimelineProgress(item) {

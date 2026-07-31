@@ -15,6 +15,7 @@ import {
 } from 'planfs-core';
 
 export type AiAction = 'summary' | 'update-task' | 'bulk-update-tasks' | 'initialize';
+export type AiSummarySection = 'open' | 'ready' | 'blocked' | 'review' | 'stale' | 'recent';
 
 export interface AiOptions {
   id?: string;
@@ -32,6 +33,10 @@ export interface AiOptions {
   dryRun?: boolean;
   file?: string;
   format?: 'json' | 'text';
+  expectedUpdatedAt?: string;
+  command?: string;
+  only?: AiSummarySection;
+  compact?: boolean;
 }
 
 interface AwarenessResult {
@@ -82,7 +87,12 @@ async function summary(rootPath: string, options: AiOptions): Promise<number> {
     limit: options.limit
   });
 
-  console.log(JSON.stringify(output, null, 2));
+  const selected = selectSummaryOutput(output, options.only);
+  if (options.format === 'text') {
+    console.log(renderSummaryText(output, options.only));
+  } else {
+    console.log(JSON.stringify(selected, null, options.compact ? undefined : 2));
+  }
   return 0;
 }
 
@@ -107,7 +117,8 @@ async function updateTask(rootPath: string, options: AiOptions): Promise<number>
   const result = await updateTaskPlanning(rootPath, repository, {
     id: options.id,
     patch,
-    dryRun: Boolean(options.dryRun)
+    dryRun: Boolean(options.dryRun),
+    expectedUpdatedAt: options.expectedUpdatedAt === 'none' ? null : options.expectedUpdatedAt
   });
 
   if (options.format === 'json') {
@@ -116,7 +127,8 @@ async function updateTask(rootPath: string, options: AiOptions): Promise<number>
       dryRun: result.dryRun,
       changedFields: result.changedFields,
       task: result.task,
-      preview: result.preview
+      preview: result.preview,
+      expectedUpdatedAt: result.before.updatedAt ?? null
     }, null, 2));
     return 0;
   }
@@ -129,6 +141,7 @@ async function updateTask(rootPath: string, options: AiOptions): Promise<number>
   console.log(`${result.dryRun ? 'Previewed' : 'Updated'} ${result.task.id}`);
   console.log(`  Changed: ${result.changedFields.join(', ')}`);
   if (result.preview) {
+    console.log(`  Expected updatedAt: ${result.before.updatedAt ?? '(unset)'}`);
     console.log('\n--- preview ---');
     console.log(result.preview.trimEnd());
   }
@@ -190,7 +203,7 @@ async function bulkUpdateTaskSet(rootPath: string, options: AiOptions): Promise<
 async function initializeAwareness(rootPath: string, options: AiOptions): Promise<number> {
   const filePath = path.resolve(rootPath, options.file ?? DEFAULT_AWARENESS_FILE);
   const existing = await readOptionalFile(filePath);
-  const block = renderAwarenessBlock();
+  const block = renderAwarenessBlock(normalizeAwarenessCommand(options.command));
   const nextContent = upsertAwarenessBlock(existing, block);
   const result: AwarenessResult = {
     filePath,
@@ -296,34 +309,96 @@ function upsertAwarenessBlock(existing: string | undefined, block: string): stri
   return `${content}\n\n${block}\n`;
 }
 
-function renderAwarenessBlock(): string {
+function normalizeAwarenessCommand(value?: string): string {
+  const command = value?.trim() || 'planfs';
+  if (/\r|\n/.test(command)) {
+    throw new Error('Awareness command must be a single line');
+  }
+  return command;
+}
+
+function renderAwarenessBlock(command: string): string {
   return `${AWARENESS_START}
 ## AI Planning Awareness
 
 Before answering planning-status questions, recommending next work, or proposing planning updates, start with:
 
 \`\`\`sh
-node src/cli/dist/cli.js ai summary
+${command} ai summary
 \`\`\`
 
 Use the returned IDs and file paths for targeted follow-up reads instead of scanning all of \`.planfs\`.
 
+Use \`${command} ai summary --only ready --compact\` when only one low-overhead planning section is needed.
+
 Preview metadata updates before writing. Use \`update-task\` for one task:
 
 \`\`\`sh
-node src/cli/dist/cli.js ai update-task --id TASK-061 --status in-progress --dry-run
+${command} ai update-task --id TASK-061 --status in-progress --dry-run
 \`\`\`
+
+When replaying a JSON preview, pass its \`expectedUpdatedAt\` value through \`--expected-updated-at\` so newer human edits are refused. Use \`none\` when the preview token is \`null\`.
 
 Use \`bulk-update-tasks\` when applying the same bounded metadata change to multiple tasks:
 
 \`\`\`sh
-node src/cli/dist/cli.js ai bulk-update-tasks --ids TASK-061,TASK-062 --status review --dry-run
+${command} ai bulk-update-tasks --ids TASK-061,TASK-062 --status review --dry-run
 \`\`\`
 
 Prefer these preview/apply helpers over editing task frontmatter directly for status, priority, assignee, milestone, estimate, due date, tags, or refinement-state updates. After applying AI-assisted planning updates, run:
 
 \`\`\`sh
-node src/cli/dist/cli.js validate
+${command} validate
 \`\`\`
 ${AWARENESS_END}`;
+}
+
+function selectSummaryOutput(summary: ReturnType<typeof buildPlanningSummary>, only?: AiSummarySection): unknown {
+  if (!only) return summary;
+  return {
+    generatedAt: summary.generatedAt,
+    scope: summary.scope,
+    section: only,
+    count: summarySectionItems(summary, only).length,
+    items: summarySectionItems(summary, only)
+  };
+}
+
+function summarySectionItems(
+  summary: ReturnType<typeof buildPlanningSummary>,
+  section: AiSummarySection
+): Array<{ id: string; title: string; status?: string; reasons?: string[] }> {
+  switch (section) {
+    case 'open': return summary.openTasks;
+    case 'ready': return summary.readyWork;
+    case 'blocked': return summary.blockedWork;
+    case 'review': return summary.openTasks.filter(task => task.status === 'review');
+    case 'stale': return summary.stalePlanIndicators;
+    case 'recent': return summary.recentlyCompletedWork;
+  }
+}
+
+function renderSummaryText(
+  summary: ReturnType<typeof buildPlanningSummary>,
+  only?: AiSummarySection
+): string {
+  const header = [
+    `PlanFS planning summary (${summary.generatedAt})`,
+    `Tasks: ${summary.counts.tasks} · Open: ${summary.counts.openTasks} · Ready: ${summary.counts.readyTasks} · Blocked: ${summary.counts.blockedTasks} · Stale: ${summary.counts.staleTasks}`
+  ];
+  const sections = only
+    ? [[only, summarySectionItems(summary, only)] as const]
+    : ([
+      ['ready', summary.readyWork],
+      ['blocked', summary.blockedWork],
+      ['review', summary.openTasks.filter(task => task.status === 'review')],
+      ['stale', summary.stalePlanIndicators]
+    ] as const);
+  for (const [name, items] of sections) {
+    header.push('', `${name[0].toUpperCase()}${name.slice(1)} (${items.length})`);
+    header.push(...(items.length === 0
+      ? ['- None']
+      : items.map(item => `- ${item.id} [${'status' in item ? item.status : name}] ${item.title}${'reasons' in item && item.reasons?.length ? ` — ${item.reasons.join('; ')}` : ''}`)));
+  }
+  return header.join('\n');
 }

@@ -17,33 +17,50 @@ tags:
   - github
   - csv
 dueDate: 2026-11-03
-refinementState: needs-refinement
+refinementState: ready
 backlogOrder: 21
 createdAt: 2026-06-21T18:24:21Z
-updatedAt: 2026-06-24T01:50:12.807Z
+updatedAt: 2026-07-30T22:45:41.335Z
 ---
 
-Define the first external import workflow for bringing work items from CSV exports, Jira, GitLab, GitHub Issues, and other trackers into PlanFS.
+Define an implementation-ready external import contract for bringing work items from CSV exports, Jira, GitLab, GitHub Issues, and other trackers into PlanFS.
 
-This task should focus on mapping and migration design before implementing provider-specific importers. The output should make clear how external identifiers, statuses, users, labels, epics, milestones, and repeated imports map into PlanFS entities and metadata.
+This task produces the shared mapping, traceability, conflict, and preview design before provider-specific importers are built. CSV will be the first follow-on importer and will use a reusable YAML mapping file. Provider adapters should normalize source records into a shared import model; shared planning code should own mapping, validation, duplicate detection, preview, and apply behavior.
+
+## Import Contract
+
+- Add a documented normalized import-record and import-plan model that separates provider extraction from PlanFS mapping.
+- Define a Git-tracked YAML mapping format for source fields, status values, users, labels/tags, epics, and milestones.
+- Reserve a namespaced `external` metadata object containing `provider`, `id`, optional `key`, optional `url`, and an import `fingerprint`.
+- Match repeated imports by normalized provider plus external ID. An unchanged fingerprint is a no-op; changed source data produces a previewed update; ambiguous matches are conflicts.
+- Missing users may remain as source strings after preview. Missing epics and milestones must be explicitly mapped or created through an opt-in mapping rule; the default is to fail preview rather than silently create containers.
+- Produce both machine-readable JSON plans and concise human-readable summaries before writing files.
 
 ## Acceptance Criteria
 
 - [ ] Import workflow distinguishes provider-specific import adapters from shared mapping and validation behavior
-- [ ] CSV import strategy is defined, including whether fixed columns, a mapping file, or an interactive mapping step is required
-- [ ] Jira, GitLab, and GitHub imports have an initial migration path and provider boundary
-- [ ] External IDs or issue keys have a traceability model that does not pollute normal PlanFS task fields
-- [ ] Duplicate detection strategy is defined for repeated imports and partially imported datasets
-- [ ] Missing epics, milestones, users, and labels have explicit map/create/fail behavior
-- [ ] Conflicts can be previewed before writing PlanFS files
-- [ ] Documentation explains how this differs from in-repository bulk update workflows
+- [ ] A design document defines normalized source records, mapping configuration, import plans, conflicts, and provider adapter boundaries
+- [ ] CSV is identified as the first implementation and its YAML mapping format includes required columns, optional fields, value maps, and examples
+- [ ] Jira, GitLab, and GitHub boundaries document how provider records normalize without embedding provider logic in core mapping
+- [ ] The `external` metadata schema preserves provider identity and fingerprint data without adding provider-specific top-level fields
+- [ ] Repeated, partial, unchanged, changed, and ambiguous imports have deterministic duplicate/conflict behavior
+- [ ] Missing epics, milestones, users, and labels have explicit default and opt-in map/create/fail behavior
+- [ ] JSON and human-readable preview formats show creates, updates, no-ops, warnings, and conflicts before writes
+- [ ] Apply semantics reuse transactional validation and rollback behavior from in-repository bulk workflows
+- [ ] Security guidance covers untrusted CSV/YAML input, formula-like values, URLs, path handling, and provider payloads
+- [ ] Documentation clearly distinguishes external migration from normal bulk metadata updates and identifies follow-on implementation tasks
 
-## Questions
+## Decisions
 
-- [ ] Should CSV import require a mapping file, an interactive mapping step, or fixed column names?
-- [ ] Should Jira imports preserve original issue keys as metadata for future traceability?
-- [ ] How should duplicate imported items be detected across repeated imports?
-- [ ] Should imports create missing epics and milestones automatically, or fail until the user maps them explicitly?
-- [ ] Should external provider metadata live under `links`, a new metadata object, or provider-specific fields?
-- [ ] Which importer should be implemented first: CSV, Jira, GitLab, or GitHub Issues?
-- [ ] Should import previews produce patch files, JSON plans, or human-readable summaries?
+- [x] CSV is the first follow-on importer and uses a reusable YAML mapping file rather than an interactive-only workflow.
+- [x] External identity uses a namespaced `external` object with provider, ID/key, source URL, and fingerprint.
+- [x] Duplicate detection primarily uses provider plus external ID; fingerprints distinguish no-op and changed records.
+- [x] Missing planning containers fail by default and may be created only through explicit mapping rules.
+- [x] Previews support both JSON automation and human-readable review.
+
+## Non-Goals
+
+- Implementing CSV, Jira, GitLab, or GitHub provider adapters in this design task
+- Live synchronization, webhooks, or bidirectional updates
+- Storing provider credentials in `.planfs`
+- Silently overwriting locally changed PlanFS artifacts

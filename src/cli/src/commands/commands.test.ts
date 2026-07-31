@@ -456,6 +456,36 @@ describe('CLI commands', () => {
     });
   });
 
+  it('emits selective compact JSON and concise text planning summaries', async () => {
+    await writeTask('TASK-001', [
+      'title: Review AI output',
+      'status: review',
+      'updatedAt: 2026-06-20T00:00:00Z'
+    ]);
+    await writeTask('TASK-002', [
+      'title: Open AI output',
+      'status: todo'
+    ]);
+
+    await expect(aiCommand(rootPath, 'summary', {
+      only: 'review', compact: true, format: 'json'
+    })).resolves.toBe(0);
+    const compactOutput = logSpy.mock.calls[logSpy.mock.calls.length - 1]?.[0] as string;
+    expect(compactOutput).not.toContain('\n');
+    expect(JSON.parse(compactOutput)).toMatchObject({
+      section: 'review', count: 1, items: [{ id: 'TASK-001' }]
+    });
+
+    await expect(aiCommand(rootPath, 'summary', {
+      only: 'review', format: 'text'
+    })).resolves.toBe(0);
+    const textOutput = logSpy.mock.calls[logSpy.mock.calls.length - 1]?.[0] as string;
+    expect(textOutput).toContain('PlanFS planning summary');
+    expect(textOutput).toContain('Review (1)');
+    expect(textOutput).toContain('TASK-001 [review] Review AI output');
+    expect(textOutput).not.toContain('TASK-002');
+  });
+
   it('previews and applies AI task updates', async () => {
     await writeTask('TASK-001', [
       'title: Update with AI command',
@@ -623,6 +653,35 @@ describe('CLI commands', () => {
     expect(taskFile).not.toContain('EPIC-missing');
   });
 
+  it('returns a concurrency token and refuses stale AI task updates', async () => {
+    await writeTask('TASK-001', [
+      'title: Concurrent AI update',
+      'status: todo',
+      'updatedAt: 2026-06-20T00:00:00Z'
+    ]);
+
+    await expect(aiCommand(rootPath, 'update-task', {
+      id: 'TASK-001', status: 'review', dryRun: true, format: 'json'
+    })).resolves.toBe(0);
+    const preview = JSON.parse(logSpy.mock.calls[logSpy.mock.calls.length - 1]?.[0] as string);
+    expect(preview.expectedUpdatedAt).toBe('2026-06-20T00:00:00Z');
+
+    await writeTask('TASK-001', [
+      'title: Concurrent AI update',
+      'status: in-progress',
+      'updatedAt: 2026-06-21T00:00:00Z'
+    ]);
+    await expect(aiCommand(rootPath, 'update-task', {
+      id: 'TASK-001',
+      status: 'review',
+      expectedUpdatedAt: preview.expectedUpdatedAt,
+      format: 'json'
+    })).resolves.toBe(1);
+    expect(errorSpy).toHaveBeenCalledWith('Error:', expect.stringContaining('changed since preview'));
+    expect(await fs.readFile(path.join(rootPath, '.planfs', 'tasks', 'TASK-001.md'), 'utf-8'))
+      .toContain('status: in-progress');
+  });
+
   it('initializes agent instructions for AI planning awareness', async () => {
     await fs.writeFile(
       path.join(rootPath, 'AGENTS.md'),
@@ -668,8 +727,8 @@ describe('CLI commands', () => {
 
     agents = await fs.readFile(path.join(rootPath, 'AGENTS.md'), 'utf-8');
     expect(agents).toContain('Existing guidance.');
-    expect(agents).toContain('node src/cli/dist/cli.js ai summary');
-    expect(agents).toContain('node src/cli/dist/cli.js ai bulk-update-tasks --ids TASK-061,TASK-062 --status review --dry-run');
+    expect(agents).toContain('planfs ai summary');
+    expect(agents).toContain('planfs ai bulk-update-tasks --ids TASK-061,TASK-062 --status review --dry-run');
     expect(agents).toContain('Prefer these preview/apply helpers over editing task frontmatter directly');
     expect(agents.match(/PLANFS-AI-AWARENESS:START/g)).toHaveLength(1);
 
@@ -680,6 +739,14 @@ describe('CLI commands', () => {
       logSpy.mock.calls[logSpy.mock.calls.length - 1]?.[0] as string
     );
     expect(output.updated).toBe(false);
+
+    await expect(aiCommand(rootPath, 'initialize', {
+      command: 'node tools/planfs.js',
+      dryRun: true,
+      format: 'json'
+    })).resolves.toBe(0);
+    output = JSON.parse(logSpy.mock.calls[logSpy.mock.calls.length - 1]?.[0] as string);
+    expect(output.content).toContain('node tools/planfs.js ai summary');
   });
 
   it('lists pull request provider boundaries', async () => {
