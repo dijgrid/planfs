@@ -18,6 +18,7 @@ import { archiveCommand, ArchiveAction } from './commands/archive';
 import { branchCommand } from './commands/branch';
 import { gitCommand, GitAction } from './commands/git';
 import { pullRequestCommand, PullRequestAction } from './commands/pr';
+import { doctorCommand } from './commands/doctor';
 import pkg from '../package.json';
 
 export async function main(): Promise<void> {
@@ -177,6 +178,11 @@ export async function main(): Promise<void> {
             description: 'Show detailed output',
             default: false
           })
+          .option('strict', {
+            type: 'boolean',
+            default: false,
+            description: 'Fail when validation warnings are present'
+          })
           .option('format', {
             type: 'string',
             choices: ['text', 'json'],
@@ -186,9 +192,18 @@ export async function main(): Promise<void> {
       async (args) => {
         const exitCode = await validateCommand(process.cwd(), {
           verbose: args.verbose as boolean,
+          strict: args.strict as boolean,
           format: args.format as 'text' | 'json'
         });
         process.exit(exitCode);
+      }
+    )
+    .command(
+      'doctor',
+      'Report actionable plan-health issues separately from historical references',
+      (y) => y.option('format', { type: 'string', choices: ['text', 'json'], default: 'text' }),
+      async (args) => {
+        process.exit(await doctorCommand(process.cwd(), { format: args.format as 'text' | 'json' }));
       }
     )
     .command(

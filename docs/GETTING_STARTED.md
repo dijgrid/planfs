@@ -181,6 +181,10 @@ Initialize the project repository with core structure and documentation.
 planfs validate
 ```
 
+Validation always reports warning and error totals. Use `planfs validate --verbose` to inspect warning paths, or `planfs validate --strict` in CI when warnings should fail the build. `planfs validate --format json` includes stable severity and diagnostic-category counts for automation.
+
+Use `planfs doctor` for a focused health report. It separates actionable conditions such as unfinished archived work and stale review tasks from historical-reference noise; `--format json` is suitable for dashboards.
+
 ### 5. Commit to Git
 
 ```bash
