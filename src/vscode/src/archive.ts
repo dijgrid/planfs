@@ -37,6 +37,7 @@ interface ArchivePayload {
 
 export class ArchiveProvider {
   private panel: vscode.WebviewPanel | undefined;
+  private hasRenderedArchive = false;
 
   constructor(private readonly extensionUri: vscode.Uri) {}
 
@@ -64,6 +65,7 @@ export class ArchiveProvider {
     );
     this.panel.onDidDispose(() => {
       this.panel = undefined;
+      this.hasRenderedArchive = false;
     });
     this.panel.webview.onDidReceiveMessage(async message => {
       if (message?.type === 'restore') {
@@ -104,10 +106,15 @@ export class ArchiveProvider {
       body: entity.body
     }));
 
-    this.panel.webview.html = renderArchiveHtml({
+    const payload = {
       items,
       helpTopics: createHelpTopics(this.extensionUri, ['archive'])
-    });
+    };
+    if (this.hasRenderedArchive && await this.panel.webview.postMessage({ type: 'updateArchive', payload })) {
+      return;
+    }
+    this.panel.webview.html = renderArchiveHtml(payload);
+    this.hasRenderedArchive = true;
   }
 
   private async restore(id: string): Promise<void> {
@@ -240,12 +247,17 @@ function renderArchiveHtml(payload: ArchivePayload): string {
   ${renderHelpPanel()}
   <script>
     const vscode = acquireVsCodeApi();
-    const payload = ${json};
+    let payload = ${json};
     const content = document.getElementById('content');
     const queryInput = document.getElementById('query');
     const typeInput = document.getElementById('type');
     queryInput.addEventListener('input', render);
     typeInput.addEventListener('change', render);
+    window.addEventListener('message', event => {
+      if (event.data?.type !== 'updateArchive') return;
+      payload = event.data.payload;
+      render();
+    });
 
     function render() {
       const query = queryInput.value.trim().toLowerCase();

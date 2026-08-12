@@ -1552,6 +1552,7 @@ function renderBoard(
     let selectedTaskId = state.tasks[0]?.id || '';
     const selectedBulkTaskIds = new Set();
     const persistedState = typeof vscode.getState === 'function' ? vscode.getState() : {};
+    selectedTaskId = String(persistedState?.selectedTaskId || selectedTaskId);
     const minDetailsWidth = 280;
     const maxDetailsWidth = 560;
     let detailsPanelWidth = normalizeDetailsPanelWidth(
@@ -1609,12 +1610,16 @@ function renderBoard(
     groupInput.value = groupingModes.includes(persistedState?.groupKey)
       ? persistedState.groupKey
       : 'none';
+    filterInput.value = String(persistedState?.filterQuery || '');
+    sortInput.value = ['id', 'title', 'priority', 'assignee'].includes(persistedState?.sortKey)
+      ? persistedState.sortKey
+      : 'id';
     boardScopeInput.value = boardScope;
     renderSavedFilterOptions();
     renderMilestoneOptions();
     updateModeButtons();
 
-    filterInput.addEventListener('input', () => render());
+    filterInput.addEventListener('input', () => { persistBoardState(); render(); });
     modeButtons.forEach((button, index) => {
       button.addEventListener('click', () => setBoardMode(button.dataset.mode));
       button.addEventListener('keydown', event => {
@@ -1636,7 +1641,7 @@ function renderBoard(
       persistDetailsPanelPreference('board.scope', boardScope);
       render();
     });
-    savedFilterInput.addEventListener('change', () => render());
+    savedFilterInput.addEventListener('change', () => { persistBoardState(); render(); });
     milestoneFocusInput.addEventListener('change', () => {
       milestoneFocus = milestoneFocusInput.value;
       persistBoardState();
@@ -1654,7 +1659,7 @@ function renderBoard(
       persistBoardState();
       render();
     });
-    sortInput.addEventListener('change', () => render());
+    sortInput.addEventListener('change', () => { persistBoardState(); render(); });
     bulkApplyButton.addEventListener('click', () => {
       vscode.postMessage({
         type: 'bulkUpdateTasks',
@@ -1686,7 +1691,6 @@ function renderBoard(
 
       const selectedFilter = savedFilterInput.value;
       state = event.data.payload;
-      milestoneFocus = String(state.preferences?.milestoneFocus ?? '');
       const taskIds = new Set(state.tasks.map(task => task.id));
       Array.from(selectedBulkTaskIds).forEach(taskId => {
         if (!taskIds.has(taskId)) {
@@ -1722,6 +1726,10 @@ function renderBoard(
       vscode.setState({
         ...(currentState || {}),
         boardMode,
+        selectedTaskId,
+        filterQuery: filterInput.value,
+        savedFilterId: savedFilterInput.value,
+        sortKey: sortInput.value,
         groupKey: groupInput.value,
         boardScope,
         detailsPanelWidth,
@@ -1739,7 +1747,7 @@ function renderBoard(
       });
     }
 
-    function renderSavedFilterOptions(selectedFilter = savedFilterInput.value) {
+    function renderSavedFilterOptions(selectedFilter = persistedState?.savedFilterId || savedFilterInput.value) {
       const allTasks = document.createElement('option');
       allTasks.value = '';
       allTasks.textContent = 'All tasks';

@@ -40,6 +40,7 @@ const REFINEMENT_STATES: RefinementState[] = [
 
 export class BacklogProvider {
   private panel: vscode.WebviewPanel | undefined;
+  private hasRenderedBacklog = false;
 
   constructor(
     private readonly extensionUri: vscode.Uri,
@@ -71,6 +72,7 @@ export class BacklogProvider {
 
     this.panel.onDidDispose(() => {
       this.panel = undefined;
+      this.hasRenderedBacklog = false;
     });
 
     this.panel.webview.onDidReceiveMessage(async message => {
@@ -133,11 +135,11 @@ export class BacklogProvider {
       tags: task.tags,
       dueDate: task.dueDate,
       body: task.body,
-      sections: extractMarkdownSections(task.body, ['Acceptance Criteria', 'Questions']),
+      sections: extractMarkdownSections(task.body, ['Acceptance Criteria', 'Questions', 'Findings']),
       needsReview: reviewIds.has(task.id)
     }));
 
-    this.panel.webview.html = renderBacklogHtml({
+    const payload = {
       tasks,
       options: {
         epics: Array.from(repository.epics.values()).map(epic => ({
@@ -163,7 +165,12 @@ export class BacklogProvider {
         )
       },
       helpTopics: createHelpTopics(this.extensionUri, ['backlog'])
-    });
+    };
+    if (this.hasRenderedBacklog && await this.panel.webview.postMessage({ type: 'updateBacklog', payload })) {
+      return;
+    }
+    this.panel.webview.html = renderBacklogHtml(payload);
+    this.hasRenderedBacklog = true;
   }
 
   private async captureBacklogItem(title: string): Promise<void> {
@@ -434,7 +441,7 @@ function renderBacklogHtml(payload: BacklogHtmlPayload): string {
   ${renderHelpPanel()}
   <script>
     const vscode = acquireVsCodeApi();
-    const payload = ${json};
+    let payload = ${json};
     const restoredState = vscode.getState?.() || {};
     let query = String(restoredState.query || '');
     let savedFilterId = String(restoredState.savedFilterId || '');
@@ -450,7 +457,7 @@ function renderBacklogHtml(payload: BacklogHtmlPayload): string {
     const savedFilter = document.getElementById('savedFilter');
     const groupByInput = document.getElementById('groupBy');
 
-    savedFilter.innerHTML = '<option value="">All backlog</option>' + payload.savedFilters.map(filter => '<option value="' + escapeHtml(filter.id) + '">' + escapeHtml(filter.name) + '</option>').join('');
+    renderSavedFilters();
     filter.value = query;
     savedFilter.value = payload.savedFilters.some(filter => filter.id === savedFilterId) ? savedFilterId : '';
     savedFilterId = savedFilter.value;
@@ -466,6 +473,22 @@ function renderBacklogHtml(payload: BacklogHtmlPayload): string {
     filter.addEventListener('input', () => { query = filter.value.toLowerCase(); persistUiState(); render(); });
     savedFilter.addEventListener('change', () => { savedFilterId = savedFilter.value; persistUiState(); render(); });
     groupByInput.addEventListener('change', () => { groupBy = groupByInput.value; persistUiState(); render(); });
+    window.addEventListener('message', event => {
+      if (event.data?.type !== 'updateBacklog') return;
+      payload = event.data.payload;
+      renderSavedFilters();
+      if (!payload.tasks.some(task => task.id === selectedTaskId)) {
+        selectedTaskId = payload.tasks[0]?.id || '';
+      }
+      persistUiState();
+      render();
+    });
+    function renderSavedFilters() {
+      const selected = savedFilterId;
+      savedFilter.innerHTML = '<option value="">All backlog</option>' + payload.savedFilters.map(filter => '<option value="' + escapeHtml(filter.id) + '">' + escapeHtml(filter.name) + '</option>').join('');
+      savedFilter.value = payload.savedFilters.some(filter => filter.id === selected) ? selected : '';
+      savedFilterId = savedFilter.value;
+    }
     function persistUiState() {
       vscode.setState?.({
         query,
@@ -572,7 +595,7 @@ function renderBacklogHtml(payload: BacklogHtmlPayload): string {
 
     function renderSections(task) {
       if (!task.sections || task.sections.length === 0) {
-        return '<div class="sections"><p class="empty">No Acceptance Criteria or Questions sections found. Use Open Markdown for full body editing.</p></div>';
+        return '<div class="sections"><p class="empty">No Acceptance Criteria, Questions, or Findings sections found. Use Open Markdown for full body editing.</p></div>';
       }
       return '<div class="sections">' + task.sections.map(section => '<section class="sectionCard"><h3>' + escapeHtml(section.title) + '</h3>' +
         section.paragraphs.map(paragraph => '<p class="meta">' + escapeHtml(paragraph) + '</p>').join('') +

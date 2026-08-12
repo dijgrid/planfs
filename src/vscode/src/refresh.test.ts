@@ -304,6 +304,31 @@ describe('VS Code view refresh workspace selection', () => {
     expect(archivePanel.webview.html).toContain('Use the archive to inspect');
   });
 
+  it('refreshes open views through payload messages without replacing their documents', async () => {
+    const archived = createTaskTemplate('TASK-refresh-archive', 'Archived refresh task');
+    await saveEntity(firstRoot, archived);
+    await archiveEntity(firstRoot, archived.id);
+
+    const backlog = new BacklogProvider(vscode.Uri.file('/extension'), new PlanFSUiPreferences(new TestMemento()));
+    const archive = new ArchiveProvider(vscode.Uri.file('/extension'));
+    const insights = new InsightsProvider(vscode.Uri.file('/extension'));
+    await backlog.open();
+    await archive.open();
+    await insights.open();
+
+    const [backlogPanel, archivePanel, insightsPanel] = jest.mocked(vscode.window.createWebviewPanel).mock.results.map(result => result.value);
+    const documents = [backlogPanel.webview.html, archivePanel.webview.html, insightsPanel.webview.html];
+
+    await Promise.all([backlog.refresh(), archive.refresh(), insights.refresh()]);
+
+    expect(backlogPanel.webview.html).toBe(documents[0]);
+    expect(archivePanel.webview.html).toBe(documents[1]);
+    expect(insightsPanel.webview.html).toBe(documents[2]);
+    expect(backlogPanel.webview.postedMessages).toContainEqual(expect.objectContaining({ type: 'updateBacklog' }));
+    expect(archivePanel.webview.postedMessages).toContainEqual(expect.objectContaining({ type: 'updateArchive' }));
+    expect(insightsPanel.webview.postedMessages).toContainEqual(expect.objectContaining({ type: 'updateInsights' }));
+  });
+
   it('renders visual planning controls for graph and timeline insights', async () => {
     selectPlanFSWorkspaceFolder(firstFolder);
 
