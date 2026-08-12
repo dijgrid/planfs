@@ -1320,7 +1320,20 @@ describe('VS Code view refresh workspace selection', () => {
         '',
         '## Questions',
         '',
-        '- [ ] Should this be editable later?'
+        '- [ ] Should this be editable later?',
+        '',
+        '## Findings',
+        '',
+        'A paragraph with [evidence](https://example.com).',
+        '',
+        '- A plain bullet',
+        '- [x] A checked evidence item',
+        '',
+        '### Nested evidence',
+        '',
+        '```text',
+        'proof',
+        '```'
       ].join('\n'),
       metadata: {
         externalKey: 'JIRA-456'
@@ -1354,6 +1367,9 @@ describe('VS Code view refresh workspace selection', () => {
     expect(editorPanel.webview.html).toContain('Acceptance Criteria');
     expect(editorPanel.webview.html).toContain('Keep the body in Markdown');
     expect(editorPanel.webview.html).toContain('Questions');
+    expect(editorPanel.webview.html).toContain('Findings');
+    expect(editorPanel.webview.html).toContain('Findings are read-only here');
+    expect(editorPanel.webview.html).toContain('A plain bullet');
     expect(editorPanel.webview.html).toContain('Open Markdown');
 
     await editorPanel.webview.postMessage({
@@ -1372,6 +1388,8 @@ describe('VS Code view refresh workspace selection', () => {
     expect(repository.tasks.get('TASK-020')?.metadata.externalKey).toBe('JIRA-456');
     expect(repository.tasks.get('TASK-020')?.body).toContain('## Acceptance Criteria');
     expect(repository.tasks.get('TASK-020')?.body).toContain('Extra note preserved for readers.');
+    expect(repository.tasks.get('TASK-020')?.body).toContain('### Nested evidence');
+    expect(repository.tasks.get('TASK-020')?.body).toContain('```text\nproof\n```');
   });
 
   it('opens recoverable malformed tasks in the structured editor with diagnostics', async () => {

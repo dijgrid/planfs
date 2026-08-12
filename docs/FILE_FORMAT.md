@@ -314,6 +314,21 @@ Decisions are stored in `.planfs/decisions/`:
 
 ---
 
+## Task Findings
+
+Use an optional `## Findings` section in a task's Markdown body to record observations, evidence, and review context discovered while doing that work. Findings deliberately stay with the task: they do not need frontmatter, IDs, or a separate lifecycle.
+
+```markdown
+## Findings
+
+- Automatic file-change refreshes reconstructed some webviews, clearing active tabs and filters.
+- Updating the webview through a message preserves valid local state while refreshing task data.
+```
+
+When a finding drives a durable cross-project decision, link to an ADR-style decision file from the task's `## References` section.
+
+---
+
 ## Body Content
 
 The body (after the YAML frontmatter) is pure Markdown and can contain:

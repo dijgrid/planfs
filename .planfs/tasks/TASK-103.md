@@ -1,9 +1,9 @@
 ---
 id: TASK-103
 title: Complete task Findings section integration
-status: todo
+status: done
 createdAt: 2026-08-12T22:59:36.905Z
-updatedAt: 2026-08-12T23:04:00Z
+updatedAt: 2026-08-12T23:21:39.193Z
 priority: high
 assignee: justin
 epic: EPIC-v1-3-reliability-and-workflow-parity
@@ -29,14 +29,15 @@ Finish the lightweight task-level Findings convention across PlanFS without intr
 
 ## Acceptance Criteria
 
-- [ ] Backlog and structured task editors render Findings as a named planning section
-- [ ] Insights or search results continue to include findings through full-body search
-- [ ] Metadata saves preserve Findings content byte-for-byte
-- [ ] Open Markdown remains the clear editing path
-- [ ] Empty and missing Findings sections have concise, accurate UI copy
-- [ ] Tests cover paragraph, bullet, checklist, nested heading, and body-preservation cases
-- [ ] File-format and extension documentation describe the convention consistently
+- [x] Backlog and structured task editors render Findings as a named planning section
+- [x] Insights or search results continue to include findings through full-body search
+- [x] Metadata saves preserve Findings content byte-for-byte
+- [x] Open Markdown remains the clear editing path
+- [x] Empty and missing Findings sections have concise, accurate UI copy
+- [x] Tests cover paragraph, bullet, checklist, nested heading, and body-preservation cases
+- [x] File-format and extension documentation describe the convention consistently
 
 ## Findings
 
 - The Backlog recognizes Findings, but the main structured editor still classifies it as generic additional Markdown.
+- `npm test --workspace=planfs-vscode -- --runInBand --runTestsByPath src/refresh.test.ts` passed (35 tests), covering structured rendering and metadata-save body preservation.

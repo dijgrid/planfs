@@ -1341,7 +1341,7 @@ function formatMetadataValue(value: unknown): string {
 }
 
 function renderBodySections(body: string, heading = 'Markdown Sections'): string {
-  const { sections, additionalMarkdown } = extractMarkdownBody(body, ['Acceptance Criteria', 'Questions']);
+  const { sections, additionalMarkdown } = extractMarkdownBody(body, ['Acceptance Criteria', 'Questions', 'Findings']);
 
   return [
     '<section class="card full">',
@@ -1351,7 +1351,7 @@ function renderBodySections(body: string, heading = 'Markdown Sections'): string
       ? '<section class="markdownFallback"><h2>Additional Markdown</h2>' + renderMarkdownPreview(additionalMarkdown) + '</section>'
       : '<p class="subtle">No additional Markdown body content found outside known planning sections.</p>',
     sections.length === 0
-      ? '<p class="subtle">No Acceptance Criteria or Questions sections found.</p>'
+      ? '<p class="subtle">No Acceptance Criteria, Questions, or Findings sections found.</p>'
       : '<div class="sectionList">' + sections.map(renderMarkdownSection).join('') + '</div>',
     '</section>'
   ].join('');
@@ -1447,6 +1447,9 @@ function renderMarkdownSection(section: MarkdownSection): string {
   return [
     '<section>',
     '<h2>' + escapeHtml(section.title) + '</h2>',
+    section.title === 'Findings'
+      ? '<p class="subtle">Findings are read-only here. Use Open Markdown to add or edit evidence.</p>'
+      : '',
     paragraphs,
     checklist || (paragraphs ? '' : '<p class="subtle">Section is empty.</p>'),
     '</section>'
