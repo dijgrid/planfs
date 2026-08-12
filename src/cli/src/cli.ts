@@ -20,6 +20,7 @@ import { gitCommand, GitAction } from './commands/git';
 import { pullRequestCommand, PullRequestAction } from './commands/pr';
 import { doctorCommand } from './commands/doctor';
 import { migrateCommand } from './commands/migrate';
+import { updateCommand } from './commands/update';
 import pkg from '../package.json';
 
 export async function main(): Promise<void> {
@@ -214,6 +215,11 @@ export async function main(): Promise<void> {
       async (args) => {
         process.exit(await migrateCommand(process.cwd(), { apply: args.apply as boolean, format: args.format as 'text' | 'json' }));
       }
+    )
+    .command(
+      'update <id>', 'Preview or update common entity metadata',
+      (y) => y.positional('id', { type: 'string' }).option('title', { type: 'string' }).option('status', { type: 'string' }).option('owner', { type: 'string' }).option('assignee', { type: 'string' }).option('priority', { type: 'string' }).option('target-date', { type: 'string' }).option('expected-updated-at', { type: 'string' }).option('dry-run', { type: 'boolean', default: false }).option('format', { type: 'string', choices: ['text', 'json'], default: 'text' }),
+      async (args) => process.exit(await updateCommand(process.cwd(), args.id as string, { patch: { title: args.title, status: args.status, owner: args.owner, assignee: args.assignee, priority: args.priority, targetDate: args.targetDate }, expectedUpdatedAt: args.expectedUpdatedAt as string | undefined, dryRun: args.dryRun as boolean, format: args.format as 'text' | 'json' }))
     )
     .command(
       'branch',
@@ -583,7 +589,7 @@ export async function main(): Promise<void> {
         y
           .positional('type', {
             describe: 'Entity type to create',
-            choices: ['task', 'epic', 'milestone']
+            choices: ['task', 'epic', 'milestone', 'decision']
           })
           .option('title', {
             alias: 't',
