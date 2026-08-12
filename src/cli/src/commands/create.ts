@@ -11,9 +11,11 @@ import {
   createTaskTemplate,
   createEpicTemplate,
   createMilestoneTemplate,
+  createDecisionTemplate,
   getNextTaskId,
   getNextEpicId,
   getNextMilestoneId,
+  getNextDecisionId,
   generateEntityContent,
   initializeRepository,
   validateRepositoryState
@@ -38,7 +40,7 @@ export async function createCommand(
   options: CreateOptions
 ): Promise<number> {
   try {
-    if (!['task', 'epic', 'milestone'].includes(entityType)) {
+    if (!['task', 'epic', 'milestone', 'decision'].includes(entityType)) {
       console.error(`Error: creating ${entityType} entities is not supported yet`);
       return 1;
     }
@@ -90,7 +92,7 @@ export async function createCommand(
         epic.body = options.description;
       }
       entity = epic;
-    } else {
+    } else if (entityType === 'milestone') {
       if (!options.targetDate) {
         console.error('Error: --target-date is required when creating milestones');
         return 1;
@@ -112,6 +114,11 @@ export async function createCommand(
         milestone.body = options.description;
       }
       entity = milestone;
+    } else {
+      const decision = createDecisionTemplate(getNextDecisionId(repository, options.title), options.title);
+      if (options.status) decision.status = options.status as typeof decision.status;
+      if (options.description) decision.body = options.description;
+      entity = decision;
     }
 
     const preview = generateEntityContent(entity);

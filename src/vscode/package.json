@@ -49,6 +49,7 @@
     "onCommand:planfs.createTask",
     "onCommand:planfs.createEpic",
     "onCommand:planfs.createMilestone",
+    "onCommand:planfs.createDecision",
     "onCommand:planfs.openTask",
     "onCommand:planfs.archiveItem",
     "onCommand:planfs.openEditor",
@@ -96,6 +97,10 @@
         "title": "PlanFS: Create Milestone"
       },
       {
+        "command": "planfs.createDecision",
+        "title": "PlanFS: Create Decision"
+      },
+      {
         "command": "planfs.openTask",
         "title": "PlanFS: Open Task"
       },
@@ -133,7 +138,7 @@
       "view/item/context": [
         {
           "command": "planfs.openEditor",
-          "when": "view == planfs-explorer && viewItem =~ /^(task|epic|milestone)$/",
+          "when": "view == planfs-explorer && viewItem =~ /^(task|epic|milestone|decision)$/",
           "group": "navigation"
         },
         {

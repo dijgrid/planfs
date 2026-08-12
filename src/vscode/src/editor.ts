@@ -7,6 +7,7 @@ import {
   archiveEntity,
   Entity,
   Epic,
+  Decision,
   getRepositoryDevelopers,
   getMilestoneRollup,
   loadRepository,
@@ -47,7 +48,7 @@ interface EditorPayload {
   helpTopics: HelpTopic[];
 }
 
-type EditableEntity = Task | Epic | Milestone;
+type EditableEntity = Task | Epic | Milestone | Decision;
 
 interface EpicBoardTask {
   id: string;
@@ -416,7 +417,8 @@ async function pickEditableEntity(
   const items = [
     ...Array.from(repository.tasks.values()),
     ...Array.from(repository.epics.values()),
-    ...Array.from(repository.milestones.values())
+    ...Array.from(repository.milestones.values()),
+    ...Array.from(repository.decisions.values())
   ].map(entity => ({
     label: entity.id,
     description: entity.title,
@@ -426,7 +428,7 @@ async function pickEditableEntity(
 
   const selected = await vscode.window.showQuickPick(items, {
     title: 'Open PlanFS Structured Editor',
-    placeHolder: 'Select a task, epic, or milestone'
+    placeHolder: 'Select a task, epic, milestone, or decision'
   });
 
   return selected?.entity;
@@ -445,7 +447,8 @@ function findEditableEntity(
 ): EditableEntity | undefined {
   return repository.tasks.get(entityId)
     ?? repository.epics.get(entityId)
-    ?? repository.milestones.get(entityId);
+    ?? repository.milestones.get(entityId)
+    ?? repository.decisions.get(entityId);
 }
 
 async function createPayload(
@@ -1209,6 +1212,19 @@ function renderEntityFields(payload: EditorPayload): string {
     ].join('');
   }
 
+  if (entity.type === 'decision') {
+    const decision = entity as Decision;
+    return [
+      renderDiagnostics(payload),
+      compactMeta([common[0], compactSelect('Status', 'status', decision.status, ['proposed', 'accepted', 'rejected', 'superseded'])]),
+      common[1], input('Date', 'date', toDateInput(decision.date), 'date'), input('Author', 'author', decision.author ?? ''),
+      textarea('Context', 'context', decision.context ?? '', 'full'), textarea('Decision', 'decision', decision.decision ?? '', 'full'),
+      textarea('Consequences', 'consequences', decision.consequences ?? '', 'full'),
+      input('Supersedes', 'supersedes', decision.supersedes ?? ''), input('Superseded By', 'supersededBy', decision.supersededBy ?? ''),
+      renderAdditionalMetadata(decision), renderBodySections(decision.body, 'Decision Notes')
+    ].join('');
+  }
+
   const milestone = entity as Milestone;
   return [
     renderDiagnostics(payload),
@@ -1443,6 +1459,8 @@ function knownMetadataFields(type: EditableEntity['type']): Set<string> {
         'owner',
         'links'
       ]);
+    case 'decision':
+      return new Set([...common, 'date', 'author', 'context', 'decision', 'consequences', 'supersedes', 'supersededBy']);
     default:
       return new Set(common);
   }

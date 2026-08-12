@@ -456,6 +456,10 @@ export function getNextMilestoneId(
   return getAvailableSlugId('MILESTONE', title, repository.milestones);
 }
 
+export function getNextDecisionId(repository: Repository, title: string): string {
+  return getAvailableSlugId('DECISION', title, repository.decisions);
+}
+
 /**
  * Create a new task template
  */
@@ -513,6 +517,11 @@ export function createMilestoneTemplate(
     createdAt: now,
     updatedAt: now
   };
+}
+
+export function createDecisionTemplate(id: string, title: string): Decision {
+  const now = new Date().toISOString();
+  return { id, type: 'decision', title, status: 'proposed', filePath: '', metadata: {}, body: '', createdAt: now, updatedAt: now };
 }
 
 function getAvailableSlugId<T extends Entity>(

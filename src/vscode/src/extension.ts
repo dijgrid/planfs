@@ -11,7 +11,7 @@ import { EntityEditorProvider } from './editor';
 import { ExplorerProvider } from './explorer';
 import { InsightsProvider } from './insights';
 import { PlanFSUiPreferences } from './preferences';
-import { createTaskCommand, createEpicCommand, createMilestoneCommand } from './commands/create';
+import { createTaskCommand, createEpicCommand, createMilestoneCommand, createDecisionCommand } from './commands/create';
 import { initializeRepositoryCommand } from './commands/init';
 import { openTaskCommand } from './commands/open';
 import { selectPlanFSWorkspaceFolderForUri } from './workspace';
@@ -53,6 +53,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand('planfs.createTask', () => createTaskCommand(explorerProvider)),
     vscode.commands.registerCommand('planfs.createEpic', () => createEpicCommand(explorerProvider)),
     vscode.commands.registerCommand('planfs.createMilestone', () => createMilestoneCommand(explorerProvider)),
+    vscode.commands.registerCommand('planfs.createDecision', () => createDecisionCommand(explorerProvider)),
     vscode.commands.registerCommand('planfs.openTask', (item) => openTaskCommand(item)),
     vscode.commands.registerCommand('planfs.openEditor', (item) => editorProvider.open(resolveEditorEntityId(item))),
     vscode.commands.registerCommand('planfs.applySavedFilter', () => explorerProvider.applySavedFilter()),
