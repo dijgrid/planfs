@@ -27,6 +27,7 @@ import {
   Decision,
   ValidationResult
 } from './types';
+import { getPlanfsFormat } from './format';
 
 /**
  * Load a PlanFS repository
@@ -39,6 +40,7 @@ export async function loadRepository(rootPath: string): Promise<Repository> {
       `No .planfs directory found in ${rootPath}. Initialize with ensurePlanfsStructure() first.`
     );
   }
+  await getPlanfsFormat(rootPath);
 
   const repository: Repository = {
     root: rootPath,

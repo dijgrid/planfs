@@ -2,6 +2,8 @@
 
 PlanFS uses a simple, human-readable format combining Markdown with YAML frontmatter. This ensures that files remain accessible to version control systems and readable by humans, even without specialized tooling.
 
+Repositories use `.planfs/planfs.json` to declare `formatVersion`. Version 1 is the current format; repositories created before this marker are treated as compatible v1 repositories until `planfs migrate --apply` writes the marker. Normal reads and saves never add it implicitly. Use `planfs migrate` to preview changes first, and keep version-control backups available before applying a migration. A repository declaring a newer format is refused with an upgrade message rather than rewritten.
+
 ---
 
 ## General Format

@@ -19,6 +19,7 @@ import { branchCommand } from './commands/branch';
 import { gitCommand, GitAction } from './commands/git';
 import { pullRequestCommand, PullRequestAction } from './commands/pr';
 import { doctorCommand } from './commands/doctor';
+import { migrateCommand } from './commands/migrate';
 import pkg from '../package.json';
 
 export async function main(): Promise<void> {
@@ -204,6 +205,14 @@ export async function main(): Promise<void> {
       (y) => y.option('format', { type: 'string', choices: ['text', 'json'], default: 'text' }),
       async (args) => {
         process.exit(await doctorCommand(process.cwd(), { format: args.format as 'text' | 'json' }));
+      }
+    )
+    .command(
+      'migrate',
+      'Preview or apply a PlanFS format migration',
+      (y) => y.option('apply', { type: 'boolean', default: false }).option('format', { type: 'string', choices: ['text', 'json'], default: 'text' }),
+      async (args) => {
+        process.exit(await migrateCommand(process.cwd(), { apply: args.apply as boolean, format: args.format as 'text' | 'json' }));
       }
     )
     .command(
