@@ -161,10 +161,8 @@ export async function ensurePlanfsStructure(
   const configPath = path.join(rootPath, '.planfs', 'planfs.json');
   try {
     await fs.access(configPath);
-    result.existing.push('.planfs/planfs.json');
   } catch {
     await fs.writeFile(configPath, '{\n  "formatVersion": 1\n}\n', 'utf8');
-    result.created.push('.planfs/planfs.json');
   }
 
   return result;
