@@ -1263,7 +1263,14 @@ describe('VS Code view refresh workspace selection', () => {
       status: 'in-progress'
     });
     await editor.refresh();
-    expect(editorPanel.webview.html).toContain('Newly refreshed task');
+    expect(editorPanel.webview.postedMessages).toContainEqual(expect.objectContaining({
+      type: 'updateEditor',
+      payload: expect.objectContaining({
+        epicBoard: expect.arrayContaining([expect.objectContaining({
+          tasks: expect.arrayContaining([expect.objectContaining({ id: 'TASK-012' })])
+        })])
+      })
+    }));
   });
 
   it('renders epic planning sections and archives epics from the structured editor', async () => {
@@ -1417,6 +1424,33 @@ describe('VS Code view refresh workspace selection', () => {
     expect(repository.tasks.get('TASK-020')?.body).toContain('```text\nproof\n```');
   });
 
+  it('keeps editor documents stable on refresh and refuses stale structured saves', async () => {
+    selectPlanFSWorkspaceFolder(firstFolder);
+    const initial = { ...createTaskTemplate('TASK-conflict', 'Original title'), updatedAt: '2026-01-01T00:00:00Z' };
+    await saveEntity(firstRoot, initial);
+
+    const editor = new EntityEditorProvider(vscode.Uri.file('/extension'));
+    await editor.open(initial.id);
+    const editorPanel = jest.mocked(vscode.window.createWebviewPanel).mock.results[0].value;
+    const document = editorPanel.webview.html;
+
+    await editor.refresh();
+    expect(editorPanel.webview.html).toBe(document);
+    expect(editorPanel.webview.postedMessages).toContainEqual(expect.objectContaining({ type: 'updateEditor' }));
+
+    await saveEntity(firstRoot, { ...initial, title: 'Changed on disk', updatedAt: '2026-01-02T00:00:00Z' });
+    await editorPanel.webview.postMessage({ type: 'draftState', dirty: true });
+    await editor.refresh();
+    expect(editorPanel.webview.postedMessages).toContainEqual(expect.objectContaining({ type: 'conflict', reason: 'changed' }));
+
+    await editorPanel.webview.postMessage({
+      type: 'save',
+      entity: { ...initial, title: 'Stale editor title' }
+    });
+    const repository = await loadRepository(firstRoot);
+    expect(repository.tasks.get(initial.id)?.title).toBe('Changed on disk');
+  });
+
   it('opens recoverable malformed tasks in the structured editor with diagnostics', async () => {
     selectPlanFSWorkspaceFolder(firstFolder);
 
@@ -1472,9 +1506,10 @@ describe('VS Code view refresh workspace selection', () => {
       }
     });
 
-    expect(editorPanel.webview.html).not.toContain('Backlog Readiness');
-    expect(editorPanel.webview.html).not.toContain('Missing priority');
-    expect(editorPanel.webview.html).not.toContain('No updates in 60 days');
+    expect(editorPanel.webview.postedMessages).toContainEqual(expect.objectContaining({
+      type: 'saved',
+      payload: expect.objectContaining({ backlogReadiness: expect.objectContaining({ needsReview: false }) })
+    }));
   });
 
   it('hides backlog readiness details for fully ready tasks', async () => {
