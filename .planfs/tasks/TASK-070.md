@@ -9,6 +9,7 @@ milestone: MILESTONE-phase-5
 dependsOn:
   - TASK-002
   - TASK-003
+  - TASK-105
 tags:
   - import
   - migration
@@ -20,7 +21,7 @@ dueDate: 2026-11-03
 refinementState: ready
 backlogOrder: 21
 createdAt: 2026-06-21T18:24:21Z
-updatedAt: 2026-07-30T22:45:41.335Z
+updatedAt: 2026-08-12T23:00:40Z
 ---
 
 Define an implementation-ready external import contract for bringing work items from CSV exports, Jira, GitLab, GitHub Issues, and other trackers into PlanFS.

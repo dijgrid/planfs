@@ -9,6 +9,7 @@ milestone: MILESTONE-phase-5
 dependsOn:
   - TASK-004
   - TASK-012
+  - TASK-105
 tags:
   - schema
   - templates
@@ -17,7 +18,7 @@ dueDate: 2026-10-14
 refinementState: ready
 backlogOrder: 10
 createdAt: 2026-06-15T00:00:00Z
-updatedAt: 2026-07-30T22:45:40.955Z
+updatedAt: 2026-08-12T23:00:40Z
 ---
 
 Let repositories extend PlanFS for their own planning domains without weakening validation or making generated Markdown opaque.

@@ -5,14 +5,15 @@ status: review
 priority: high
 assignee: justin
 createdAt: 2026-07-30T22:52:28.136Z
-updatedAt: 2026-07-30T22:57:08.754Z
+updatedAt: 2026-08-12T23:04:57.970Z
 epic: EPIC-phase-5-advanced
-milestone: MILESTONE-phase-5
+milestone: MILESTONE-v1-3
 tags:
   - vscode
   - marketplace
   - release
 refinementState: ready
+dueDate: 2026-09-30
 ---
 
 Publish the next PlanFS VS Code extension release as a stable Marketplace release rather than a Preview extension.

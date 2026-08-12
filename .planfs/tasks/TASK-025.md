@@ -8,6 +8,7 @@ epic: EPIC-large-repository-scale
 milestone: MILESTONE-phase-5
 dependsOn:
   - TASK-013
+  - TASK-104
 tags:
   - performance
   - scale
@@ -16,7 +17,7 @@ dueDate: 2026-10-28
 refinementState: ready
 backlogOrder: 30
 createdAt: 2026-06-15T00:00:00Z
-updatedAt: 2026-07-30T22:45:41.082Z
+updatedAt: 2026-08-12T23:00:40Z
 ---
 
 Keep CLI and VS Code workflows responsive in repositories containing up to 10,000 active tasks plus related planning entities.
