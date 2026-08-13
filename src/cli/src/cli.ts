@@ -21,6 +21,8 @@ import { pullRequestCommand, PullRequestAction } from './commands/pr';
 import { doctorCommand } from './commands/doctor';
 import { migrateCommand } from './commands/migrate';
 import { updateCommand } from './commands/update';
+import { filterCommand, FilterAction } from './commands/filter';
+import { historyCommand } from './commands/history';
 import pkg from '../package.json';
 
 export async function main(): Promise<void> {
@@ -222,6 +224,16 @@ export async function main(): Promise<void> {
       async (args) => process.exit(await updateCommand(process.cwd(), args.id as string, { patch: { title: args.title, status: args.status, owner: args.owner, assignee: args.assignee, priority: args.priority, targetDate: args.targetDate }, expectedUpdatedAt: args.expectedUpdatedAt as string | undefined, dryRun: args.dryRun as boolean, format: args.format as 'text' | 'json' }))
     )
     .command(
+      'filter <action>', 'Manage repository-shared saved filters',
+      (y) => y.positional('action', { choices: ['list', 'show', 'save', 'delete'] }).option('id', { type: 'string' }).option('name', { type: 'string' }).option('description', { type: 'string' }).option('criteria', { type: 'string', description: 'Filter criteria as JSON' }).option('dry-run', { type: 'boolean', default: false }).option('format', { type: 'string', choices: ['text', 'json'], default: 'text' }),
+      async (args) => process.exit(await filterCommand(process.cwd(), args.action as FilterAction, { id: args.id as string | undefined, name: args.name as string | undefined, description: args.description as string | undefined, criteria: args.criteria as string | undefined, dryRun: args.dryRun as boolean, format: args.format as 'text' | 'json' }))
+    )
+    .command(
+      'history <id>', 'Show Git history for a PlanFS entity',
+      (y) => y.positional('id', { type: 'string' }).option('format', { type: 'string', choices: ['text', 'json'], default: 'text' }),
+      async (args) => process.exit(await historyCommand(process.cwd(), args.id as string, args.format as 'text' | 'json'))
+    )
+    .command(
       'branch',
       'Show PlanFS changes on the current Git branch',
       (y) =>
@@ -353,6 +365,8 @@ export async function main(): Promise<void> {
             default: false,
             description: 'Confirm permanent archive deletion'
           })
+          .option('disposition', { type: 'string', choices: ['completed', 'cancelled', 'duplicate', 'deferred', 'superseded'], description: 'Reason for archiving unfinished work' })
+          .option('note', { type: 'string', description: 'Optional archive note' })
           .option('format', {
             type: 'string',
             choices: ['text', 'json'],
@@ -369,6 +383,8 @@ export async function main(): Promise<void> {
             dryRun: args.dryRun as boolean,
             expectedUpdatedAt: args.expectedUpdatedAt as string | undefined,
             yes: args.yes as boolean,
+            disposition: args.disposition as 'completed' | 'cancelled' | 'duplicate' | 'deferred' | 'superseded' | undefined,
+            note: args.note as string | undefined,
             format: args.format as 'text' | 'json'
           }
         );

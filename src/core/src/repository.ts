@@ -256,6 +256,8 @@ export function generateEntityContent(entity: Entity): string {
 export interface ArchiveEntityOptions {
   includeChildren?: boolean;
   now?: Date;
+  disposition?: NonNullable<Entity['archive']>['disposition'];
+  note?: string;
 }
 
 export interface ArchiveEntityResult {
@@ -283,6 +285,9 @@ export async function archiveEntity(
   if (!entity) {
     throw new Error(`Active task or epic not found: ${entityId}`);
   }
+  if (entity.status !== 'done' && !options.disposition) {
+    throw new Error(`Archiving unfinished ${entity.type} ${entity.id} requires an explicit disposition`);
+  }
 
   const toArchive: Entity[] = [entity];
   if (entity.type === 'epic' && options.includeChildren) {
@@ -295,7 +300,7 @@ export async function archiveEntity(
   const archivedAt = (options.now ?? new Date()).toISOString();
   for (const current of toArchive) {
     const originalPath = path.relative(rootPath, current.filePath);
-    const archive = { archivedAt, originalPath };
+    const archive = { archivedAt, originalPath, ...(options.disposition ? { disposition: options.disposition } : {}), ...(options.note ? { note: options.note } : {}) };
     const archivedEntity = {
       ...current,
       archive,

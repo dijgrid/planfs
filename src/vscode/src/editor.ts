@@ -108,7 +108,7 @@ export class EntityEditorProvider {
 
       const panel = vscode.window.createWebviewPanel(
         'planfsEntityEditor',
-        `PlanFS Editor: ${entity.id}`,
+        `PlanFS Editor: ${entity.id} — ${workspaceFolder.name}`,
         vscode.ViewColumn.One,
         {
           enableScripts: true,
@@ -378,7 +378,9 @@ export class EntityEditorProvider {
         }
       }
 
-      await archiveEntity(workspaceFolder.uri.fsPath, entity.id, { includeChildren });
+      const disposition = entity.status === 'done' ? 'completed' : await pickArchiveDisposition(entity.id);
+      if (!disposition) return;
+      await archiveEntity(workspaceFolder.uri.fsPath, entity.id, { includeChildren, disposition });
       panel.webview.html = renderMessage(`Archived ${entity.id}`);
       vscode.window.showInformationMessage(`Archived ${entity.id}`);
       await vscode.commands.executeCommand('planfs.refreshExplorer');
@@ -389,6 +391,14 @@ export class EntityEditorProvider {
     }
   }
 
+}
+
+async function pickArchiveDisposition(entityId: string): Promise<'cancelled' | 'duplicate' | 'deferred' | 'superseded' | undefined> {
+  const selected = await vscode.window.showQuickPick([
+    { label: 'Cancelled', value: 'cancelled' as const }, { label: 'Duplicate', value: 'duplicate' as const },
+    { label: 'Deferred', value: 'deferred' as const }, { label: 'Superseded', value: 'superseded' as const }
+  ], { title: `Why archive unfinished ${entityId}?`, placeHolder: 'Choose an archive disposition' });
+  return selected?.value;
 }
 
 function renderMessage(message: string): string {

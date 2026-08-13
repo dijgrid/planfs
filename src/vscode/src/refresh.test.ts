@@ -289,7 +289,7 @@ describe('VS Code view refresh workspace selection', () => {
       ...createTaskTemplate('TASK-071', 'Archived task'),
       epic: epic.id
     });
-    await archiveEntity(firstRoot, epic.id, { includeChildren: true });
+    await archiveEntity(firstRoot, epic.id, { includeChildren: true, disposition: 'deferred' });
 
     const archive = new ArchiveProvider(vscode.Uri.file('/extension'));
     await archive.open();
@@ -307,7 +307,7 @@ describe('VS Code view refresh workspace selection', () => {
   it('refreshes open views through payload messages without replacing their documents', async () => {
     const archived = createTaskTemplate('TASK-refresh-archive', 'Archived refresh task');
     await saveEntity(firstRoot, archived);
-    await archiveEntity(firstRoot, archived.id);
+    await archiveEntity(firstRoot, archived.id, { disposition: 'deferred' });
 
     const backlog = new BacklogProvider(vscode.Uri.file('/extension'), new PlanFSUiPreferences(new TestMemento()));
     const archive = new ArchiveProvider(vscode.Uri.file('/extension'));
@@ -1319,6 +1319,7 @@ describe('VS Code view refresh workspace selection', () => {
     expect(editorPanel.webview.html).toContain('Questions');
     expect(editorPanel.webview.html).toContain('Archive Epic');
     jest.mocked(vscode.window.showWarningMessage).mockResolvedValueOnce('Archive epic only' as never);
+    jest.mocked(vscode.window.showQuickPick).mockResolvedValueOnce({ value: 'deferred' } as never);
 
     await editorPanel.webview.postMessage({
       type: 'archiveEntity'
@@ -1542,6 +1543,7 @@ describe('VS Code view refresh workspace selection', () => {
     const editorPanel = jest.mocked(vscode.window.createWebviewPanel).mock.results[0].value;
     expect(editorPanel.webview.html).toContain('Archive Task');
     jest.mocked(vscode.window.showWarningMessage).mockResolvedValueOnce('Archive' as never);
+    jest.mocked(vscode.window.showQuickPick).mockResolvedValueOnce({ value: 'deferred' } as never);
 
     await editorPanel.webview.postMessage({
       type: 'archiveEntity'

@@ -21,6 +21,8 @@ export interface ArchiveOptions {
   dryRun?: boolean;
   expectedUpdatedAt?: string;
   yes?: boolean;
+  disposition?: 'completed' | 'cancelled' | 'duplicate' | 'deferred' | 'superseded';
+  note?: string;
   format?: 'text' | 'json';
 }
 
@@ -66,7 +68,8 @@ async function listArchive(rootPath: string, options: ArchiveOptions): Promise<n
   console.log(`\nARCHIVE (${archived.length} items)\n`);
   for (const entity of archived) {
     console.log(`${entity.id} ${entity.title}`);
-    console.log(`  ${entity.type} | archived ${entity.archive?.archivedAt ?? 'unknown'}`);
+    console.log(`  ${entity.type} | ${entity.archive?.disposition ?? 'legacy archive'} | archived ${entity.archive?.archivedAt ?? 'unknown'}`);
+    if (entity.archive?.note) console.log(`  Note: ${entity.archive.note}`);
   }
   return 0;
 }
@@ -88,6 +91,8 @@ async function archiveItem(rootPath: string, options: ArchiveOptions): Promise<n
 
   const preview = previewArchiveEntities(rootPath, entity, {
     includeChildren: options.includeChildren,
+    disposition: options.disposition,
+    note: options.note,
     now: new Date(),
     childTasks: Array.from(repository.tasks.values()).filter(task => task.epic === entity.id)
   });
@@ -99,6 +104,7 @@ async function archiveItem(rootPath: string, options: ArchiveOptions): Promise<n
 
   const result = await archiveEntity(rootPath, options.id, {
     includeChildren: options.includeChildren
+    , disposition: options.disposition, note: options.note
   });
   printArchiveResult(result.archived, false, options.format);
   return 0;
@@ -133,7 +139,7 @@ async function deleteItem(rootPath: string, options: ArchiveOptions): Promise<nu
 function previewArchiveEntities(
   rootPath: string,
   entity: Entity,
-  options: { includeChildren?: boolean; now: Date; childTasks: Entity[] }
+  options: { includeChildren?: boolean; now: Date; childTasks: Entity[]; disposition?: ArchiveOptions['disposition']; note?: string }
 ): { archived: Entity[]; previews: Array<{ id: string; preview: string }> } {
   const toArchive = [entity];
   if (entity.type === 'epic' && options.includeChildren) {
@@ -144,7 +150,9 @@ function previewArchiveEntities(
   const archived = toArchive.map(current => {
     const archive = {
       archivedAt,
-      originalPath: path.relative(rootPath, current.filePath)
+      originalPath: path.relative(rootPath, current.filePath),
+      ...(options.disposition ? { disposition: options.disposition } : {}),
+      ...(options.note ? { note: options.note } : {})
     };
     return {
       ...current,

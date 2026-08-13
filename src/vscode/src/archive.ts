@@ -30,6 +30,8 @@ interface ArchivePayload {
     status?: string;
     archivedAt?: string;
     originalPath?: string;
+    disposition?: string;
+    note?: string;
     body: string;
   }>;
   helpTopics: HelpTopic[];
@@ -56,7 +58,7 @@ export class ArchiveProvider {
 
     this.panel = vscode.window.createWebviewPanel(
       'planfsArchive',
-      'PlanFS Archive',
+      `PlanFS Archive — ${workspaceFolder.name}`,
       vscode.ViewColumn.One,
       {
         enableScripts: true,
@@ -103,6 +105,8 @@ export class ArchiveProvider {
       status: String(entity.status ?? ''),
       archivedAt: entity.archive?.archivedAt,
       originalPath: entity.archive?.originalPath,
+      disposition: entity.archive?.disposition,
+      note: entity.archive?.note,
       body: entity.body
     }));
 
@@ -201,8 +205,18 @@ export async function archiveExplorerItem(item: { entity?: Entity } | undefined)
     }
   }
 
-  const result = await archiveEntity(workspaceFolder.uri.fsPath, entity.id, { includeChildren });
+  const disposition = entity.status === 'done' ? 'completed' : await pickArchiveDisposition(entity.id);
+  if (!disposition) return;
+  const result = await archiveEntity(workspaceFolder.uri.fsPath, entity.id, { includeChildren, disposition });
   vscode.window.showInformationMessage(`Archived ${result.archived.length} item${result.archived.length === 1 ? '' : 's'}`);
+}
+
+async function pickArchiveDisposition(entityId: string): Promise<'cancelled' | 'duplicate' | 'deferred' | 'superseded' | undefined> {
+  const selected = await vscode.window.showQuickPick([
+    { label: 'Cancelled', value: 'cancelled' as const }, { label: 'Duplicate', value: 'duplicate' as const },
+    { label: 'Deferred', value: 'deferred' as const }, { label: 'Superseded', value: 'superseded' as const }
+  ], { title: `Why archive unfinished ${entityId}?`, placeHolder: 'Choose an archive disposition' });
+  return selected?.value;
 }
 
 function renderArchiveHtml(payload: ArchivePayload): string {
@@ -286,7 +300,7 @@ function renderArchiveHtml(payload: ArchivePayload): string {
     function renderItem(item) {
       return '<section class="card">' +
         '<div class="head"><div><h2>' + escapeHtml(item.id) + ' ' + escapeHtml(item.title) + '</h2>' +
-        '<div class="meta">' + [item.type, item.status, item.archivedAt ? 'archived ' + item.archivedAt : '', item.originalPath].filter(Boolean).map(escapeHtml).join(' | ') + '</div></div>' +
+        '<div class="meta">' + [item.type, item.status, item.disposition ? 'disposition: ' + item.disposition : 'legacy archive', item.archivedAt ? 'archived ' + item.archivedAt : '', item.originalPath].filter(Boolean).map(escapeHtml).join(' | ') + '</div>' + (item.note ? '<div class="meta">' + escapeHtml(item.note) + '</div>' : '') + '</div>' +
         '<div class="actions"><button type="button" data-restore="' + escapeHtml(item.id) + '">Restore</button>' +
         '<button type="button" class="secondary" data-open-raw="' + escapeHtml(item.id) + '">Open Markdown</button>' +
         '<button type="button" class="secondary" data-delete="' + escapeHtml(item.id) + '">Delete</button></div></div>' +
