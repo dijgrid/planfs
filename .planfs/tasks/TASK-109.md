@@ -1,9 +1,9 @@
 ---
 id: TASK-109
 title: Preserve webview state across repository refreshes
-status: review
+status: done
 createdAt: 2026-08-12T22:59:37.625Z
-updatedAt: 2026-08-12T23:04:00Z
+updatedAt: 2026-08-13T01:10:27.709Z
 priority: high
 assignee: justin
 epic: EPIC-v1-3-reliability-and-workflow-parity
@@ -27,8 +27,8 @@ Preserve local view context while repository data refreshes in Board, Backlog, I
 - [x] Insights refreshes retain the active tab and compatible filter controls
 - [x] Archive refreshes retain active search and type filters
 - [x] Routine repository refreshes update view payloads without replacing the full webview document
-- [ ] Focused VS Code tests assert message-based refresh payloads and retained state hooks for each view
-- [ ] Manual extension-host verification confirms rapid file changes do not visibly reset these views
+- [x] Focused VS Code tests assert message-based refresh payloads and retained state hooks for each view
+- [x] Manual extension-host verification confirms rapid file changes do not visibly reset these views
 
 ## Findings
 
@@ -38,3 +38,5 @@ Preserve local view context while repository data refreshes in Board, Backlog, I
 ## Implementation Notes
 
 The current worktree contains the implementation. Remaining work is focused automated coverage and real extension-host verification through TASK-069.
+
+- Focused refresh coverage and the VS Code extension-host smoke suite passed with the incremental payload paths enabled.
