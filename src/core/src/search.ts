@@ -25,6 +25,33 @@ export interface SavedFilter {
   criteria: EntityFilterCriteria;
 }
 
+export function validateSavedFilter(filter: SavedFilter): SavedFilter {
+  if (!/^[a-z0-9][a-z0-9-]*$/i.test(filter.id)) throw new Error('Filter id must use letters, numbers, and hyphens only');
+  if (!filter.name.trim()) throw new Error('Filter name is required');
+  const criteria = filter.criteria ?? {};
+  const allowed = new Set(['query', 'status', 'assignee', 'epic', 'milestone', 'priority', 'refinementState', 'tags']);
+  for (const key of Object.keys(criteria)) if (!allowed.has(key)) throw new Error(`Unsupported saved-filter criterion: ${key}`);
+  if (criteria.status && !([criteria.status].flat().every(value => ['todo', 'in-progress', 'review', 'done'].includes(value)))) throw new Error('Saved filter status is invalid');
+  return { id: filter.id, name: filter.name.trim(), ...(filter.description?.trim() ? { description: filter.description.trim() } : {}), criteria };
+}
+
+export async function saveSavedFilter(rootPath: string, filter: SavedFilter, expectedId?: string): Promise<SavedFilter> {
+  const normalized = validateSavedFilter(filter);
+  if (expectedId && expectedId !== normalized.id) {
+    const source = path.join(rootPath, '.planfs', 'filters', `${expectedId}.json`);
+    await fs.rename(source, path.join(rootPath, '.planfs', 'filters', `${normalized.id}.json`));
+  }
+  const filePath = path.join(rootPath, '.planfs', 'filters', `${normalized.id}.json`);
+  await fs.mkdir(path.dirname(filePath), { recursive: true });
+  await fs.writeFile(filePath, JSON.stringify(normalized, null, 2) + '\n', 'utf8');
+  return normalized;
+}
+
+export async function deleteSavedFilter(rootPath: string, id: string): Promise<void> {
+  if (!/^[a-z0-9][a-z0-9-]*$/i.test(id)) throw new Error('Filter id is invalid');
+  await fs.unlink(path.join(rootPath, '.planfs', 'filters', `${id}.json`));
+}
+
 export function searchEntities(
   repository: Repository,
   criteria: EntityFilterCriteria = {}

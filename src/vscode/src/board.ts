@@ -14,6 +14,8 @@ import {
   searchTasks,
   SavedFilter,
   saveEntity,
+  saveSavedFilter,
+  deleteSavedFilter,
   Task,
   TaskReadiness,
   RefinementState,
@@ -129,7 +131,7 @@ export class BoardProvider {
 
     this.panel = vscode.window.createWebviewPanel(
       'planfsBoard',
-      'PlanFS Board',
+      `PlanFS Board — ${workspaceFolder.name}`,
       vscode.ViewColumn.One,
       {
         enableScripts: true,
@@ -179,6 +181,10 @@ export class BoardProvider {
       if (message?.type === 'createTask') {
         await this.createTask(message.context as Partial<CreateTaskContext>);
       }
+      if (message?.type === 'saveCurrentFilter') {
+        await this.saveCurrentFilter(message.criteria as Record<string, unknown>);
+      }
+      if (message?.type === 'manageSavedFilter') await this.manageSavedFilter(String(message.id));
 
       if (message?.type === 'bulkUpdateTasks') {
         await this.bulkUpdateTasks(message as Partial<BulkUpdateRequest>);
@@ -192,6 +198,33 @@ export class BoardProvider {
     });
 
     await this.render({ replaceHtml: true });
+  }
+
+  private async saveCurrentFilter(criteria: Record<string, unknown>): Promise<void> {
+    const workspaceFolder = getPlanFSWorkspaceFolder();
+    if (!workspaceFolder) return;
+    const name = await vscode.window.showInputBox({ prompt: 'Name this shared board filter' });
+    if (!name) return;
+    const id = name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+    await saveSavedFilter(workspaceFolder.uri.fsPath, { id, name, criteria: criteria as never });
+    await this.render();
+  }
+
+  private async manageSavedFilter(id: string): Promise<void> {
+    const workspaceFolder = getPlanFSWorkspaceFolder();
+    if (!workspaceFolder || !id) return;
+    const filter = (await loadSavedFilters(workspaceFolder.uri.fsPath)).find(item => item.id === id);
+    if (!filter) return;
+    const action = await vscode.window.showQuickPick(['Rename', 'Duplicate', 'Delete'], { title: `Manage shared filter: ${filter.name}` });
+    if (action === 'Delete') await deleteSavedFilter(workspaceFolder.uri.fsPath, id);
+    if (action === 'Rename' || action === 'Duplicate') {
+      const name = await vscode.window.showInputBox({ prompt: `${action} shared filter`, value: action === 'Rename' ? filter.name : `${filter.name} copy` });
+      if (name) {
+        const nextId = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+        await saveSavedFilter(workspaceFolder.uri.fsPath, { ...filter, id: nextId, name }, action === 'Rename' ? id : undefined);
+      }
+    }
+    await this.render();
   }
 
   async refresh(): Promise<void> {
@@ -1507,6 +1540,8 @@ function renderBoard(
       <select id="savedFilter" aria-label="Saved filter">
         <option value="">All tasks</option>
       </select>
+      <button type="button" id="saveFilter">Save filter</button>
+      <button type="button" id="manageFilter">Manage filter</button>
       <select id="milestoneFocus" aria-label="Milestone focus">
         <option value="">All milestones</option>
       </select>
@@ -1642,6 +1677,13 @@ function renderBoard(
       render();
     });
     savedFilterInput.addEventListener('change', () => { persistBoardState(); render(); });
+    document.getElementById('saveFilter').addEventListener('click', () => {
+      const criteria = {};
+      if (filterInput.value.trim()) criteria.query = filterInput.value.trim();
+      if (milestoneFocus) criteria.milestone = milestoneFocus;
+      vscode.postMessage({ type: 'saveCurrentFilter', criteria });
+    });
+    document.getElementById('manageFilter').addEventListener('click', () => vscode.postMessage({ type: 'manageSavedFilter', id: savedFilterInput.value }));
     milestoneFocusInput.addEventListener('change', () => {
       milestoneFocus = milestoneFocusInput.value;
       persistBoardState();

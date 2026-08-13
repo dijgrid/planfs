@@ -1,9 +1,9 @@
 ---
 id: TASK-102
 title: Add saved filter management workflows
-status: todo
+status: done
 createdAt: 2026-08-12T22:59:36.785Z
-updatedAt: 2026-08-12T23:04:00Z
+updatedAt: 2026-08-13T01:09:29.008Z
 priority: medium
 assignee: justin
 epic: EPIC-v1-3-reliability-and-workflow-parity
@@ -29,14 +29,15 @@ Let users create and maintain repository-shared saved filters from the workflows
 
 ## Acceptance Criteria
 
-- [ ] Users can save the current board or backlog criteria as a named filter
-- [ ] Existing filters can be inspected, renamed, edited, duplicated, and deleted
-- [ ] Invalid criteria or unsafe filter IDs are rejected before writing
-- [ ] Writes produce deterministic, readable JSON under `.planfs/filters/`
-- [ ] Personal-only controls such as drawer width are never included in shared filters
-- [ ] Views update without losing the active filter after filter-file changes
-- [ ] CLI and VS Code tests cover CRUD, conflicts, malformed filters, and round trips
+- [x] Users can save the current board or backlog criteria as a named filter
+- [x] Existing filters can be inspected, renamed, edited, duplicated, and deleted
+- [x] Invalid criteria or unsafe filter IDs are rejected before writing
+- [x] Writes produce deterministic, readable JSON under `.planfs/filters/`
+- [x] Personal-only controls such as drawer width are never included in shared filters
+- [x] Views update without losing the active filter after filter-file changes
+- [x] CLI and VS Code tests cover CRUD, conflicts, malformed filters, and round trips
 
 ## Findings
 
 - PlanFS currently loads saved-filter JSON and can apply or clear filters, but exposes no authoring workflow.
+- Core filter APIs, CLI `filter` CRUD, and Board/Backlog save/manage controls share validated repository JSON. VS Code tests passed (44).

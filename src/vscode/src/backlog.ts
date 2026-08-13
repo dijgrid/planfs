@@ -13,6 +13,8 @@ import {
   RefinementState,
   reviewBacklog,
   saveEntity,
+  saveSavedFilter,
+  deleteSavedFilter,
   Task,
   TaskPriority,
   validateRepositoryState
@@ -62,7 +64,7 @@ export class BacklogProvider {
 
     this.panel = vscode.window.createWebviewPanel(
       'planfsBacklog',
-      'PlanFS Backlog',
+      `PlanFS Backlog — ${workspaceFolder.name}`,
       vscode.ViewColumn.One,
       {
         enableScripts: true,
@@ -94,9 +96,40 @@ export class BacklogProvider {
       if (message?.type === 'updateUiPreference') {
         await this.updateUiPreference(String(message.key), message.value);
       }
+      if (message?.type === 'saveCurrentFilter') {
+        await this.saveCurrentFilter(message.criteria as Record<string, unknown>);
+      }
+      if (message?.type === 'manageSavedFilter') await this.manageSavedFilter(String(message.id));
       await handleHelpMessage(this.extensionUri, message);
     });
 
+    await this.render();
+  }
+
+  private async saveCurrentFilter(criteria: Record<string, unknown>): Promise<void> {
+    const workspaceFolder = getPlanFSWorkspaceFolder();
+    if (!workspaceFolder) return;
+    const name = await vscode.window.showInputBox({ prompt: 'Name this shared backlog filter' });
+    if (!name) return;
+    const id = name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+    await saveSavedFilter(workspaceFolder.uri.fsPath, { id, name, criteria: criteria as never });
+    await this.render();
+  }
+
+  private async manageSavedFilter(id: string): Promise<void> {
+    const workspaceFolder = getPlanFSWorkspaceFolder();
+    if (!workspaceFolder || !id) return;
+    const filter = (await loadSavedFilters(workspaceFolder.uri.fsPath)).find(item => item.id === id);
+    if (!filter) return;
+    const action = await vscode.window.showQuickPick(['Rename', 'Duplicate', 'Delete'], { title: `Manage shared filter: ${filter.name}` });
+    if (action === 'Delete') await deleteSavedFilter(workspaceFolder.uri.fsPath, id);
+    if (action === 'Rename' || action === 'Duplicate') {
+      const name = await vscode.window.showInputBox({ prompt: `${action} shared filter`, value: action === 'Rename' ? filter.name : `${filter.name} copy` });
+      if (name) {
+        const nextId = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+        await saveSavedFilter(workspaceFolder.uri.fsPath, { ...filter, id: nextId, name }, action === 'Rename' ? id : undefined);
+      }
+    }
     await this.render();
   }
 
@@ -421,6 +454,8 @@ function renderBacklogHtml(payload: BacklogHtmlPayload): string {
     <div class="filterGroup" aria-label="Backlog filters">
       <input id="filter" type="search" placeholder="Filter backlog" aria-label="Filter backlog">
       <select id="savedFilter" aria-label="Saved filter"></select>
+      <button type="button" id="saveFilter">Save filter</button>
+      <button type="button" id="manageFilter">Manage filter</button>
       <select id="groupBy" aria-label="Group backlog">
         <option value="">Backlog order</option>
         <option value="refinementState">Group by refinement</option>
@@ -472,6 +507,12 @@ function renderBacklogHtml(payload: BacklogHtmlPayload): string {
     });
     filter.addEventListener('input', () => { query = filter.value.toLowerCase(); persistUiState(); render(); });
     savedFilter.addEventListener('change', () => { savedFilterId = savedFilter.value; persistUiState(); render(); });
+    document.getElementById('saveFilter').addEventListener('click', () => {
+      const criteria = {};
+      if (query) criteria.query = query;
+      vscode.postMessage({ type: 'saveCurrentFilter', criteria });
+    });
+    document.getElementById('manageFilter').addEventListener('click', () => vscode.postMessage({ type: 'manageSavedFilter', id: savedFilterId }));
     groupByInput.addEventListener('change', () => { groupBy = groupByInput.value; persistUiState(); render(); });
     window.addEventListener('message', event => {
       if (event.data?.type !== 'updateBacklog') return;
