@@ -18,5 +18,6 @@ export * from './backlog';
 export * from './bulk';
 export * from './pull-request';
 export * from './ai';
+export * from './task-update';
 export * from './format';
 export * from './history';

@@ -2,10 +2,12 @@ import { promises as fs } from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import {
-  buildPlanningSummary,
+  buildPlanningSummary
+} from './ai';
+import {
   parseTaskUpdatePatch,
   updateTaskPlanning
-} from './ai';
+} from './task-update';
 import { ensurePlanfsStructure } from './files';
 import {
   createTaskTemplate,
@@ -149,6 +151,64 @@ describe('AI planning helpers', () => {
       })).rejects.toThrow('TASK-001 changed since preview');
 
       expect((await loadRepository(rootPath)).tasks.get('TASK-001')?.status).toBe('todo');
+    } finally {
+      await fs.rm(rootPath, { recursive: true, force: true });
+    }
+  });
+
+  it('updates titles and removes cleared optional metadata', async () => {
+    const rootPath = await fs.mkdtemp(path.join(os.tmpdir(), 'planfs-task-update-fields-'));
+    try {
+      await ensurePlanfsStructure(rootPath);
+      await saveEntity(rootPath, {
+        ...createTaskTemplate('TASK-001', 'Original title'),
+        priority: 'high',
+        tags: ['cleanup']
+      });
+      const repository = await loadRepository(rootPath);
+
+      const result = await updateTaskPlanning(rootPath, repository, {
+        id: 'TASK-001',
+        patch: parseTaskUpdatePatch({
+          title: 'Updated title',
+          priority: '',
+          tags: []
+        }),
+        now
+      });
+
+      expect(result.changedFields).toEqual(['title', 'priority', 'tags']);
+      const updated = (await loadRepository(rootPath)).tasks.get('TASK-001');
+      expect(updated?.title).toBe('Updated title');
+      expect(updated?.priority).toBeUndefined();
+      expect(updated?.tags).toBeUndefined();
+      const markdown = await fs.readFile(path.join(rootPath, '.planfs', 'tasks', 'TASK-001.md'), 'utf8');
+      expect(markdown).not.toContain('priority:');
+      expect(markdown).not.toContain('tags:');
+    } finally {
+      await fs.rm(rootPath, { recursive: true, force: true });
+    }
+  });
+
+  it('supports task-scoped validation when unrelated repository errors already exist', async () => {
+    const rootPath = await fs.mkdtemp(path.join(os.tmpdir(), 'planfs-task-update-scope-'));
+    try {
+      await ensurePlanfsStructure(rootPath);
+      await saveEntity(rootPath, createTaskTemplate('TASK-001', 'Update me'));
+      await saveEntity(rootPath, {
+        ...createTaskTemplate('TASK-002', 'Unrelated invalid task'),
+        status: 'active' as never
+      });
+      const repository = await loadRepository(rootPath);
+
+      await updateTaskPlanning(rootPath, repository, {
+        id: 'TASK-001',
+        patch: { assignee: 'PlanFS Test' },
+        validationScope: 'task',
+        now
+      });
+
+      expect((await loadRepository(rootPath)).tasks.get('TASK-001')?.assignee).toBe('PlanFS Test');
     } finally {
       await fs.rm(rootPath, { recursive: true, force: true });
     }

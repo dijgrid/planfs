@@ -295,6 +295,49 @@ describe('VS Code view refresh workspace selection', () => {
     );
   });
 
+  it('refuses stale backlog form saves without overwriting newer task changes', async () => {
+    await saveEntity(firstRoot, {
+      ...createTaskTemplate('TASK-050', 'Original backlog task'),
+      assignee: 'Original Owner',
+      updatedAt: '2026-07-01T00:00:00.000Z'
+    });
+
+    const backlog = new BacklogProvider(
+      vscode.Uri.file('/extension'),
+      new PlanFSUiPreferences(new TestMemento())
+    );
+    await backlog.open();
+    const backlogPanel = jest.mocked(vscode.window.createWebviewPanel).mock.results[0].value;
+
+    expect(backlogPanel.webview.html).toContain('expectedUpdatedAt: task.updatedAt ?? null');
+    expect(backlogPanel.webview.html).toContain('2026-07-01T00:00:00.000Z');
+
+    const repository = await loadRepository(firstRoot);
+    const newerTask = repository.tasks.get('TASK-050')!;
+    newerTask.title = 'Newer Markdown title';
+    newerTask.assignee = 'New Owner';
+    newerTask.updatedAt = '2026-07-02T00:00:00.000Z';
+    await saveEntity(firstRoot, newerTask);
+
+    await backlogPanel.webview.postMessage({
+      type: 'updateBacklogTask',
+      task: {
+        id: 'TASK-050',
+        expectedUpdatedAt: '2026-07-01T00:00:00.000Z',
+        title: 'Stale form title',
+        assignee: 'Stale Owner'
+      }
+    });
+
+    const updated = (await loadRepository(firstRoot)).tasks.get('TASK-050');
+    expect(updated?.title).toBe('Newer Markdown title');
+    expect(updated?.assignee).toBe('New Owner');
+    expect(updated?.updatedAt).toBe('2026-07-02T00:00:00.000Z');
+    expect(vscode.window.showErrorMessage).toHaveBeenCalledWith(
+      expect.stringContaining('Backlog update conflict')
+    );
+  });
+
   it('renders archived tasks and epics in a dedicated archive view', async () => {
     const epic = createEpicTemplate('EPIC-archive', 'Archived epic');
     await saveEntity(firstRoot, epic);

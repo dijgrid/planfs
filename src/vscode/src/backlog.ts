@@ -10,14 +10,14 @@ import {
   listBacklogTasks,
   loadRepository,
   loadSavedFilters,
+  parseTaskUpdatePatch,
   RefinementState,
   reviewBacklog,
   saveEntity,
   saveSavedFilter,
   deleteSavedFilter,
-  Task,
   TaskPriority,
-  validateRepositoryState
+  updateTask
 } from 'planfs-core';
 import {
   createHelpTopics,
@@ -170,6 +170,7 @@ export class BacklogProvider {
       milestone: task.milestone,
       tags: task.tags,
       dueDate: task.dueDate,
+      updatedAt: task.updatedAt,
       body: task.body,
       sections: extractMarkdownSections(task.body, ['Acceptance Criteria', 'Questions', 'Findings']),
       needsReview: reviewIds.has(task.id)
@@ -232,27 +233,19 @@ export class BacklogProvider {
       return;
     }
 
-    const repository = await loadRepository(workspaceFolder.uri.fsPath);
-    const task = repository.tasks.get(taskId);
-    if (!task) {
-      vscode.window.showErrorMessage(`Task not found: ${taskId}`);
-      return;
+    try {
+      const repository = await loadRepository(workspaceFolder.uri.fsPath);
+      await updateTask(workspaceFolder.uri.fsPath, repository, {
+        id: taskId,
+        patch: { refinementState },
+        validationScope: 'task'
+      });
+      await this.render();
+    } catch (error) {
+      vscode.window.showErrorMessage(
+        `Backlog update blocked: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
-
-    task.refinementState = refinementState;
-    task.updatedAt = new Date().toISOString();
-    const validationRepository = {
-      ...repository,
-      tasks: new Map(repository.tasks).set(task.id, task)
-    };
-    const error = getBlockingTaskValidationError(validationRepository, task.id);
-    if (error) {
-      vscode.window.showErrorMessage(`Backlog update blocked by validation: ${error.message}`);
-      return;
-    }
-
-    await saveEntity(workspaceFolder.uri.fsPath, task);
-    await this.render();
   }
 
   private async updateBacklogTask(edited: BacklogTaskUpdate): Promise<void> {
@@ -261,39 +254,35 @@ export class BacklogProvider {
       return;
     }
 
-    const repository = await loadRepository(workspaceFolder.uri.fsPath);
-    const current = repository.tasks.get(String(edited.id));
-    if (!current) {
-      vscode.window.showErrorMessage(`Task not found: ${String(edited.id)}`);
-      return;
+    try {
+      const repository = await loadRepository(workspaceFolder.uri.fsPath);
+      const patch = parseTaskUpdatePatch({
+        title: edited.title,
+        status: edited.status,
+        priority: edited.priority,
+        assignee: edited.assignee,
+        refinementState: edited.refinementState,
+        epic: edited.epic,
+        milestone: edited.milestone,
+        tags: edited.tags,
+        dueDate: edited.dueDate === undefined ? undefined : normalizeDueDate(edited.dueDate)
+      });
+      await updateTask(workspaceFolder.uri.fsPath, repository, {
+        id: String(edited.id),
+        patch,
+        expectedUpdatedAt: edited.expectedUpdatedAt,
+        validationScope: 'task'
+      });
+      await this.render();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      vscode.window.showErrorMessage(
+        message.startsWith('Update conflict:')
+          ? `Backlog update conflict: ${message.replace('Update conflict: ', '')}. Reloaded the latest task.`
+          : `Backlog update blocked: ${message.replace('Update failed validation: ', '')}`
+      );
+      await this.render();
     }
-
-    const task = removeEmptyTaskFields({
-      ...current,
-      title: String(edited.title ?? current.title),
-      status: normalizeTaskStatus(edited.status, current.status),
-      priority: normalizePriority(edited.priority),
-      assignee: normalizeOptionalString(edited.assignee),
-      refinementState: normalizeRefinementState(edited.refinementState, current.refinementState ?? 'ready'),
-      epic: normalizeOptionalString(edited.epic),
-      milestone: normalizeOptionalString(edited.milestone),
-      tags: normalizeTags(edited.tags),
-      dueDate: normalizeDueDate(edited.dueDate),
-      updatedAt: new Date().toISOString()
-    });
-
-    const validationRepository = {
-      ...repository,
-      tasks: new Map(repository.tasks).set(task.id, task)
-    };
-    const error = getBlockingTaskValidationError(validationRepository, task.id);
-    if (error) {
-      vscode.window.showErrorMessage(`Backlog update blocked by validation: ${error.message}`);
-      return;
-    }
-
-    await saveEntity(workspaceFolder.uri.fsPath, task);
-    await this.render();
   }
 
   private async openRawTask(taskId: string): Promise<void> {
@@ -337,6 +326,7 @@ export class BacklogProvider {
 
 interface BacklogTaskUpdate {
   id: string;
+  expectedUpdatedAt?: string | null;
   title?: string;
   status?: string;
   priority?: string;
@@ -360,6 +350,7 @@ interface BacklogHtmlPayload {
     milestone?: string;
     tags?: string[];
     dueDate?: string;
+    updatedAt?: string;
     body: string;
     sections: MarkdownSection[];
     needsReview: boolean;
@@ -628,7 +619,7 @@ function renderBacklogHtml(payload: BacklogHtmlPayload): string {
         save.disabled = false;
       });
       document.getElementById('saveTask').addEventListener('click', () => {
-        const edited = { id: task.id };
+        const edited = { id: task.id, expectedUpdatedAt: task.updatedAt ?? null };
         for (const element of form.elements) {
           if (element.name) {
             edited[element.name] = element.value;
@@ -697,41 +688,6 @@ function renderBacklogHtml(payload: BacklogHtmlPayload): string {
 </html>`;
 }
 
-function normalizeTaskStatus(value: unknown, fallback: Task['status']): Task['status'] {
-  const status = normalizeStatusValue(value);
-  if (status) {
-    return status;
-  }
-
-  return normalizeStatusValue(fallback) ?? 'todo';
-}
-
-function normalizeStatusValue(value: unknown): Task['status'] | undefined {
-  const text = String(value ?? '').trim().toLowerCase();
-  const aliases: Record<string, Task['status']> = {
-    todo: 'todo',
-    'to do': 'todo',
-    'in-progress': 'in-progress',
-    'in progress': 'in-progress',
-    review: 'review',
-    done: 'done',
-    completed: 'done'
-  };
-  return aliases[text];
-}
-
-function normalizePriority(value: unknown): TaskPriority | undefined {
-  return ['low', 'medium', 'high', 'critical'].includes(String(value))
-    ? String(value) as TaskPriority
-    : undefined;
-}
-
-function normalizeRefinementState(value: unknown, fallback: RefinementState): RefinementState {
-  return REFINEMENT_STATES.includes(String(value) as RefinementState)
-    ? String(value) as RefinementState
-    : fallback;
-}
-
 function normalizeOptionalString(value: unknown): string | undefined {
   const text = String(value ?? '').trim();
   return text || undefined;
@@ -749,37 +705,6 @@ function normalizeDueDate(value: unknown): string | undefined {
 
   const date = new Date(text);
   return Number.isNaN(date.getTime()) ? text : date.toISOString();
-}
-
-function getBlockingTaskValidationError(
-  repository: Parameters<typeof validateRepositoryState>[0],
-  taskId: string
-) {
-  return validateRepositoryState(repository).errors.find(error =>
-    error.severity === 'error' && error.id === taskId
-  );
-}
-
-function normalizeTags(value: string[] | string | undefined): string[] | undefined {
-  const tags = Array.isArray(value)
-    ? value
-    : String(value ?? '').split(',');
-  const normalized = tags.map(tag => tag.trim()).filter(Boolean);
-  return normalized.length > 0 ? normalized : undefined;
-}
-
-function removeEmptyTaskFields(task: Task): Task {
-  const copy = { ...task } as Record<string, unknown>;
-  for (const [key, value] of Object.entries(copy)) {
-    if (
-      value === '' ||
-      (Array.isArray(value) && value.length === 0) ||
-      (typeof value === 'object' && value !== null && Object.keys(value).length === 0)
-    ) {
-      delete copy[key];
-    }
-  }
-  return copy as unknown as Task;
 }
 
 function escapeScriptJson(json: string): string {
