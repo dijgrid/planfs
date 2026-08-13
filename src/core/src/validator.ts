@@ -157,7 +157,7 @@ function validateArchiveMetadata(entity: Entity): ValidationError[] {
     }];
   }
 
-  const record = archive as { archivedAt?: unknown; originalPath?: unknown };
+  const record = archive as { archivedAt?: unknown; originalPath?: unknown; disposition?: unknown; note?: unknown };
   const errors: ValidationError[] = [];
   if (typeof record.archivedAt !== 'string' || parseDate(record.archivedAt) === undefined) {
     errors.push({
@@ -174,6 +174,12 @@ function validateArchiveMetadata(entity: Entity): ValidationError[] {
       message: 'Archive metadata originalPath is required',
       severity: 'error'
     });
+  }
+  if (record.disposition !== undefined && !['completed', 'cancelled', 'duplicate', 'deferred', 'superseded'].includes(String(record.disposition))) {
+    errors.push({ id: entity.id, path: entity.filePath, message: 'Archive metadata disposition is invalid', severity: 'error' });
+  }
+  if (record.note !== undefined && typeof record.note !== 'string') {
+    errors.push({ id: entity.id, path: entity.filePath, message: 'Archive metadata note must be text', severity: 'error' });
   }
 
   return errors;

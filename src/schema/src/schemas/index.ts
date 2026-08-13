@@ -91,6 +91,13 @@ export const taskSchema = {
         },
         originalPath: {
           type: 'string'
+        },
+        disposition: {
+          type: 'string',
+          enum: ['completed', 'cancelled', 'duplicate', 'deferred', 'superseded']
+        },
+        note: {
+          type: 'string'
         }
       },
       additionalProperties: false,
@@ -173,6 +180,13 @@ export const epicSchema = {
           format: 'date-time'
         },
         originalPath: {
+          type: 'string'
+        },
+        disposition: {
+          type: 'string',
+          enum: ['completed', 'cancelled', 'duplicate', 'deferred', 'superseded']
+        },
+        note: {
           type: 'string'
         }
       },
