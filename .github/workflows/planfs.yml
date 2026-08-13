@@ -20,7 +20,7 @@ on:
 
 jobs:
   quality:
-    name: Quality and PlanFS validation
+    name: Validate PlanFS
     runs-on: ubuntu-latest
 
     steps:
