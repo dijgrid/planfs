@@ -220,8 +220,12 @@ export async function main(): Promise<void> {
     )
     .command(
       'update <id>', 'Preview or update common entity metadata',
-      (y) => y.positional('id', { type: 'string' }).option('title', { type: 'string' }).option('status', { type: 'string' }).option('owner', { type: 'string' }).option('assignee', { type: 'string' }).option('priority', { type: 'string' }).option('target-date', { type: 'string' }).option('expected-updated-at', { type: 'string' }).option('dry-run', { type: 'boolean', default: false }).option('format', { type: 'string', choices: ['text', 'json'], default: 'text' }),
-      async (args) => process.exit(await updateCommand(process.cwd(), args.id as string, { patch: { title: args.title, status: args.status, owner: args.owner, assignee: args.assignee, priority: args.priority, targetDate: args.targetDate }, expectedUpdatedAt: args.expectedUpdatedAt as string | undefined, dryRun: args.dryRun as boolean, format: args.format as 'text' | 'json' }))
+      (y) => y.positional('id', { type: 'string' }).option('title', { type: 'string' }).option('status', { type: 'string' }).option('owner', { type: 'string' }).option('assignee', { type: 'string' }).option('priority', { type: 'string' }).option('target-date', { type: 'string' }).option('clear', { type: 'array', string: true, description: 'Explicitly clear optional fields' }).option('expected-updated-at', { type: 'string' }).option('dry-run', { type: 'boolean', default: false }).option('format', { type: 'string', choices: ['text', 'json'], default: 'text' }),
+      async (args) => {
+        const patch: Record<string, unknown> = { title: args.title, status: args.status, owner: args.owner, assignee: args.assignee, priority: args.priority, targetDate: args.targetDate };
+        for (const field of args.clear as string[] ?? []) patch[field] = '__clear__';
+        process.exit(await updateCommand(process.cwd(), args.id as string, { patch, expectedUpdatedAt: args.expectedUpdatedAt as string | undefined, dryRun: args.dryRun as boolean, format: args.format as 'text' | 'json' }));
+      }
     )
     .command(
       'filter <action>', 'Manage repository-shared saved filters',
