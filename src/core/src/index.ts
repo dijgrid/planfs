@@ -19,3 +19,4 @@ export * from './bulk';
 export * from './pull-request';
 export * from './ai';
 export * from './format';
+export * from './history';
