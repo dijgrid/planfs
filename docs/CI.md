@@ -4,7 +4,10 @@ PlanFS validation can run in CI by building the workspace packages and executing
 
 ```sh
 npm ci
+npm run lint
+npm run test:coverage
 npm run build --workspaces
+xvfb-run -a npm run test:extension-host --workspace=planfs-vscode
 node src/cli/dist/cli.js validate --format json
 ```
 
@@ -35,6 +38,9 @@ This repository includes `.github/workflows/planfs.yml`. It runs on pull request
 
 The workflow blocks a pull request when:
 
+- TypeScript linting fails
+- unit, integration, or coverage checks fail
+- the real VS Code extension-host smoke test fails
 - `.planfs` files are invalid
 - the CLI cannot load the repository
 - workspace packages fail to build

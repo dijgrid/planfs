@@ -360,6 +360,41 @@ describe('VS Code view refresh workspace selection', () => {
     expect(archivePanel.webview.html).toContain('Use the archive to inspect');
   });
 
+  it('opens, restores, and permanently deletes archived items', async () => {
+    await saveEntity(firstRoot, createTaskTemplate('TASK-072', 'Restore archived task'));
+    await saveEntity(firstRoot, createTaskTemplate('TASK-073', 'Delete archived task'));
+    await archiveEntity(firstRoot, 'TASK-072', { disposition: 'deferred' });
+    await archiveEntity(firstRoot, 'TASK-073', { disposition: 'cancelled' });
+
+    const archive = new ArchiveProvider(vscode.Uri.file('/extension'));
+    await archive.open();
+    const archivePanel = jest.mocked(vscode.window.createWebviewPanel).mock.results[0].value;
+
+    await archivePanel.webview.postMessage({ type: 'openRaw', id: 'TASK-072' });
+    expect(vscode.workspace.openTextDocument).toHaveBeenCalledWith(
+      expect.stringContaining(path.join('.planfs', 'archive', 'tasks', 'TASK-072.md'))
+    );
+
+    await archivePanel.webview.postMessage({ type: 'restore', id: 'TASK-072' });
+    let repository = await loadRepository(firstRoot);
+    expect(repository.tasks.has('TASK-072')).toBe(true);
+    expect(repository.archivedTasks?.has('TASK-072')).toBe(false);
+    expect(vscode.window.showInformationMessage).toHaveBeenCalledWith('Restored TASK-072');
+
+    jest.mocked(vscode.window.showWarningMessage).mockResolvedValueOnce(undefined);
+    await archivePanel.webview.postMessage({ type: 'delete', id: 'TASK-073' });
+    repository = await loadRepository(firstRoot);
+    expect(repository.archivedTasks?.has('TASK-073')).toBe(true);
+
+    jest.mocked(vscode.window.showWarningMessage).mockResolvedValueOnce('Delete' as never);
+    await archivePanel.webview.postMessage({ type: 'delete', id: 'TASK-073' });
+    repository = await loadRepository(firstRoot);
+    expect(repository.archivedTasks?.has('TASK-073')).toBe(false);
+    expect(vscode.window.showInformationMessage).toHaveBeenCalledWith(
+      'Deleted archived item TASK-073'
+    );
+  });
+
   it('refreshes open views through payload messages without replacing their documents', async () => {
     const archived = createTaskTemplate('TASK-refresh-archive', 'Archived refresh task');
     await saveEntity(firstRoot, archived);
@@ -410,6 +445,57 @@ describe('VS Code view refresh workspace selection', () => {
     expect(insightsPanel.webview.html).toContain("return 'Epic planning date'");
     expect(insightsPanel.webview.html).toContain('Trace prerequisite flow');
     expect(insightsPanel.webview.html).toContain('renderTimelineDetails');
+  });
+
+  it('updates milestones, exports reports, and opens insight entities', async () => {
+    await saveEntity(firstRoot, createMilestoneTemplate(
+      'MILESTONE-release',
+      'Release milestone',
+      '2026-09-01'
+    ));
+
+    const insights = new InsightsProvider(vscode.Uri.file('/extension'));
+    await insights.open();
+    const insightsPanel = jest.mocked(vscode.window.createWebviewPanel).mock.results[0].value;
+
+    await insightsPanel.webview.postMessage({
+      type: 'updateMilestoneDate',
+      milestoneId: 'MILESTONE-release',
+      targetDate: '2026-10-15'
+    });
+    expect((await loadRepository(firstRoot)).milestones.get('MILESTONE-release')?.targetDate)
+      .toBe('2026-10-15');
+
+    await insightsPanel.webview.postMessage({
+      type: 'updateMilestoneDate',
+      milestoneId: 'MILESTONE-missing',
+      targetDate: '2026-10-20'
+    });
+    expect(vscode.window.showErrorMessage).toHaveBeenCalledWith(
+      'Milestone not found: MILESTONE-missing'
+    );
+
+    await insightsPanel.webview.postMessage({
+      type: 'exportReport',
+      format: 'markdown',
+      content: '# Release report'
+    });
+    expect(vscode.workspace.openTextDocument).toHaveBeenCalledWith({
+      language: 'markdown',
+      content: '# Release report'
+    });
+    expect(vscode.window.showInformationMessage).toHaveBeenCalledWith(
+      'Opened MD report in a new editor'
+    );
+
+    await insightsPanel.webview.postMessage({ type: 'openEntity', entityId: 'TASK-001' });
+    expect(vscode.workspace.openTextDocument).toHaveBeenCalledWith(
+      expect.stringContaining('TASK-001.md')
+    );
+    await insightsPanel.webview.postMessage({ type: 'openEntity', entityId: 'TASK-999' });
+    expect(vscode.window.showErrorMessage).toHaveBeenCalledWith(
+      'PlanFS entity not found: TASK-999'
+    );
   });
 
   it('renders next-work board controls and readiness data', async () => {

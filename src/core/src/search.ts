@@ -141,7 +141,7 @@ export async function loadSavedFilters(rootPath: string): Promise<SavedFilter[]>
 
     return filters.sort((a, b) => a.name.localeCompare(b.name));
   } catch (error) {
-    if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
       return [];
     }
 
