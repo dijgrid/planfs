@@ -43,6 +43,7 @@ const REFINEMENT_STATES: RefinementState[] = [
 export class BacklogProvider {
   private panel: vscode.WebviewPanel | undefined;
   private hasRenderedBacklog = false;
+  private workspaceUri: string | undefined;
 
   constructor(
     private readonly extensionUri: vscode.Uri,
@@ -55,6 +56,7 @@ export class BacklogProvider {
       vscode.window.showErrorMessage('No workspace folder open');
       return;
     }
+    this.workspaceUri ??= workspaceFolder.uri.toString();
 
     if (this.panel) {
       this.panel.reveal(vscode.ViewColumn.One);
@@ -75,6 +77,7 @@ export class BacklogProvider {
     this.panel.onDidDispose(() => {
       this.panel = undefined;
       this.hasRenderedBacklog = false;
+      this.workspaceUri = undefined;
     });
 
     this.panel.webview.onDidReceiveMessage(async message => {
@@ -107,7 +110,7 @@ export class BacklogProvider {
   }
 
   private async saveCurrentFilter(criteria: Record<string, unknown>): Promise<void> {
-    const workspaceFolder = getPlanFSWorkspaceFolder();
+    const workspaceFolder = this.workspaceFolder();
     if (!workspaceFolder) return;
     const name = await vscode.window.showInputBox({ prompt: 'Name this shared backlog filter' });
     if (!name) return;
@@ -117,7 +120,7 @@ export class BacklogProvider {
   }
 
   private async manageSavedFilter(id: string): Promise<void> {
-    const workspaceFolder = getPlanFSWorkspaceFolder();
+    const workspaceFolder = this.workspaceFolder();
     if (!workspaceFolder || !id) return;
     const filter = (await loadSavedFilters(workspaceFolder.uri.fsPath)).find(item => item.id === id);
     if (!filter) return;
@@ -140,7 +143,7 @@ export class BacklogProvider {
   }
 
   private async render(): Promise<void> {
-    const workspaceFolder = getPlanFSWorkspaceFolder();
+    const workspaceFolder = this.workspaceFolder();
     if (!workspaceFolder || !this.panel) {
       return;
     }
@@ -207,7 +210,7 @@ export class BacklogProvider {
   }
 
   private async captureBacklogItem(title: string): Promise<void> {
-    const workspaceFolder = getPlanFSWorkspaceFolder();
+    const workspaceFolder = this.workspaceFolder();
     if (!workspaceFolder) {
       return;
     }
@@ -224,7 +227,7 @@ export class BacklogProvider {
   }
 
   private async updateRefinementState(taskId: string, refinementState: RefinementState): Promise<void> {
-    const workspaceFolder = getPlanFSWorkspaceFolder();
+    const workspaceFolder = this.workspaceFolder();
     if (!workspaceFolder || !REFINEMENT_STATES.includes(refinementState)) {
       return;
     }
@@ -253,7 +256,7 @@ export class BacklogProvider {
   }
 
   private async updateBacklogTask(edited: BacklogTaskUpdate): Promise<void> {
-    const workspaceFolder = getPlanFSWorkspaceFolder();
+    const workspaceFolder = this.workspaceFolder();
     if (!workspaceFolder) {
       return;
     }
@@ -294,7 +297,7 @@ export class BacklogProvider {
   }
 
   private async openRawTask(taskId: string): Promise<void> {
-    const workspaceFolder = getPlanFSWorkspaceFolder();
+    const workspaceFolder = this.workspaceFolder();
     if (!workspaceFolder) {
       return;
     }
@@ -308,6 +311,12 @@ export class BacklogProvider {
 
     const document = await vscode.workspace.openTextDocument(task.filePath);
     await vscode.window.showTextDocument(document, { preview: false });
+  }
+
+  private workspaceFolder(): vscode.WorkspaceFolder | undefined {
+    return this.workspaceUri
+      ? vscode.workspace.workspaceFolders?.find(folder => folder.uri.toString() === this.workspaceUri)
+      : getPlanFSWorkspaceFolder();
   }
 
   private async updateUiPreference(key: string, value: unknown): Promise<void> {

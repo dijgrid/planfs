@@ -56,6 +56,7 @@
     "onCommand:planfs.applySavedFilter",
     "onCommand:planfs.clearSavedFilter",
     "onCommand:planfs.refreshExplorer"
+    ,"onCommand:planfs.selectWorkspace"
   ],
   "main": "./dist/extension.js",
   "contributes": {
@@ -123,6 +124,10 @@
       {
         "command": "planfs.refreshExplorer",
         "title": "PlanFS: Refresh Views"
+      },
+      {
+        "command": "planfs.selectWorkspace",
+        "title": "PlanFS: Choose Repository"
       }
     ],
     "views": {

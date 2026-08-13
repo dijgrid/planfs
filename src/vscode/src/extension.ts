@@ -14,7 +14,7 @@ import { PlanFSUiPreferences } from './preferences';
 import { createTaskCommand, createEpicCommand, createMilestoneCommand, createDecisionCommand } from './commands/create';
 import { initializeRepositoryCommand } from './commands/init';
 import { openTaskCommand } from './commands/open';
-import { getPlanFSWorkspaceFolder } from './workspace';
+import { choosePlanFSWorkspaceFolder, getPlanFSWorkspaceFolder } from './workspace';
 import { RefreshCoordinator } from './refreshCoordinator';
 
 let explorerProvider: ExplorerProvider;
@@ -59,6 +59,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand('planfs.openEditor', (item) => editorProvider.open(resolveEditorEntityId(item))),
     vscode.commands.registerCommand('planfs.applySavedFilter', () => explorerProvider.applySavedFilter()),
     vscode.commands.registerCommand('planfs.clearSavedFilter', () => explorerProvider.clearSavedFilter()),
+    vscode.commands.registerCommand('planfs.selectWorkspace', async () => { if (await choosePlanFSWorkspaceFolder()) await refreshViews(); }),
     vscode.commands.registerCommand('planfs.refreshExplorer', () => refreshViews())
   );
 

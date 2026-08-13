@@ -40,6 +40,7 @@ interface ArchivePayload {
 export class ArchiveProvider {
   private panel: vscode.WebviewPanel | undefined;
   private hasRenderedArchive = false;
+  private workspaceUri: string | undefined;
 
   constructor(private readonly extensionUri: vscode.Uri) {}
 
@@ -49,6 +50,7 @@ export class ArchiveProvider {
       vscode.window.showErrorMessage('No workspace folder open');
       return;
     }
+    this.workspaceUri ??= workspaceFolder.uri.toString();
 
     if (this.panel) {
       this.panel.reveal(vscode.ViewColumn.One);
@@ -68,6 +70,7 @@ export class ArchiveProvider {
     this.panel.onDidDispose(() => {
       this.panel = undefined;
       this.hasRenderedArchive = false;
+      this.workspaceUri = undefined;
     });
     this.panel.webview.onDidReceiveMessage(async message => {
       if (message?.type === 'restore') {
@@ -92,7 +95,7 @@ export class ArchiveProvider {
   }
 
   private async render(): Promise<void> {
-    const workspaceFolder = getPlanFSWorkspaceFolder();
+    const workspaceFolder = this.workspaceFolder();
     if (!workspaceFolder || !this.panel) {
       return;
     }
@@ -122,7 +125,7 @@ export class ArchiveProvider {
   }
 
   private async restore(id: string): Promise<void> {
-    const workspaceFolder = getPlanFSWorkspaceFolder();
+    const workspaceFolder = this.workspaceFolder();
     if (!workspaceFolder) {
       return;
     }
@@ -133,7 +136,7 @@ export class ArchiveProvider {
   }
 
   private async delete(id: string): Promise<void> {
-    const workspaceFolder = getPlanFSWorkspaceFolder();
+    const workspaceFolder = this.workspaceFolder();
     if (!workspaceFolder) {
       return;
     }
@@ -153,7 +156,7 @@ export class ArchiveProvider {
   }
 
   private async openRaw(id: string): Promise<void> {
-    const workspaceFolder = getPlanFSWorkspaceFolder();
+    const workspaceFolder = this.workspaceFolder();
     if (!workspaceFolder) {
       return;
     }
@@ -167,6 +170,12 @@ export class ArchiveProvider {
 
     const document = await vscode.workspace.openTextDocument(entity.filePath);
     await vscode.window.showTextDocument(document, { preview: false });
+  }
+
+  private workspaceFolder(): vscode.WorkspaceFolder | undefined {
+    return this.workspaceUri
+      ? vscode.workspace.workspaceFolders?.find(folder => folder.uri.toString() === this.workspaceUri)
+      : getPlanFSWorkspaceFolder();
   }
 }
 

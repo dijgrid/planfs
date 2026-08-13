@@ -164,6 +164,19 @@ describe('VS Code view refresh workspace selection', () => {
     expect(insightsPanel.webview.html).not.toContain('TASK-001');
   });
 
+  it('keeps an open board bound to its repository after the selected workspace changes', async () => {
+    selectPlanFSWorkspaceFolder(firstFolder);
+    const board = new BoardProvider(vscode.Uri.file('/extension'));
+    await board.open();
+    const panel = jest.mocked(vscode.window.createWebviewPanel).mock.results[0].value;
+    selectPlanFSWorkspaceFolder(secondFolder);
+    await board.refresh();
+    expect(panel.webview.postedMessages).toContainEqual(expect.objectContaining({
+      type: 'updateBoard',
+      payload: expect.objectContaining({ tasks: expect.arrayContaining([expect.objectContaining({ id: 'TASK-001' })]) })
+    }));
+  });
+
   it('creates epics and milestones from VS Code commands', async () => {
     const explorer = new ExplorerProvider();
     jest.mocked(vscode.window.showInputBox)

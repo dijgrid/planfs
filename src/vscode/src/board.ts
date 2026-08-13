@@ -108,6 +108,7 @@ export class BoardProvider {
   private panel: vscode.WebviewPanel | undefined;
   private hasRenderedBoard = false;
   private preferredMode: BoardMode = 'status';
+  private workspaceUri: string | undefined;
 
   constructor(
     private readonly extensionUri: vscode.Uri,
@@ -122,6 +123,7 @@ export class BoardProvider {
       vscode.window.showErrorMessage('No workspace folder open');
       return;
     }
+    this.workspaceUri ??= workspaceFolder.uri.toString();
 
     if (this.panel) {
       this.panel.reveal(vscode.ViewColumn.One);
@@ -142,6 +144,7 @@ export class BoardProvider {
     this.panel.onDidDispose(() => {
       this.panel = undefined;
       this.hasRenderedBoard = false;
+      this.workspaceUri = undefined;
     });
 
     this.panel.webview.onDidReceiveMessage(async message => {
@@ -201,7 +204,7 @@ export class BoardProvider {
   }
 
   private async saveCurrentFilter(criteria: Record<string, unknown>): Promise<void> {
-    const workspaceFolder = getPlanFSWorkspaceFolder();
+    const workspaceFolder = this.workspaceFolder();
     if (!workspaceFolder) return;
     const name = await vscode.window.showInputBox({ prompt: 'Name this shared board filter' });
     if (!name) return;
@@ -211,7 +214,7 @@ export class BoardProvider {
   }
 
   private async manageSavedFilter(id: string): Promise<void> {
-    const workspaceFolder = getPlanFSWorkspaceFolder();
+    const workspaceFolder = this.workspaceFolder();
     if (!workspaceFolder || !id) return;
     const filter = (await loadSavedFilters(workspaceFolder.uri.fsPath)).find(item => item.id === id);
     if (!filter) return;
@@ -238,7 +241,7 @@ export class BoardProvider {
       return;
     }
 
-    const workspaceFolder = getPlanFSWorkspaceFolder();
+    const workspaceFolder = this.workspaceFolder();
     if (!workspaceFolder) {
       this.panel.webview.html = renderMessage('No workspace folder open');
       this.hasRenderedBoard = false;
@@ -291,7 +294,7 @@ export class BoardProvider {
       return;
     }
 
-    const workspaceFolder = getPlanFSWorkspaceFolder();
+    const workspaceFolder = this.workspaceFolder();
     if (!workspaceFolder) {
       vscode.window.showErrorMessage('No workspace folder open');
       return;
@@ -331,7 +334,7 @@ export class BoardProvider {
       return;
     }
 
-    const workspaceFolder = getPlanFSWorkspaceFolder();
+    const workspaceFolder = this.workspaceFolder();
     if (!workspaceFolder) {
       vscode.window.showErrorMessage('No workspace folder open');
       return;
@@ -377,7 +380,7 @@ export class BoardProvider {
       return;
     }
 
-    const workspaceFolder = getPlanFSWorkspaceFolder();
+    const workspaceFolder = this.workspaceFolder();
     if (!workspaceFolder) {
       vscode.window.showErrorMessage('No workspace folder open');
       return;
@@ -430,7 +433,7 @@ export class BoardProvider {
   }
 
   private async openTaskFile(taskId: string): Promise<void> {
-    const workspaceFolder = getPlanFSWorkspaceFolder();
+    const workspaceFolder = this.workspaceFolder();
     if (!workspaceFolder) {
       vscode.window.showErrorMessage('No workspace folder open');
       return;
@@ -457,7 +460,7 @@ export class BoardProvider {
   }
 
   private async createTask(context: Partial<CreateTaskContext>): Promise<void> {
-    const workspaceFolder = getPlanFSWorkspaceFolder();
+    const workspaceFolder = this.workspaceFolder();
     if (!workspaceFolder) {
       vscode.window.showErrorMessage('No workspace folder open');
       return;
@@ -558,7 +561,7 @@ export class BoardProvider {
       return;
     }
 
-    const workspaceFolder = getPlanFSWorkspaceFolder();
+    const workspaceFolder = this.workspaceFolder();
     if (!workspaceFolder) {
       vscode.window.showErrorMessage('No workspace folder open');
       return;
@@ -602,6 +605,12 @@ export class BoardProvider {
       );
       await this.render();
     }
+  }
+
+  private workspaceFolder(): vscode.WorkspaceFolder | undefined {
+    return this.workspaceUri
+      ? vscode.workspace.workspaceFolders?.find(folder => folder.uri.toString() === this.workspaceUri)
+      : getPlanFSWorkspaceFolder();
   }
 
   private getPreferences(workspaceFolder: vscode.WorkspaceFolder): BoardPreferences {

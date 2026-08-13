@@ -36,3 +36,17 @@ export function selectPlanFSWorkspaceFolderForUri(uri: vscode.Uri): vscode.Works
 export function selectPlanFSWorkspaceFolder(folder: vscode.WorkspaceFolder): void {
   activeWorkspaceFolderUri = folder.uri.toString();
 }
+
+export async function choosePlanFSWorkspaceFolder(): Promise<vscode.WorkspaceFolder | undefined> {
+  const folders = vscode.workspace.workspaceFolders ?? [];
+  if (folders.length === 0) return undefined;
+  if (folders.length === 1) {
+    selectPlanFSWorkspaceFolder(folders[0]);
+    return folders[0];
+  }
+  const picked = await vscode.window.showQuickPick(folders.map(folder => ({ label: folder.name, description: folder.uri.fsPath, folder })), {
+    title: 'Choose PlanFS repository', placeHolder: 'Commands and new views use this repository'
+  });
+  if (picked) selectPlanFSWorkspaceFolder(picked.folder);
+  return picked?.folder;
+}

@@ -133,6 +133,7 @@ interface InsightsPayload {
 export class InsightsProvider {
   private panel: vscode.WebviewPanel | undefined;
   private hasRenderedInsights = false;
+  private workspaceUri: string | undefined;
 
   constructor(private readonly extensionUri: vscode.Uri) {}
 
@@ -142,6 +143,7 @@ export class InsightsProvider {
       vscode.window.showErrorMessage('No workspace folder open');
       return;
     }
+    this.workspaceUri ??= workspaceFolder.uri.toString();
 
     if (this.panel) {
       this.panel.reveal(vscode.ViewColumn.One);
@@ -151,7 +153,7 @@ export class InsightsProvider {
 
     this.panel = vscode.window.createWebviewPanel(
       'planfsInsights',
-      'PlanFS Insights',
+      `PlanFS Insights — ${workspaceFolder.name}`,
       vscode.ViewColumn.One,
       {
         enableScripts: true,
@@ -162,6 +164,7 @@ export class InsightsProvider {
     this.panel.onDidDispose(() => {
       this.panel = undefined;
       this.hasRenderedInsights = false;
+      this.workspaceUri = undefined;
     });
 
     this.panel.webview.onDidReceiveMessage(async message => {
@@ -197,7 +200,7 @@ export class InsightsProvider {
       return;
     }
 
-    const workspaceFolder = getPlanFSWorkspaceFolder();
+    const workspaceFolder = this.workspaceFolder();
     if (!workspaceFolder) {
       this.panel.webview.html = renderMessage('No workspace folder open');
       return;
@@ -223,7 +226,7 @@ export class InsightsProvider {
     milestoneId: string,
     targetDate: string
   ): Promise<void> {
-    const workspaceFolder = getPlanFSWorkspaceFolder();
+    const workspaceFolder = this.workspaceFolder();
     if (!workspaceFolder) {
       vscode.window.showErrorMessage('No workspace folder open');
       return;
@@ -248,6 +251,12 @@ export class InsightsProvider {
       );
       await this.render();
     }
+  }
+
+  private workspaceFolder(): vscode.WorkspaceFolder | undefined {
+    return this.workspaceUri
+      ? vscode.workspace.workspaceFolders?.find(folder => folder.uri.toString() === this.workspaceUri)
+      : getPlanFSWorkspaceFolder();
   }
 }
 
