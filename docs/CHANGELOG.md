@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-08-12
+
+### Added
+- Plan format versioning with previewable migrations and compatibility checks.
+- CLI workflows for general entity updates, saved filters, Git-native history, and plan-health diagnostics.
+- Complete decision lifecycle, task Findings, archive disposition, and unfinished-work protection workflows.
+- Real VS Code extension-host smoke coverage for release verification.
+
+### Changed
+- Structured editors now protect drafts from refresh loss and detect conflicting writes.
+- VS Code views now preserve state across coalesced repository refreshes and behave consistently in multi-root workspaces.
+- Validation supports strict warning modes and clearer plan-health diagnostics.
+
+## [1.2.0] - 2026-07-30
+
 ### Added
 - Milestone structured editors now show derived completion and delivery-health rollups and allow tasks to be assigned or removed without duplicating membership in milestone files.
 - Board and Next Work views now support a workspace-local active milestone focus that composes with scope, search, and saved filters.

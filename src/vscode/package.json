@@ -2,7 +2,7 @@
   "name": "planfs-vscode",
   "displayName": "PlanFS",
   "description": "Git-native planning in VS Code with a backlog, task board, next-work guidance, and roadmap insights",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "publisher": "dijgrid",
   "license": "MIT",
   "icon": "resources/icon.png",
@@ -55,8 +55,8 @@
     "onCommand:planfs.openEditor",
     "onCommand:planfs.applySavedFilter",
     "onCommand:planfs.clearSavedFilter",
-    "onCommand:planfs.refreshExplorer"
-    ,"onCommand:planfs.selectWorkspace"
+    "onCommand:planfs.refreshExplorer",
+    "onCommand:planfs.selectWorkspace"
   ],
   "main": "./dist/extension.js",
   "contributes": {
@@ -174,7 +174,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "planfs-core": "1.2.0"
+    "planfs-core": "1.3.0"
   },
   "devDependencies": {
     "@types/jest": "^30.0.0",
