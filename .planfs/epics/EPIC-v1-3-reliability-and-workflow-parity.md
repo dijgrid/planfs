@@ -1,13 +1,14 @@
 ---
 id: EPIC-v1-3-reliability-and-workflow-parity
 title: v1.3 Reliability and Workflow Parity
-status: active
+status: completed
 priority: high
 owner: justin
-description: Make everyday PlanFS workflows stable, complete, and safe before expanding the domain model.
+description: Make everyday PlanFS workflows stable, complete, and safe before
+  expanding the domain model.
 targetDate: 2026-09-30
 createdAt: 2026-08-12T22:59:18.853Z
-updatedAt: 2026-08-12T23:00:40Z
+updatedAt: 2026-08-13T01:14:43.046Z
 ---
 
 Deliver the next PlanFS minor release around reliability and workflow parity. This version closes daily-use gaps found in refresh behavior, editing safety, validation visibility, multi-root workspaces, decisions, filters, CLI updates, archive semantics, and Git-native history.
@@ -19,6 +20,19 @@ Deliver the next PlanFS minor release around reliability and workflow parity. Th
 - Core entities have coherent create, read, update, and navigation workflows.
 - Validation and archive behavior make hidden or unhealthy planning state obvious.
 - File-format evolution has an explicit, previewable compatibility story.
+
+## Implementation Summary
+
+- Added protected structured-editor drafts, stale-write detection, and incremental webview updates.
+- Bound VS Code views to their selected workspace and coalesced watcher refreshes per workspace.
+- Added strict validation, plan-health diagnostics, archive dispositions, format migration previews, saved-filter management, normal entity updates, decision lifecycle support, and Git-native entity history.
+- Added isolated real VS Code extension-host smoke coverage alongside the fast mock suite.
+
+## Architectural Decisions
+
+- Planning remains Markdown/YAML-first: findings and history do not introduce separate stored entities or activity files.
+- Shared repository behavior lives in `planfs-core`; CLI and VS Code consume the same validation and persistence paths.
+- Refreshes deliver payload updates instead of rebuilding active webview documents, preserving valid user state.
 
 ## Child Tasks
 
