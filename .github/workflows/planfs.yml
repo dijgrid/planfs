@@ -39,11 +39,11 @@ jobs:
       - name: Lint TypeScript
         run: npm run lint
 
-      - name: Test with coverage gates
-        run: npm run test:coverage
-
       - name: Build workspaces
         run: npm run build --workspaces
+
+      - name: Test with coverage gates
+        run: npm run test:coverage
 
       - name: Smoke test VS Code extension host
         run: xvfb-run -a npm run test:extension-host --workspace=planfs-vscode
