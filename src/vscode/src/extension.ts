@@ -14,7 +14,8 @@ import { PlanFSUiPreferences } from './preferences';
 import { createTaskCommand, createEpicCommand, createMilestoneCommand, createDecisionCommand } from './commands/create';
 import { initializeRepositoryCommand } from './commands/init';
 import { openTaskCommand } from './commands/open';
-import { selectPlanFSWorkspaceFolderForUri } from './workspace';
+import { getPlanFSWorkspaceFolder } from './workspace';
+import { RefreshCoordinator } from './refreshCoordinator';
 
 let explorerProvider: ExplorerProvider;
 let backlogProvider: BacklogProvider;
@@ -22,7 +23,7 @@ let archiveProvider: ArchiveProvider;
 let boardProvider: BoardProvider;
 let insightsProvider: InsightsProvider;
 let editorProvider: EntityEditorProvider;
-let refreshQueue = Promise.resolve();
+const refreshCoordinator = new RefreshCoordinator();
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   console.log('PlanFS extension activated');
@@ -87,15 +88,17 @@ async function refreshViews(): Promise<void> {
 }
 
 function queueRefreshViews(changedUri?: vscode.Uri): void {
+  // A watcher event must never retarget the selected repository. Open views are
+  // bound by their opening command; changes from another workspace are ignored
+  // until the user deliberately switches the selected repository.
   if (changedUri) {
-    selectPlanFSWorkspaceFolderForUri(changedUri);
+    const selected = getPlanFSWorkspaceFolder();
+    const changedFolder = vscode.workspace.getWorkspaceFolder(changedUri);
+    if (selected && changedFolder && selected.uri.toString() !== changedFolder.uri.toString()) return;
   }
 
-  refreshQueue = refreshQueue
-    .then(refreshViews)
-    .catch(error => {
-      console.error('Failed to refresh PlanFS views:', error);
-    });
+  const selected = getPlanFSWorkspaceFolder();
+  if (selected) refreshCoordinator.schedule(selected.uri.toString(), refreshViews);
 }
 
 export function deactivate(): void {

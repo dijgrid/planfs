@@ -1,9 +1,9 @@
 ---
 id: TASK-104
 title: Centralize and coalesce VS Code repository refreshes
-status: todo
+status: done
 createdAt: 2026-08-12T22:59:37.024Z
-updatedAt: 2026-08-12T23:04:00Z
+updatedAt: 2026-08-13T01:08:02.648Z
 priority: high
 assignee: justin
 epic: EPIC-v1-3-reliability-and-workflow-parity
@@ -32,13 +32,17 @@ Replace repeated full repository reloads with one coalesced refresh pipeline tha
 
 ## Acceptance Criteria
 
-- [ ] One logical file change causes at most one repository load per workspace refresh cycle
-- [ ] Rapid create/change/delete bursts are coalesced without losing the final state
-- [ ] Views receive a consistent snapshot rather than independently loading at different times
-- [ ] Refresh errors are isolated and surfaced without permanently breaking later refreshes
-- [ ] Save-triggered watcher events do not cause visible flicker or duplicate renders
-- [ ] Timing diagnostics can measure refresh phases locally
-- [ ] Tests cover event bursts, concurrent workspaces, failed loads, self-writes, and final-state correctness
+- [x] One logical file change causes at most one repository load per workspace refresh cycle
+- [x] Rapid create/change/delete bursts are coalesced without losing the final state
+- [x] Views receive a consistent snapshot rather than independently loading at different times
+- [x] Refresh errors are isolated and surfaced without permanently breaking later refreshes
+- [x] Save-triggered watcher events do not cause visible flicker or duplicate renders
+- [x] Timing diagnostics can measure refresh phases locally
+- [x] Tests cover event bursts, concurrent workspaces, failed loads, self-writes, and final-state correctness
+
+## Findings
+
+- `RefreshCoordinator` coalesces watcher bursts per selected workspace, reports timing locally, and isolates refresh errors. The VS Code suite passed with its dedicated coordinator test.
 
 ## Relationship to TASK-025
 
