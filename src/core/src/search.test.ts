@@ -2,10 +2,13 @@ import { promises as fs } from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import {
+  deleteSavedFilter,
   loadSavedFilters,
   matchesCriteria,
+  saveSavedFilter,
   searchEntities,
-  searchTasks
+  searchTasks,
+  validateSavedFilter
 } from './search';
 import { Epic, Repository, Task } from './types';
 
@@ -115,6 +118,74 @@ describe('search helpers', () => {
           }
         }
       ]);
+    } finally {
+      await fs.rm(rootPath, { recursive: true, force: true });
+    }
+  });
+
+  it('validates, saves, renames, and deletes shared filters', async () => {
+    const rootPath = await fs.mkdtemp(path.join(os.tmpdir(), 'planfs-filter-writes-'));
+    try {
+      await saveSavedFilter(rootPath, {
+        id: 'my-work',
+        name: '  My Work  ',
+        description: '  Assigned tasks  ',
+        criteria: { assignee: 'justin', status: ['todo', 'review'] }
+      });
+      await saveSavedFilter(rootPath, {
+        id: 'renamed-work',
+        name: 'Renamed Work',
+        criteria: { tags: ['release'] }
+      }, 'my-work');
+
+      await expect(loadSavedFilters(rootPath)).resolves.toEqual([
+        {
+          id: 'renamed-work',
+          name: 'Renamed Work',
+          criteria: { tags: ['release'] }
+        }
+      ]);
+      await deleteSavedFilter(rootPath, 'renamed-work');
+      await expect(loadSavedFilters(rootPath)).resolves.toEqual([]);
+    } finally {
+      await fs.rm(rootPath, { recursive: true, force: true });
+    }
+  });
+
+  it('rejects invalid saved filter fields and values', () => {
+    const base = { id: 'valid', name: 'Valid', criteria: {} };
+    expect(() => validateSavedFilter({ ...base, id: 'bad id' })).toThrow('Filter id');
+    expect(() => validateSavedFilter({ ...base, name: ' ' })).toThrow('name is required');
+    expect(() => validateSavedFilter({ ...base, criteria: { unsupported: true } as never }))
+      .toThrow('Unsupported saved-filter criterion');
+    expect(() => validateSavedFilter({ ...base, criteria: { status: 'active' } }))
+      .toThrow('status is invalid');
+  });
+
+  it('loads defaults and string tags and ignores non-JSON entries', async () => {
+    const rootPath = await fs.mkdtemp(path.join(os.tmpdir(), 'planfs-filter-normalize-'));
+    try {
+      const filtersPath = path.join(rootPath, '.planfs', 'filters');
+      await fs.mkdir(path.join(filtersPath, 'directory.json'), { recursive: true });
+      await fs.writeFile(path.join(filtersPath, 'notes.txt'), 'ignored', 'utf8');
+      await fs.writeFile(
+        path.join(filtersPath, 'defaults.json'),
+        JSON.stringify({ criteria: { tags: 'release' } }),
+        'utf8'
+      );
+
+      await expect(loadSavedFilters(rootPath)).resolves.toEqual([
+        { id: 'defaults', name: 'defaults', criteria: { tags: ['release'] } }
+      ]);
+    } finally {
+      await fs.rm(rootPath, { recursive: true, force: true });
+    }
+  });
+
+  it('returns no filters when the shared filter directory is absent', async () => {
+    const rootPath = await fs.mkdtemp(path.join(os.tmpdir(), 'planfs-no-filters-'));
+    try {
+      await expect(loadSavedFilters(rootPath)).resolves.toEqual([]);
     } finally {
       await fs.rm(rootPath, { recursive: true, force: true });
     }

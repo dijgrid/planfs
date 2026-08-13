@@ -8,9 +8,11 @@ import {
   createEpicTemplate,
   createMilestoneTemplate,
   createTaskTemplate,
+  createDecisionTemplate,
   getNextEpicId,
   getNextMilestoneId,
   getNextTaskId,
+  getNextDecisionId,
   loadRepository,
   saveEntity
 } from 'planfs-core';
@@ -62,6 +64,16 @@ export async function createMilestoneCommand(explorer: ExplorerProvider): Promis
   });
 }
 
+export async function createDecisionCommand(explorer: ExplorerProvider): Promise<void> {
+  await createEntityCommand(explorer, {
+    kind: 'decision', titlePrompt: 'Enter decision title', titlePlaceholder: 'e.g., Adopt a migration format',
+    create: context => {
+      const id = getNextDecisionId(context.repository, context.title);
+      return { id, entity: createDecisionTemplate(id, context.title) };
+    }
+  });
+}
+
 interface CreateEntityContext {
   repository: Awaited<ReturnType<typeof loadRepository>>;
   title: string;
@@ -69,7 +81,7 @@ interface CreateEntityContext {
 }
 
 interface CreateEntityOptions {
-  kind: 'task' | 'epic' | 'milestone';
+  kind: 'task' | 'epic' | 'milestone' | 'decision';
   titlePrompt: string;
   titlePlaceholder: string;
   collectDetails?(): Promise<Partial<CreateEntityContext> | undefined>;

@@ -8,6 +8,7 @@ epic: EPIC-risk-requirement-support
 milestone: MILESTONE-phase-5
 dependsOn:
   - TASK-004
+  - TASK-105
 tags:
   - entities
   - risks
@@ -15,7 +16,7 @@ tags:
   - phase-5
 dueDate: 2026-11-03
 createdAt: 2026-06-15T00:00:00Z
-updatedAt: 2026-07-30T22:45:41.207Z
+updatedAt: 2026-08-12T23:00:40Z
 refinementState: ready
 backlogOrder: 40
 ---

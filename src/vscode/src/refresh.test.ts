@@ -164,6 +164,19 @@ describe('VS Code view refresh workspace selection', () => {
     expect(insightsPanel.webview.html).not.toContain('TASK-001');
   });
 
+  it('keeps an open board bound to its repository after the selected workspace changes', async () => {
+    selectPlanFSWorkspaceFolder(firstFolder);
+    const board = new BoardProvider(vscode.Uri.file('/extension'));
+    await board.open();
+    const panel = jest.mocked(vscode.window.createWebviewPanel).mock.results[0].value;
+    selectPlanFSWorkspaceFolder(secondFolder);
+    await board.refresh();
+    expect(panel.webview.postedMessages).toContainEqual(expect.objectContaining({
+      type: 'updateBoard',
+      payload: expect.objectContaining({ tasks: expect.arrayContaining([expect.objectContaining({ id: 'TASK-001' })]) })
+    }));
+  });
+
   it('creates epics and milestones from VS Code commands', async () => {
     const explorer = new ExplorerProvider();
     jest.mocked(vscode.window.showInputBox)
@@ -282,6 +295,49 @@ describe('VS Code view refresh workspace selection', () => {
     );
   });
 
+  it('refuses stale backlog form saves without overwriting newer task changes', async () => {
+    await saveEntity(firstRoot, {
+      ...createTaskTemplate('TASK-050', 'Original backlog task'),
+      assignee: 'Original Owner',
+      updatedAt: '2026-07-01T00:00:00.000Z'
+    });
+
+    const backlog = new BacklogProvider(
+      vscode.Uri.file('/extension'),
+      new PlanFSUiPreferences(new TestMemento())
+    );
+    await backlog.open();
+    const backlogPanel = jest.mocked(vscode.window.createWebviewPanel).mock.results[0].value;
+
+    expect(backlogPanel.webview.html).toContain('expectedUpdatedAt: task.updatedAt ?? null');
+    expect(backlogPanel.webview.html).toContain('2026-07-01T00:00:00.000Z');
+
+    const repository = await loadRepository(firstRoot);
+    const newerTask = repository.tasks.get('TASK-050')!;
+    newerTask.title = 'Newer Markdown title';
+    newerTask.assignee = 'New Owner';
+    newerTask.updatedAt = '2026-07-02T00:00:00.000Z';
+    await saveEntity(firstRoot, newerTask);
+
+    await backlogPanel.webview.postMessage({
+      type: 'updateBacklogTask',
+      task: {
+        id: 'TASK-050',
+        expectedUpdatedAt: '2026-07-01T00:00:00.000Z',
+        title: 'Stale form title',
+        assignee: 'Stale Owner'
+      }
+    });
+
+    const updated = (await loadRepository(firstRoot)).tasks.get('TASK-050');
+    expect(updated?.title).toBe('Newer Markdown title');
+    expect(updated?.assignee).toBe('New Owner');
+    expect(updated?.updatedAt).toBe('2026-07-02T00:00:00.000Z');
+    expect(vscode.window.showErrorMessage).toHaveBeenCalledWith(
+      expect.stringContaining('Backlog update conflict')
+    );
+  });
+
   it('renders archived tasks and epics in a dedicated archive view', async () => {
     const epic = createEpicTemplate('EPIC-archive', 'Archived epic');
     await saveEntity(firstRoot, epic);
@@ -289,7 +345,7 @@ describe('VS Code view refresh workspace selection', () => {
       ...createTaskTemplate('TASK-071', 'Archived task'),
       epic: epic.id
     });
-    await archiveEntity(firstRoot, epic.id, { includeChildren: true });
+    await archiveEntity(firstRoot, epic.id, { includeChildren: true, disposition: 'deferred' });
 
     const archive = new ArchiveProvider(vscode.Uri.file('/extension'));
     await archive.open();
@@ -302,6 +358,66 @@ describe('VS Code view refresh workspace selection', () => {
     expect(archivePanel.webview.html).toContain("type: 'delete'");
     expect(archivePanel.webview.html).toContain('data-help-context="archive"');
     expect(archivePanel.webview.html).toContain('Use the archive to inspect');
+  });
+
+  it('opens, restores, and permanently deletes archived items', async () => {
+    await saveEntity(firstRoot, createTaskTemplate('TASK-072', 'Restore archived task'));
+    await saveEntity(firstRoot, createTaskTemplate('TASK-073', 'Delete archived task'));
+    await archiveEntity(firstRoot, 'TASK-072', { disposition: 'deferred' });
+    await archiveEntity(firstRoot, 'TASK-073', { disposition: 'cancelled' });
+
+    const archive = new ArchiveProvider(vscode.Uri.file('/extension'));
+    await archive.open();
+    const archivePanel = jest.mocked(vscode.window.createWebviewPanel).mock.results[0].value;
+
+    await archivePanel.webview.postMessage({ type: 'openRaw', id: 'TASK-072' });
+    expect(vscode.workspace.openTextDocument).toHaveBeenCalledWith(
+      expect.stringContaining(path.join('.planfs', 'archive', 'tasks', 'TASK-072.md'))
+    );
+
+    await archivePanel.webview.postMessage({ type: 'restore', id: 'TASK-072' });
+    let repository = await loadRepository(firstRoot);
+    expect(repository.tasks.has('TASK-072')).toBe(true);
+    expect(repository.archivedTasks?.has('TASK-072')).toBe(false);
+    expect(vscode.window.showInformationMessage).toHaveBeenCalledWith('Restored TASK-072');
+
+    jest.mocked(vscode.window.showWarningMessage).mockResolvedValueOnce(undefined);
+    await archivePanel.webview.postMessage({ type: 'delete', id: 'TASK-073' });
+    repository = await loadRepository(firstRoot);
+    expect(repository.archivedTasks?.has('TASK-073')).toBe(true);
+
+    jest.mocked(vscode.window.showWarningMessage).mockResolvedValueOnce('Delete' as never);
+    await archivePanel.webview.postMessage({ type: 'delete', id: 'TASK-073' });
+    repository = await loadRepository(firstRoot);
+    expect(repository.archivedTasks?.has('TASK-073')).toBe(false);
+    expect(vscode.window.showInformationMessage).toHaveBeenCalledWith(
+      'Deleted archived item TASK-073'
+    );
+  });
+
+  it('refreshes open views through payload messages without replacing their documents', async () => {
+    const archived = createTaskTemplate('TASK-refresh-archive', 'Archived refresh task');
+    await saveEntity(firstRoot, archived);
+    await archiveEntity(firstRoot, archived.id, { disposition: 'deferred' });
+
+    const backlog = new BacklogProvider(vscode.Uri.file('/extension'), new PlanFSUiPreferences(new TestMemento()));
+    const archive = new ArchiveProvider(vscode.Uri.file('/extension'));
+    const insights = new InsightsProvider(vscode.Uri.file('/extension'));
+    await backlog.open();
+    await archive.open();
+    await insights.open();
+
+    const [backlogPanel, archivePanel, insightsPanel] = jest.mocked(vscode.window.createWebviewPanel).mock.results.map(result => result.value);
+    const documents = [backlogPanel.webview.html, archivePanel.webview.html, insightsPanel.webview.html];
+
+    await Promise.all([backlog.refresh(), archive.refresh(), insights.refresh()]);
+
+    expect(backlogPanel.webview.html).toBe(documents[0]);
+    expect(archivePanel.webview.html).toBe(documents[1]);
+    expect(insightsPanel.webview.html).toBe(documents[2]);
+    expect(backlogPanel.webview.postedMessages).toContainEqual(expect.objectContaining({ type: 'updateBacklog' }));
+    expect(archivePanel.webview.postedMessages).toContainEqual(expect.objectContaining({ type: 'updateArchive' }));
+    expect(insightsPanel.webview.postedMessages).toContainEqual(expect.objectContaining({ type: 'updateInsights' }));
   });
 
   it('renders visual planning controls for graph and timeline insights', async () => {
@@ -329,6 +445,57 @@ describe('VS Code view refresh workspace selection', () => {
     expect(insightsPanel.webview.html).toContain("return 'Epic planning date'");
     expect(insightsPanel.webview.html).toContain('Trace prerequisite flow');
     expect(insightsPanel.webview.html).toContain('renderTimelineDetails');
+  });
+
+  it('updates milestones, exports reports, and opens insight entities', async () => {
+    await saveEntity(firstRoot, createMilestoneTemplate(
+      'MILESTONE-release',
+      'Release milestone',
+      '2026-09-01'
+    ));
+
+    const insights = new InsightsProvider(vscode.Uri.file('/extension'));
+    await insights.open();
+    const insightsPanel = jest.mocked(vscode.window.createWebviewPanel).mock.results[0].value;
+
+    await insightsPanel.webview.postMessage({
+      type: 'updateMilestoneDate',
+      milestoneId: 'MILESTONE-release',
+      targetDate: '2026-10-15'
+    });
+    expect((await loadRepository(firstRoot)).milestones.get('MILESTONE-release')?.targetDate)
+      .toBe('2026-10-15');
+
+    await insightsPanel.webview.postMessage({
+      type: 'updateMilestoneDate',
+      milestoneId: 'MILESTONE-missing',
+      targetDate: '2026-10-20'
+    });
+    expect(vscode.window.showErrorMessage).toHaveBeenCalledWith(
+      'Milestone not found: MILESTONE-missing'
+    );
+
+    await insightsPanel.webview.postMessage({
+      type: 'exportReport',
+      format: 'markdown',
+      content: '# Release report'
+    });
+    expect(vscode.workspace.openTextDocument).toHaveBeenCalledWith({
+      language: 'markdown',
+      content: '# Release report'
+    });
+    expect(vscode.window.showInformationMessage).toHaveBeenCalledWith(
+      'Opened MD report in a new editor'
+    );
+
+    await insightsPanel.webview.postMessage({ type: 'openEntity', entityId: 'TASK-001' });
+    expect(vscode.workspace.openTextDocument).toHaveBeenCalledWith(
+      expect.stringContaining('TASK-001.md')
+    );
+    await insightsPanel.webview.postMessage({ type: 'openEntity', entityId: 'TASK-999' });
+    expect(vscode.window.showErrorMessage).toHaveBeenCalledWith(
+      'PlanFS entity not found: TASK-999'
+    );
   });
 
   it('renders next-work board controls and readiness data', async () => {
@@ -1238,7 +1405,14 @@ describe('VS Code view refresh workspace selection', () => {
       status: 'in-progress'
     });
     await editor.refresh();
-    expect(editorPanel.webview.html).toContain('Newly refreshed task');
+    expect(editorPanel.webview.postedMessages).toContainEqual(expect.objectContaining({
+      type: 'updateEditor',
+      payload: expect.objectContaining({
+        epicBoard: expect.arrayContaining([expect.objectContaining({
+          tasks: expect.arrayContaining([expect.objectContaining({ id: 'TASK-012' })])
+        })])
+      })
+    }));
   });
 
   it('renders epic planning sections and archives epics from the structured editor', async () => {
@@ -1287,6 +1461,7 @@ describe('VS Code view refresh workspace selection', () => {
     expect(editorPanel.webview.html).toContain('Questions');
     expect(editorPanel.webview.html).toContain('Archive Epic');
     jest.mocked(vscode.window.showWarningMessage).mockResolvedValueOnce('Archive epic only' as never);
+    jest.mocked(vscode.window.showQuickPick).mockResolvedValueOnce({ value: 'deferred' } as never);
 
     await editorPanel.webview.postMessage({
       type: 'archiveEntity'
@@ -1320,7 +1495,20 @@ describe('VS Code view refresh workspace selection', () => {
         '',
         '## Questions',
         '',
-        '- [ ] Should this be editable later?'
+        '- [ ] Should this be editable later?',
+        '',
+        '## Findings',
+        '',
+        'A paragraph with [evidence](https://example.com).',
+        '',
+        '- A plain bullet',
+        '- [x] A checked evidence item',
+        '',
+        '### Nested evidence',
+        '',
+        '```text',
+        'proof',
+        '```'
       ].join('\n'),
       metadata: {
         externalKey: 'JIRA-456'
@@ -1354,6 +1542,9 @@ describe('VS Code view refresh workspace selection', () => {
     expect(editorPanel.webview.html).toContain('Acceptance Criteria');
     expect(editorPanel.webview.html).toContain('Keep the body in Markdown');
     expect(editorPanel.webview.html).toContain('Questions');
+    expect(editorPanel.webview.html).toContain('Findings');
+    expect(editorPanel.webview.html).toContain('Findings are read-only here');
+    expect(editorPanel.webview.html).toContain('A plain bullet');
     expect(editorPanel.webview.html).toContain('Open Markdown');
 
     await editorPanel.webview.postMessage({
@@ -1372,6 +1563,35 @@ describe('VS Code view refresh workspace selection', () => {
     expect(repository.tasks.get('TASK-020')?.metadata.externalKey).toBe('JIRA-456');
     expect(repository.tasks.get('TASK-020')?.body).toContain('## Acceptance Criteria');
     expect(repository.tasks.get('TASK-020')?.body).toContain('Extra note preserved for readers.');
+    expect(repository.tasks.get('TASK-020')?.body).toContain('### Nested evidence');
+    expect(repository.tasks.get('TASK-020')?.body).toContain('```text\nproof\n```');
+  });
+
+  it('keeps editor documents stable on refresh and refuses stale structured saves', async () => {
+    selectPlanFSWorkspaceFolder(firstFolder);
+    const initial = { ...createTaskTemplate('TASK-conflict', 'Original title'), updatedAt: '2026-01-01T00:00:00Z' };
+    await saveEntity(firstRoot, initial);
+
+    const editor = new EntityEditorProvider(vscode.Uri.file('/extension'));
+    await editor.open(initial.id);
+    const editorPanel = jest.mocked(vscode.window.createWebviewPanel).mock.results[0].value;
+    const document = editorPanel.webview.html;
+
+    await editor.refresh();
+    expect(editorPanel.webview.html).toBe(document);
+    expect(editorPanel.webview.postedMessages).toContainEqual(expect.objectContaining({ type: 'updateEditor' }));
+
+    await saveEntity(firstRoot, { ...initial, title: 'Changed on disk', updatedAt: '2026-01-02T00:00:00Z' });
+    await editorPanel.webview.postMessage({ type: 'draftState', dirty: true });
+    await editor.refresh();
+    expect(editorPanel.webview.postedMessages).toContainEqual(expect.objectContaining({ type: 'conflict', reason: 'changed' }));
+
+    await editorPanel.webview.postMessage({
+      type: 'save',
+      entity: { ...initial, title: 'Stale editor title' }
+    });
+    const repository = await loadRepository(firstRoot);
+    expect(repository.tasks.get(initial.id)?.title).toBe('Changed on disk');
   });
 
   it('opens recoverable malformed tasks in the structured editor with diagnostics', async () => {
@@ -1429,9 +1649,10 @@ describe('VS Code view refresh workspace selection', () => {
       }
     });
 
-    expect(editorPanel.webview.html).not.toContain('Backlog Readiness');
-    expect(editorPanel.webview.html).not.toContain('Missing priority');
-    expect(editorPanel.webview.html).not.toContain('No updates in 60 days');
+    expect(editorPanel.webview.postedMessages).toContainEqual(expect.objectContaining({
+      type: 'saved',
+      payload: expect.objectContaining({ backlogReadiness: expect.objectContaining({ needsReview: false }) })
+    }));
   });
 
   it('hides backlog readiness details for fully ready tasks', async () => {
@@ -1464,6 +1685,7 @@ describe('VS Code view refresh workspace selection', () => {
     const editorPanel = jest.mocked(vscode.window.createWebviewPanel).mock.results[0].value;
     expect(editorPanel.webview.html).toContain('Archive Task');
     jest.mocked(vscode.window.showWarningMessage).mockResolvedValueOnce('Archive' as never);
+    jest.mocked(vscode.window.showQuickPick).mockResolvedValueOnce({ value: 'deferred' } as never);
 
     await editorPanel.webview.postMessage({
       type: 'archiveEntity'

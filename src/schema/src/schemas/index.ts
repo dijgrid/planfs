@@ -1,5 +1,6 @@
 export const taskSchema = {
   $schema: 'http://json-schema.org/draft-07/schema#',
+  $id: 'https://planfs.dev/schema/task/v1',
   title: 'PlanFS Task',
   type: 'object',
   required: ['id', 'title', 'status'],
@@ -90,6 +91,13 @@ export const taskSchema = {
         },
         originalPath: {
           type: 'string'
+        },
+        disposition: {
+          type: 'string',
+          enum: ['completed', 'cancelled', 'duplicate', 'deferred', 'superseded']
+        },
+        note: {
+          type: 'string'
         }
       },
       additionalProperties: false,
@@ -110,6 +118,7 @@ export const taskSchema = {
 
 export const epicSchema = {
   $schema: 'http://json-schema.org/draft-07/schema#',
+  $id: 'https://planfs.dev/schema/epic/v1',
   title: 'PlanFS Epic',
   type: 'object',
   required: ['id', 'title', 'status'],
@@ -172,6 +181,13 @@ export const epicSchema = {
         },
         originalPath: {
           type: 'string'
+        },
+        disposition: {
+          type: 'string',
+          enum: ['completed', 'cancelled', 'duplicate', 'deferred', 'superseded']
+        },
+        note: {
+          type: 'string'
         }
       },
       additionalProperties: false,
@@ -190,6 +206,7 @@ export const epicSchema = {
 
 export const milestoneSchema = {
   $schema: 'http://json-schema.org/draft-07/schema#',
+  $id: 'https://planfs.dev/schema/milestone/v1',
   title: 'PlanFS Milestone',
   type: 'object',
   required: ['id', 'title', 'targetDate', 'status'],
@@ -243,6 +260,7 @@ export const milestoneSchema = {
 
 export const decisionSchema = {
   $schema: 'http://json-schema.org/draft-07/schema#',
+  $id: 'https://planfs.dev/schema/decision/v1',
   title: 'PlanFS Decision',
   type: 'object',
   required: ['id', 'title', 'status'],

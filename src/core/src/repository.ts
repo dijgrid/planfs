@@ -27,6 +27,7 @@ import {
   Decision,
   ValidationResult
 } from './types';
+import { getPlanfsFormat } from './format';
 
 /**
  * Load a PlanFS repository
@@ -39,6 +40,7 @@ export async function loadRepository(rootPath: string): Promise<Repository> {
       `No .planfs directory found in ${rootPath}. Initialize with ensurePlanfsStructure() first.`
     );
   }
+  await getPlanfsFormat(rootPath);
 
   const repository: Repository = {
     root: rootPath,
@@ -254,6 +256,8 @@ export function generateEntityContent(entity: Entity): string {
 export interface ArchiveEntityOptions {
   includeChildren?: boolean;
   now?: Date;
+  disposition?: NonNullable<Entity['archive']>['disposition'];
+  note?: string;
 }
 
 export interface ArchiveEntityResult {
@@ -281,6 +285,9 @@ export async function archiveEntity(
   if (!entity) {
     throw new Error(`Active task or epic not found: ${entityId}`);
   }
+  if (entity.status !== 'done' && !options.disposition) {
+    throw new Error(`Archiving unfinished ${entity.type} ${entity.id} requires an explicit disposition`);
+  }
 
   const toArchive: Entity[] = [entity];
   if (entity.type === 'epic' && options.includeChildren) {
@@ -293,7 +300,7 @@ export async function archiveEntity(
   const archivedAt = (options.now ?? new Date()).toISOString();
   for (const current of toArchive) {
     const originalPath = path.relative(rootPath, current.filePath);
-    const archive = { archivedAt, originalPath };
+    const archive = { archivedAt, originalPath, ...(options.disposition ? { disposition: options.disposition } : {}), ...(options.note ? { note: options.note } : {}) };
     const archivedEntity = {
       ...current,
       archive,
@@ -454,6 +461,10 @@ export function getNextMilestoneId(
   return getAvailableSlugId('MILESTONE', title, repository.milestones);
 }
 
+export function getNextDecisionId(repository: Repository, title: string): string {
+  return getAvailableSlugId('DECISION', title, repository.decisions);
+}
+
 /**
  * Create a new task template
  */
@@ -511,6 +522,11 @@ export function createMilestoneTemplate(
     createdAt: now,
     updatedAt: now
   };
+}
+
+export function createDecisionTemplate(id: string, title: string): Decision {
+  const now = new Date().toISOString();
+  return { id, type: 'decision', title, status: 'proposed', filePath: '', metadata: {}, body: '', createdAt: now, updatedAt: now };
 }
 
 function getAvailableSlugId<T extends Entity>(

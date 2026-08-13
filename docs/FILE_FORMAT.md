@@ -2,6 +2,10 @@
 
 PlanFS uses a simple, human-readable format combining Markdown with YAML frontmatter. This ensures that files remain accessible to version control systems and readable by humans, even without specialized tooling.
 
+Repositories use `.planfs/planfs.json` to declare `formatVersion`. Version 1 is the current format; repositories created before this marker are treated as compatible v1 repositories until `planfs migrate --apply` writes the marker. Normal reads and saves never add it implicitly. Use `planfs migrate` to preview changes first, and keep version-control backups available before applying a migration. A repository declaring a newer format is refused with an upgrade message rather than rewritten.
+
+Archived tasks and epics retain an `archive` object with `archivedAt`, `originalPath`, and, for unfinished work, an explicit `disposition` (`cancelled`, `duplicate`, `deferred`, or `superseded`). An optional `note` records the human reason. Older archives without a disposition remain readable and appear as legacy archives; restoring removes archive-only metadata.
+
 ---
 
 ## General Format
@@ -311,6 +315,21 @@ Decisions are stored in `.planfs/decisions/`:
 .planfs/decisions/DECISION-001.md
 .planfs/decisions/DECISION-002.md
 ```
+
+---
+
+## Task Findings
+
+Use an optional `## Findings` section in a task's Markdown body to record observations, evidence, and review context discovered while doing that work. Findings deliberately stay with the task: they do not need frontmatter, IDs, or a separate lifecycle.
+
+```markdown
+## Findings
+
+- Automatic file-change refreshes reconstructed some webviews, clearing active tabs and filters.
+- Updating the webview through a message preserves valid local state while refreshing task data.
+```
+
+When a finding drives a durable cross-project decision, link to an ADR-style decision file from the task's `## References` section.
 
 ---
 

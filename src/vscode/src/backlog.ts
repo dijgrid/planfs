@@ -10,12 +10,14 @@ import {
   listBacklogTasks,
   loadRepository,
   loadSavedFilters,
+  parseTaskUpdatePatch,
   RefinementState,
   reviewBacklog,
   saveEntity,
-  Task,
+  saveSavedFilter,
+  deleteSavedFilter,
   TaskPriority,
-  validateRepositoryState
+  updateTask
 } from 'planfs-core';
 import {
   createHelpTopics,
@@ -40,6 +42,8 @@ const REFINEMENT_STATES: RefinementState[] = [
 
 export class BacklogProvider {
   private panel: vscode.WebviewPanel | undefined;
+  private hasRenderedBacklog = false;
+  private workspaceUri: string | undefined;
 
   constructor(
     private readonly extensionUri: vscode.Uri,
@@ -52,6 +56,7 @@ export class BacklogProvider {
       vscode.window.showErrorMessage('No workspace folder open');
       return;
     }
+    this.workspaceUri ??= workspaceFolder.uri.toString();
 
     if (this.panel) {
       this.panel.reveal(vscode.ViewColumn.One);
@@ -61,7 +66,7 @@ export class BacklogProvider {
 
     this.panel = vscode.window.createWebviewPanel(
       'planfsBacklog',
-      'PlanFS Backlog',
+      `PlanFS Backlog — ${workspaceFolder.name}`,
       vscode.ViewColumn.One,
       {
         enableScripts: true,
@@ -71,6 +76,8 @@ export class BacklogProvider {
 
     this.panel.onDidDispose(() => {
       this.panel = undefined;
+      this.hasRenderedBacklog = false;
+      this.workspaceUri = undefined;
     });
 
     this.panel.webview.onDidReceiveMessage(async message => {
@@ -92,9 +99,40 @@ export class BacklogProvider {
       if (message?.type === 'updateUiPreference') {
         await this.updateUiPreference(String(message.key), message.value);
       }
+      if (message?.type === 'saveCurrentFilter') {
+        await this.saveCurrentFilter(message.criteria as Record<string, unknown>);
+      }
+      if (message?.type === 'manageSavedFilter') await this.manageSavedFilter(String(message.id));
       await handleHelpMessage(this.extensionUri, message);
     });
 
+    await this.render();
+  }
+
+  private async saveCurrentFilter(criteria: Record<string, unknown>): Promise<void> {
+    const workspaceFolder = this.workspaceFolder();
+    if (!workspaceFolder) return;
+    const name = await vscode.window.showInputBox({ prompt: 'Name this shared backlog filter' });
+    if (!name) return;
+    const id = name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+    await saveSavedFilter(workspaceFolder.uri.fsPath, { id, name, criteria: criteria as never });
+    await this.render();
+  }
+
+  private async manageSavedFilter(id: string): Promise<void> {
+    const workspaceFolder = this.workspaceFolder();
+    if (!workspaceFolder || !id) return;
+    const filter = (await loadSavedFilters(workspaceFolder.uri.fsPath)).find(item => item.id === id);
+    if (!filter) return;
+    const action = await vscode.window.showQuickPick(['Rename', 'Duplicate', 'Delete'], { title: `Manage shared filter: ${filter.name}` });
+    if (action === 'Delete') await deleteSavedFilter(workspaceFolder.uri.fsPath, id);
+    if (action === 'Rename' || action === 'Duplicate') {
+      const name = await vscode.window.showInputBox({ prompt: `${action} shared filter`, value: action === 'Rename' ? filter.name : `${filter.name} copy` });
+      if (name) {
+        const nextId = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+        await saveSavedFilter(workspaceFolder.uri.fsPath, { ...filter, id: nextId, name }, action === 'Rename' ? id : undefined);
+      }
+    }
     await this.render();
   }
 
@@ -105,7 +143,7 @@ export class BacklogProvider {
   }
 
   private async render(): Promise<void> {
-    const workspaceFolder = getPlanFSWorkspaceFolder();
+    const workspaceFolder = this.workspaceFolder();
     if (!workspaceFolder || !this.panel) {
       return;
     }
@@ -132,12 +170,13 @@ export class BacklogProvider {
       milestone: task.milestone,
       tags: task.tags,
       dueDate: task.dueDate,
+      updatedAt: task.updatedAt,
       body: task.body,
-      sections: extractMarkdownSections(task.body, ['Acceptance Criteria', 'Questions']),
+      sections: extractMarkdownSections(task.body, ['Acceptance Criteria', 'Questions', 'Findings']),
       needsReview: reviewIds.has(task.id)
     }));
 
-    this.panel.webview.html = renderBacklogHtml({
+    const payload = {
       tasks,
       options: {
         epics: Array.from(repository.epics.values()).map(epic => ({
@@ -163,11 +202,16 @@ export class BacklogProvider {
         )
       },
       helpTopics: createHelpTopics(this.extensionUri, ['backlog'])
-    });
+    };
+    if (this.hasRenderedBacklog && await this.panel.webview.postMessage({ type: 'updateBacklog', payload })) {
+      return;
+    }
+    this.panel.webview.html = renderBacklogHtml(payload);
+    this.hasRenderedBacklog = true;
   }
 
   private async captureBacklogItem(title: string): Promise<void> {
-    const workspaceFolder = getPlanFSWorkspaceFolder();
+    const workspaceFolder = this.workspaceFolder();
     if (!workspaceFolder) {
       return;
     }
@@ -184,77 +228,65 @@ export class BacklogProvider {
   }
 
   private async updateRefinementState(taskId: string, refinementState: RefinementState): Promise<void> {
-    const workspaceFolder = getPlanFSWorkspaceFolder();
+    const workspaceFolder = this.workspaceFolder();
     if (!workspaceFolder || !REFINEMENT_STATES.includes(refinementState)) {
       return;
     }
 
-    const repository = await loadRepository(workspaceFolder.uri.fsPath);
-    const task = repository.tasks.get(taskId);
-    if (!task) {
-      vscode.window.showErrorMessage(`Task not found: ${taskId}`);
-      return;
+    try {
+      const repository = await loadRepository(workspaceFolder.uri.fsPath);
+      await updateTask(workspaceFolder.uri.fsPath, repository, {
+        id: taskId,
+        patch: { refinementState },
+        validationScope: 'task'
+      });
+      await this.render();
+    } catch (error) {
+      vscode.window.showErrorMessage(
+        `Backlog update blocked: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
-
-    task.refinementState = refinementState;
-    task.updatedAt = new Date().toISOString();
-    const validationRepository = {
-      ...repository,
-      tasks: new Map(repository.tasks).set(task.id, task)
-    };
-    const error = getBlockingTaskValidationError(validationRepository, task.id);
-    if (error) {
-      vscode.window.showErrorMessage(`Backlog update blocked by validation: ${error.message}`);
-      return;
-    }
-
-    await saveEntity(workspaceFolder.uri.fsPath, task);
-    await this.render();
   }
 
   private async updateBacklogTask(edited: BacklogTaskUpdate): Promise<void> {
-    const workspaceFolder = getPlanFSWorkspaceFolder();
+    const workspaceFolder = this.workspaceFolder();
     if (!workspaceFolder) {
       return;
     }
 
-    const repository = await loadRepository(workspaceFolder.uri.fsPath);
-    const current = repository.tasks.get(String(edited.id));
-    if (!current) {
-      vscode.window.showErrorMessage(`Task not found: ${String(edited.id)}`);
-      return;
+    try {
+      const repository = await loadRepository(workspaceFolder.uri.fsPath);
+      const patch = parseTaskUpdatePatch({
+        title: edited.title,
+        status: edited.status,
+        priority: edited.priority,
+        assignee: edited.assignee,
+        refinementState: edited.refinementState,
+        epic: edited.epic,
+        milestone: edited.milestone,
+        tags: edited.tags,
+        dueDate: edited.dueDate === undefined ? undefined : normalizeDueDate(edited.dueDate)
+      });
+      await updateTask(workspaceFolder.uri.fsPath, repository, {
+        id: String(edited.id),
+        patch,
+        expectedUpdatedAt: edited.expectedUpdatedAt,
+        validationScope: 'task'
+      });
+      await this.render();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      vscode.window.showErrorMessage(
+        message.startsWith('Update conflict:')
+          ? `Backlog update conflict: ${message.replace('Update conflict: ', '')}. Reloaded the latest task.`
+          : `Backlog update blocked: ${message.replace('Update failed validation: ', '')}`
+      );
+      await this.render();
     }
-
-    const task = removeEmptyTaskFields({
-      ...current,
-      title: String(edited.title ?? current.title),
-      status: normalizeTaskStatus(edited.status, current.status),
-      priority: normalizePriority(edited.priority),
-      assignee: normalizeOptionalString(edited.assignee),
-      refinementState: normalizeRefinementState(edited.refinementState, current.refinementState ?? 'ready'),
-      epic: normalizeOptionalString(edited.epic),
-      milestone: normalizeOptionalString(edited.milestone),
-      tags: normalizeTags(edited.tags),
-      dueDate: normalizeDueDate(edited.dueDate),
-      updatedAt: new Date().toISOString()
-    });
-
-    const validationRepository = {
-      ...repository,
-      tasks: new Map(repository.tasks).set(task.id, task)
-    };
-    const error = getBlockingTaskValidationError(validationRepository, task.id);
-    if (error) {
-      vscode.window.showErrorMessage(`Backlog update blocked by validation: ${error.message}`);
-      return;
-    }
-
-    await saveEntity(workspaceFolder.uri.fsPath, task);
-    await this.render();
   }
 
   private async openRawTask(taskId: string): Promise<void> {
-    const workspaceFolder = getPlanFSWorkspaceFolder();
+    const workspaceFolder = this.workspaceFolder();
     if (!workspaceFolder) {
       return;
     }
@@ -268,6 +300,12 @@ export class BacklogProvider {
 
     const document = await vscode.workspace.openTextDocument(task.filePath);
     await vscode.window.showTextDocument(document, { preview: false });
+  }
+
+  private workspaceFolder(): vscode.WorkspaceFolder | undefined {
+    return this.workspaceUri
+      ? vscode.workspace.workspaceFolders?.find(folder => folder.uri.toString() === this.workspaceUri)
+      : getPlanFSWorkspaceFolder();
   }
 
   private async updateUiPreference(key: string, value: unknown): Promise<void> {
@@ -288,6 +326,7 @@ export class BacklogProvider {
 
 interface BacklogTaskUpdate {
   id: string;
+  expectedUpdatedAt?: string | null;
   title?: string;
   status?: string;
   priority?: string;
@@ -311,6 +350,7 @@ interface BacklogHtmlPayload {
     milestone?: string;
     tags?: string[];
     dueDate?: string;
+    updatedAt?: string;
     body: string;
     sections: MarkdownSection[];
     needsReview: boolean;
@@ -414,6 +454,8 @@ function renderBacklogHtml(payload: BacklogHtmlPayload): string {
     <div class="filterGroup" aria-label="Backlog filters">
       <input id="filter" type="search" placeholder="Filter backlog" aria-label="Filter backlog">
       <select id="savedFilter" aria-label="Saved filter"></select>
+      <button type="button" id="saveFilter">Save filter</button>
+      <button type="button" id="manageFilter">Manage filter</button>
       <select id="groupBy" aria-label="Group backlog">
         <option value="">Backlog order</option>
         <option value="refinementState">Group by refinement</option>
@@ -434,7 +476,7 @@ function renderBacklogHtml(payload: BacklogHtmlPayload): string {
   ${renderHelpPanel()}
   <script>
     const vscode = acquireVsCodeApi();
-    const payload = ${json};
+    let payload = ${json};
     const restoredState = vscode.getState?.() || {};
     let query = String(restoredState.query || '');
     let savedFilterId = String(restoredState.savedFilterId || '');
@@ -450,7 +492,7 @@ function renderBacklogHtml(payload: BacklogHtmlPayload): string {
     const savedFilter = document.getElementById('savedFilter');
     const groupByInput = document.getElementById('groupBy');
 
-    savedFilter.innerHTML = '<option value="">All backlog</option>' + payload.savedFilters.map(filter => '<option value="' + escapeHtml(filter.id) + '">' + escapeHtml(filter.name) + '</option>').join('');
+    renderSavedFilters();
     filter.value = query;
     savedFilter.value = payload.savedFilters.some(filter => filter.id === savedFilterId) ? savedFilterId : '';
     savedFilterId = savedFilter.value;
@@ -465,7 +507,29 @@ function renderBacklogHtml(payload: BacklogHtmlPayload): string {
     });
     filter.addEventListener('input', () => { query = filter.value.toLowerCase(); persistUiState(); render(); });
     savedFilter.addEventListener('change', () => { savedFilterId = savedFilter.value; persistUiState(); render(); });
+    document.getElementById('saveFilter').addEventListener('click', () => {
+      const criteria = {};
+      if (query) criteria.query = query;
+      vscode.postMessage({ type: 'saveCurrentFilter', criteria });
+    });
+    document.getElementById('manageFilter').addEventListener('click', () => vscode.postMessage({ type: 'manageSavedFilter', id: savedFilterId }));
     groupByInput.addEventListener('change', () => { groupBy = groupByInput.value; persistUiState(); render(); });
+    window.addEventListener('message', event => {
+      if (event.data?.type !== 'updateBacklog') return;
+      payload = event.data.payload;
+      renderSavedFilters();
+      if (!payload.tasks.some(task => task.id === selectedTaskId)) {
+        selectedTaskId = payload.tasks[0]?.id || '';
+      }
+      persistUiState();
+      render();
+    });
+    function renderSavedFilters() {
+      const selected = savedFilterId;
+      savedFilter.innerHTML = '<option value="">All backlog</option>' + payload.savedFilters.map(filter => '<option value="' + escapeHtml(filter.id) + '">' + escapeHtml(filter.name) + '</option>').join('');
+      savedFilter.value = payload.savedFilters.some(filter => filter.id === selected) ? selected : '';
+      savedFilterId = savedFilter.value;
+    }
     function persistUiState() {
       vscode.setState?.({
         query,
@@ -555,7 +619,7 @@ function renderBacklogHtml(payload: BacklogHtmlPayload): string {
         save.disabled = false;
       });
       document.getElementById('saveTask').addEventListener('click', () => {
-        const edited = { id: task.id };
+        const edited = { id: task.id, expectedUpdatedAt: task.updatedAt ?? null };
         for (const element of form.elements) {
           if (element.name) {
             edited[element.name] = element.value;
@@ -572,7 +636,7 @@ function renderBacklogHtml(payload: BacklogHtmlPayload): string {
 
     function renderSections(task) {
       if (!task.sections || task.sections.length === 0) {
-        return '<div class="sections"><p class="empty">No Acceptance Criteria or Questions sections found. Use Open Markdown for full body editing.</p></div>';
+        return '<div class="sections"><p class="empty">No Acceptance Criteria, Questions, or Findings sections found. Use Open Markdown for full body editing.</p></div>';
       }
       return '<div class="sections">' + task.sections.map(section => '<section class="sectionCard"><h3>' + escapeHtml(section.title) + '</h3>' +
         section.paragraphs.map(paragraph => '<p class="meta">' + escapeHtml(paragraph) + '</p>').join('') +
@@ -624,41 +688,6 @@ function renderBacklogHtml(payload: BacklogHtmlPayload): string {
 </html>`;
 }
 
-function normalizeTaskStatus(value: unknown, fallback: Task['status']): Task['status'] {
-  const status = normalizeStatusValue(value);
-  if (status) {
-    return status;
-  }
-
-  return normalizeStatusValue(fallback) ?? 'todo';
-}
-
-function normalizeStatusValue(value: unknown): Task['status'] | undefined {
-  const text = String(value ?? '').trim().toLowerCase();
-  const aliases: Record<string, Task['status']> = {
-    todo: 'todo',
-    'to do': 'todo',
-    'in-progress': 'in-progress',
-    'in progress': 'in-progress',
-    review: 'review',
-    done: 'done',
-    completed: 'done'
-  };
-  return aliases[text];
-}
-
-function normalizePriority(value: unknown): TaskPriority | undefined {
-  return ['low', 'medium', 'high', 'critical'].includes(String(value))
-    ? String(value) as TaskPriority
-    : undefined;
-}
-
-function normalizeRefinementState(value: unknown, fallback: RefinementState): RefinementState {
-  return REFINEMENT_STATES.includes(String(value) as RefinementState)
-    ? String(value) as RefinementState
-    : fallback;
-}
-
 function normalizeOptionalString(value: unknown): string | undefined {
   const text = String(value ?? '').trim();
   return text || undefined;
@@ -676,37 +705,6 @@ function normalizeDueDate(value: unknown): string | undefined {
 
   const date = new Date(text);
   return Number.isNaN(date.getTime()) ? text : date.toISOString();
-}
-
-function getBlockingTaskValidationError(
-  repository: Parameters<typeof validateRepositoryState>[0],
-  taskId: string
-) {
-  return validateRepositoryState(repository).errors.find(error =>
-    error.severity === 'error' && error.id === taskId
-  );
-}
-
-function normalizeTags(value: string[] | string | undefined): string[] | undefined {
-  const tags = Array.isArray(value)
-    ? value
-    : String(value ?? '').split(',');
-  const normalized = tags.map(tag => tag.trim()).filter(Boolean);
-  return normalized.length > 0 ? normalized : undefined;
-}
-
-function removeEmptyTaskFields(task: Task): Task {
-  const copy = { ...task } as Record<string, unknown>;
-  for (const [key, value] of Object.entries(copy)) {
-    if (
-      value === '' ||
-      (Array.isArray(value) && value.length === 0) ||
-      (typeof value === 'object' && value !== null && Object.keys(value).length === 0)
-    ) {
-      delete copy[key];
-    }
-  }
-  return copy as unknown as Task;
 }
 
 function escapeScriptJson(json: string): string {

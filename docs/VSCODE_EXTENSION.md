@@ -4,6 +4,8 @@ This guide explains how to run the PlanFS VS Code extension in development and h
 
 ## Development Host
 
+The fast mock-based suite remains the default (`npm test --workspace=planfs-vscode`). Run the isolated real extension-host smoke suite with `npm run test:extension-host --workspace=planfs-vscode`; it downloads a compatible VS Code test binary on first use and launches a temporary workspace.
+
 Use this for day-to-day extension development. It avoids packaging and runs the extension directly from this repository.
 
 ```sh

@@ -14,6 +14,8 @@ import {
   searchTasks,
   SavedFilter,
   saveEntity,
+  saveSavedFilter,
+  deleteSavedFilter,
   Task,
   TaskReadiness,
   RefinementState,
@@ -106,6 +108,7 @@ export class BoardProvider {
   private panel: vscode.WebviewPanel | undefined;
   private hasRenderedBoard = false;
   private preferredMode: BoardMode = 'status';
+  private workspaceUri: string | undefined;
 
   constructor(
     private readonly extensionUri: vscode.Uri,
@@ -120,6 +123,7 @@ export class BoardProvider {
       vscode.window.showErrorMessage('No workspace folder open');
       return;
     }
+    this.workspaceUri ??= workspaceFolder.uri.toString();
 
     if (this.panel) {
       this.panel.reveal(vscode.ViewColumn.One);
@@ -129,7 +133,7 @@ export class BoardProvider {
 
     this.panel = vscode.window.createWebviewPanel(
       'planfsBoard',
-      'PlanFS Board',
+      `PlanFS Board — ${workspaceFolder.name}`,
       vscode.ViewColumn.One,
       {
         enableScripts: true,
@@ -140,6 +144,7 @@ export class BoardProvider {
     this.panel.onDidDispose(() => {
       this.panel = undefined;
       this.hasRenderedBoard = false;
+      this.workspaceUri = undefined;
     });
 
     this.panel.webview.onDidReceiveMessage(async message => {
@@ -179,6 +184,10 @@ export class BoardProvider {
       if (message?.type === 'createTask') {
         await this.createTask(message.context as Partial<CreateTaskContext>);
       }
+      if (message?.type === 'saveCurrentFilter') {
+        await this.saveCurrentFilter(message.criteria as Record<string, unknown>);
+      }
+      if (message?.type === 'manageSavedFilter') await this.manageSavedFilter(String(message.id));
 
       if (message?.type === 'bulkUpdateTasks') {
         await this.bulkUpdateTasks(message as Partial<BulkUpdateRequest>);
@@ -194,6 +203,33 @@ export class BoardProvider {
     await this.render({ replaceHtml: true });
   }
 
+  private async saveCurrentFilter(criteria: Record<string, unknown>): Promise<void> {
+    const workspaceFolder = this.workspaceFolder();
+    if (!workspaceFolder) return;
+    const name = await vscode.window.showInputBox({ prompt: 'Name this shared board filter' });
+    if (!name) return;
+    const id = name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+    await saveSavedFilter(workspaceFolder.uri.fsPath, { id, name, criteria: criteria as never });
+    await this.render();
+  }
+
+  private async manageSavedFilter(id: string): Promise<void> {
+    const workspaceFolder = this.workspaceFolder();
+    if (!workspaceFolder || !id) return;
+    const filter = (await loadSavedFilters(workspaceFolder.uri.fsPath)).find(item => item.id === id);
+    if (!filter) return;
+    const action = await vscode.window.showQuickPick(['Rename', 'Duplicate', 'Delete'], { title: `Manage shared filter: ${filter.name}` });
+    if (action === 'Delete') await deleteSavedFilter(workspaceFolder.uri.fsPath, id);
+    if (action === 'Rename' || action === 'Duplicate') {
+      const name = await vscode.window.showInputBox({ prompt: `${action} shared filter`, value: action === 'Rename' ? filter.name : `${filter.name} copy` });
+      if (name) {
+        const nextId = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+        await saveSavedFilter(workspaceFolder.uri.fsPath, { ...filter, id: nextId, name }, action === 'Rename' ? id : undefined);
+      }
+    }
+    await this.render();
+  }
+
   async refresh(): Promise<void> {
     if (this.panel) {
       await this.render();
@@ -205,7 +241,7 @@ export class BoardProvider {
       return;
     }
 
-    const workspaceFolder = getPlanFSWorkspaceFolder();
+    const workspaceFolder = this.workspaceFolder();
     if (!workspaceFolder) {
       this.panel.webview.html = renderMessage('No workspace folder open');
       this.hasRenderedBoard = false;
@@ -258,7 +294,7 @@ export class BoardProvider {
       return;
     }
 
-    const workspaceFolder = getPlanFSWorkspaceFolder();
+    const workspaceFolder = this.workspaceFolder();
     if (!workspaceFolder) {
       vscode.window.showErrorMessage('No workspace folder open');
       return;
@@ -298,7 +334,7 @@ export class BoardProvider {
       return;
     }
 
-    const workspaceFolder = getPlanFSWorkspaceFolder();
+    const workspaceFolder = this.workspaceFolder();
     if (!workspaceFolder) {
       vscode.window.showErrorMessage('No workspace folder open');
       return;
@@ -344,7 +380,7 @@ export class BoardProvider {
       return;
     }
 
-    const workspaceFolder = getPlanFSWorkspaceFolder();
+    const workspaceFolder = this.workspaceFolder();
     if (!workspaceFolder) {
       vscode.window.showErrorMessage('No workspace folder open');
       return;
@@ -397,7 +433,7 @@ export class BoardProvider {
   }
 
   private async openTaskFile(taskId: string): Promise<void> {
-    const workspaceFolder = getPlanFSWorkspaceFolder();
+    const workspaceFolder = this.workspaceFolder();
     if (!workspaceFolder) {
       vscode.window.showErrorMessage('No workspace folder open');
       return;
@@ -424,7 +460,7 @@ export class BoardProvider {
   }
 
   private async createTask(context: Partial<CreateTaskContext>): Promise<void> {
-    const workspaceFolder = getPlanFSWorkspaceFolder();
+    const workspaceFolder = this.workspaceFolder();
     if (!workspaceFolder) {
       vscode.window.showErrorMessage('No workspace folder open');
       return;
@@ -525,7 +561,7 @@ export class BoardProvider {
       return;
     }
 
-    const workspaceFolder = getPlanFSWorkspaceFolder();
+    const workspaceFolder = this.workspaceFolder();
     if (!workspaceFolder) {
       vscode.window.showErrorMessage('No workspace folder open');
       return;
@@ -569,6 +605,12 @@ export class BoardProvider {
       );
       await this.render();
     }
+  }
+
+  private workspaceFolder(): vscode.WorkspaceFolder | undefined {
+    return this.workspaceUri
+      ? vscode.workspace.workspaceFolders?.find(folder => folder.uri.toString() === this.workspaceUri)
+      : getPlanFSWorkspaceFolder();
   }
 
   private getPreferences(workspaceFolder: vscode.WorkspaceFolder): BoardPreferences {
@@ -1507,6 +1549,8 @@ function renderBoard(
       <select id="savedFilter" aria-label="Saved filter">
         <option value="">All tasks</option>
       </select>
+      <button type="button" id="saveFilter">Save filter</button>
+      <button type="button" id="manageFilter">Manage filter</button>
       <select id="milestoneFocus" aria-label="Milestone focus">
         <option value="">All milestones</option>
       </select>
@@ -1552,6 +1596,7 @@ function renderBoard(
     let selectedTaskId = state.tasks[0]?.id || '';
     const selectedBulkTaskIds = new Set();
     const persistedState = typeof vscode.getState === 'function' ? vscode.getState() : {};
+    selectedTaskId = String(persistedState?.selectedTaskId || selectedTaskId);
     const minDetailsWidth = 280;
     const maxDetailsWidth = 560;
     let detailsPanelWidth = normalizeDetailsPanelWidth(
@@ -1609,12 +1654,16 @@ function renderBoard(
     groupInput.value = groupingModes.includes(persistedState?.groupKey)
       ? persistedState.groupKey
       : 'none';
+    filterInput.value = String(persistedState?.filterQuery || '');
+    sortInput.value = ['id', 'title', 'priority', 'assignee'].includes(persistedState?.sortKey)
+      ? persistedState.sortKey
+      : 'id';
     boardScopeInput.value = boardScope;
     renderSavedFilterOptions();
     renderMilestoneOptions();
     updateModeButtons();
 
-    filterInput.addEventListener('input', () => render());
+    filterInput.addEventListener('input', () => { persistBoardState(); render(); });
     modeButtons.forEach((button, index) => {
       button.addEventListener('click', () => setBoardMode(button.dataset.mode));
       button.addEventListener('keydown', event => {
@@ -1636,7 +1685,14 @@ function renderBoard(
       persistDetailsPanelPreference('board.scope', boardScope);
       render();
     });
-    savedFilterInput.addEventListener('change', () => render());
+    savedFilterInput.addEventListener('change', () => { persistBoardState(); render(); });
+    document.getElementById('saveFilter').addEventListener('click', () => {
+      const criteria = {};
+      if (filterInput.value.trim()) criteria.query = filterInput.value.trim();
+      if (milestoneFocus) criteria.milestone = milestoneFocus;
+      vscode.postMessage({ type: 'saveCurrentFilter', criteria });
+    });
+    document.getElementById('manageFilter').addEventListener('click', () => vscode.postMessage({ type: 'manageSavedFilter', id: savedFilterInput.value }));
     milestoneFocusInput.addEventListener('change', () => {
       milestoneFocus = milestoneFocusInput.value;
       persistBoardState();
@@ -1654,7 +1710,7 @@ function renderBoard(
       persistBoardState();
       render();
     });
-    sortInput.addEventListener('change', () => render());
+    sortInput.addEventListener('change', () => { persistBoardState(); render(); });
     bulkApplyButton.addEventListener('click', () => {
       vscode.postMessage({
         type: 'bulkUpdateTasks',
@@ -1686,7 +1742,6 @@ function renderBoard(
 
       const selectedFilter = savedFilterInput.value;
       state = event.data.payload;
-      milestoneFocus = String(state.preferences?.milestoneFocus ?? '');
       const taskIds = new Set(state.tasks.map(task => task.id));
       Array.from(selectedBulkTaskIds).forEach(taskId => {
         if (!taskIds.has(taskId)) {
@@ -1722,6 +1777,10 @@ function renderBoard(
       vscode.setState({
         ...(currentState || {}),
         boardMode,
+        selectedTaskId,
+        filterQuery: filterInput.value,
+        savedFilterId: savedFilterInput.value,
+        sortKey: sortInput.value,
         groupKey: groupInput.value,
         boardScope,
         detailsPanelWidth,
@@ -1739,7 +1798,7 @@ function renderBoard(
       });
     }
 
-    function renderSavedFilterOptions(selectedFilter = savedFilterInput.value) {
+    function renderSavedFilterOptions(selectedFilter = persistedState?.savedFilterId || savedFilterInput.value) {
       const allTasks = document.createElement('option');
       allTasks.value = '';
       allTasks.textContent = 'All tasks';

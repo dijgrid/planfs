@@ -18,6 +18,11 @@ import { archiveCommand, ArchiveAction } from './commands/archive';
 import { branchCommand } from './commands/branch';
 import { gitCommand, GitAction } from './commands/git';
 import { pullRequestCommand, PullRequestAction } from './commands/pr';
+import { doctorCommand } from './commands/doctor';
+import { migrateCommand } from './commands/migrate';
+import { updateCommand } from './commands/update';
+import { filterCommand, FilterAction } from './commands/filter';
+import { historyCommand } from './commands/history';
 import pkg from '../package.json';
 
 export async function main(): Promise<void> {
@@ -177,6 +182,11 @@ export async function main(): Promise<void> {
             description: 'Show detailed output',
             default: false
           })
+          .option('strict', {
+            type: 'boolean',
+            default: false,
+            description: 'Fail when validation warnings are present'
+          })
           .option('format', {
             type: 'string',
             choices: ['text', 'json'],
@@ -186,10 +196,46 @@ export async function main(): Promise<void> {
       async (args) => {
         const exitCode = await validateCommand(process.cwd(), {
           verbose: args.verbose as boolean,
+          strict: args.strict as boolean,
           format: args.format as 'text' | 'json'
         });
         process.exit(exitCode);
       }
+    )
+    .command(
+      'doctor',
+      'Report actionable plan-health issues separately from historical references',
+      (y) => y.option('format', { type: 'string', choices: ['text', 'json'], default: 'text' }),
+      async (args) => {
+        process.exit(await doctorCommand(process.cwd(), { format: args.format as 'text' | 'json' }));
+      }
+    )
+    .command(
+      'migrate',
+      'Preview or apply a PlanFS format migration',
+      (y) => y.option('apply', { type: 'boolean', default: false }).option('format', { type: 'string', choices: ['text', 'json'], default: 'text' }),
+      async (args) => {
+        process.exit(await migrateCommand(process.cwd(), { apply: args.apply as boolean, format: args.format as 'text' | 'json' }));
+      }
+    )
+    .command(
+      'update <id>', 'Preview or update common entity metadata',
+      (y) => y.positional('id', { type: 'string' }).option('title', { type: 'string' }).option('status', { type: 'string' }).option('owner', { type: 'string' }).option('assignee', { type: 'string' }).option('priority', { type: 'string' }).option('target-date', { type: 'string' }).option('clear', { type: 'array', string: true, description: 'Explicitly clear optional fields' }).option('expected-updated-at', { type: 'string' }).option('dry-run', { type: 'boolean', default: false }).option('format', { type: 'string', choices: ['text', 'json'], default: 'text' }),
+      async (args) => {
+        const patch: Record<string, unknown> = { title: args.title, status: args.status, owner: args.owner, assignee: args.assignee, priority: args.priority, targetDate: args.targetDate };
+        for (const field of args.clear as string[] ?? []) patch[field] = '__clear__';
+        process.exit(await updateCommand(process.cwd(), args.id as string, { patch, expectedUpdatedAt: args.expectedUpdatedAt as string | undefined, dryRun: args.dryRun as boolean, format: args.format as 'text' | 'json' }));
+      }
+    )
+    .command(
+      'filter <action>', 'Manage repository-shared saved filters',
+      (y) => y.positional('action', { choices: ['list', 'show', 'save', 'delete'] }).option('id', { type: 'string' }).option('name', { type: 'string' }).option('description', { type: 'string' }).option('criteria', { type: 'string', description: 'Filter criteria as JSON' }).option('dry-run', { type: 'boolean', default: false }).option('format', { type: 'string', choices: ['text', 'json'], default: 'text' }),
+      async (args) => process.exit(await filterCommand(process.cwd(), args.action as FilterAction, { id: args.id as string | undefined, name: args.name as string | undefined, description: args.description as string | undefined, criteria: args.criteria as string | undefined, dryRun: args.dryRun as boolean, format: args.format as 'text' | 'json' }))
+    )
+    .command(
+      'history <id>', 'Show Git history for a PlanFS entity',
+      (y) => y.positional('id', { type: 'string' }).option('format', { type: 'string', choices: ['text', 'json'], default: 'text' }),
+      async (args) => process.exit(await historyCommand(process.cwd(), args.id as string, args.format as 'text' | 'json'))
     )
     .command(
       'branch',
@@ -323,6 +369,8 @@ export async function main(): Promise<void> {
             default: false,
             description: 'Confirm permanent archive deletion'
           })
+          .option('disposition', { type: 'string', choices: ['completed', 'cancelled', 'duplicate', 'deferred', 'superseded'], description: 'Reason for archiving unfinished work' })
+          .option('note', { type: 'string', description: 'Optional archive note' })
           .option('format', {
             type: 'string',
             choices: ['text', 'json'],
@@ -339,6 +387,8 @@ export async function main(): Promise<void> {
             dryRun: args.dryRun as boolean,
             expectedUpdatedAt: args.expectedUpdatedAt as string | undefined,
             yes: args.yes as boolean,
+            disposition: args.disposition as 'completed' | 'cancelled' | 'duplicate' | 'deferred' | 'superseded' | undefined,
+            note: args.note as string | undefined,
             format: args.format as 'text' | 'json'
           }
         );
@@ -559,7 +609,7 @@ export async function main(): Promise<void> {
         y
           .positional('type', {
             describe: 'Entity type to create',
-            choices: ['task', 'epic', 'milestone']
+            choices: ['task', 'epic', 'milestone', 'decision']
           })
           .option('title', {
             alias: 't',

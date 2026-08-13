@@ -12,6 +12,7 @@ import type { ValidationResult } from 'planfs-core';
 
 export interface ValidateOptions {
   verbose?: boolean;
+  strict?: boolean;
   format?: 'text' | 'json';
 }
 
@@ -26,6 +27,8 @@ interface ValidateSummary {
 interface ValidateOutput {
   valid: boolean;
   summary: ValidateSummary;
+  severityCounts: { errors: number; warnings: number };
+  categoryCounts: Record<string, number>;
   result: ValidationResult;
 }
 
@@ -61,47 +64,44 @@ export async function validateCommand(
     }
 
     const result = validateRepositoryState(repo);
+    const errors = result.errors.filter(e => e.severity === 'error');
+    const warnings = result.errors.filter(e => e.severity === 'warning');
+    const severityCounts = { errors: errors.length, warnings: warnings.length };
+    const categoryCounts = result.errors.reduce<Record<string, number>>((counts, diagnostic) => {
+      const category = diagnostic.message.split(':', 1)[0].toLowerCase().replace(/\s+/g, '-');
+      counts[category] = (counts[category] ?? 0) + 1;
+      return counts;
+    }, {});
 
     if (format === 'json') {
       writeJson({
         valid: result.valid,
         summary,
+        severityCounts,
+        categoryCounts,
         result
       });
-      return result.valid ? 0 : 1;
+      return result.valid && (!options.strict || warnings.length === 0) ? 0 : 1;
     }
 
-    if (result.valid) {
-      console.log('✓ Repository is valid!');
-      return 0;
-    } else {
+    if (!result.valid) {
       console.log('✗ Validation failed with errors:\n');
-
-      // Group errors by severity
-      const errors = result.errors.filter(e => e.severity === 'error');
-      const warnings = result.errors.filter(e => e.severity === 'warning');
-
-      if (errors.length > 0) {
-        console.log(`\nErrors (${errors.length}):`);
-        for (const error of errors) {
-          const id = error.id ? ` [${error.id}]` : '';
-          console.log(`  ✗${id} ${error.message}`);
-          if (options.verbose && error.path) {
-            console.log(`    Path: ${error.path}`);
-          }
-        }
-      }
-
-      if (warnings.length > 0) {
-        console.log(`\nWarnings (${warnings.length}):`);
-        for (const warning of warnings) {
-          const id = warning.id ? ` [${warning.id}]` : '';
-          console.log(`  ⚠${id} ${warning.message}`);
-        }
-      }
-
-      return 1;
     }
+    if (result.valid) console.log('✓ Repository is valid!');
+    console.log(`Warnings: ${warnings.length} | Errors: ${errors.length}`);
+
+    if (errors.length > 0) {
+      console.log(`\nErrors (${errors.length}):`);
+      for (const error of errors) printDiagnostic('✗', error, options.verbose);
+    }
+    if (warnings.length > 0 && (options.verbose || !result.valid)) {
+      console.log(`\nWarnings (${warnings.length}):`);
+      for (const warning of warnings) printDiagnostic('⚠', warning, options.verbose);
+    }
+    if (options.strict && warnings.length > 0 && errors.length === 0) {
+      console.log('✗ Strict validation failed because warnings are present.');
+    }
+    return errors.length > 0 || (options.strict && warnings.length > 0) ? 1 : 0;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
 
@@ -115,6 +115,8 @@ export async function validateCommand(
           milestones: 0,
           decisions: 0
         },
+        severityCounts: { errors: 1, warnings: 0 },
+        categoryCounts: { error: 1 },
         result: {
           valid: false,
           errors: [
@@ -131,6 +133,12 @@ export async function validateCommand(
 
     return 1;
   }
+}
+
+function printDiagnostic(symbol: string, diagnostic: ValidationResult['errors'][number], verbose?: boolean): void {
+  const id = diagnostic.id ? ` [${diagnostic.id}]` : '';
+  console.log(`  ${symbol}${id} ${diagnostic.message}`);
+  if (verbose && diagnostic.path) console.log(`    Path: ${diagnostic.path}`);
 }
 
 function writeJson(output: ValidateOutput): void {

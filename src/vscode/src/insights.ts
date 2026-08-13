@@ -132,6 +132,8 @@ interface InsightsPayload {
 
 export class InsightsProvider {
   private panel: vscode.WebviewPanel | undefined;
+  private hasRenderedInsights = false;
+  private workspaceUri: string | undefined;
 
   constructor(private readonly extensionUri: vscode.Uri) {}
 
@@ -141,6 +143,7 @@ export class InsightsProvider {
       vscode.window.showErrorMessage('No workspace folder open');
       return;
     }
+    this.workspaceUri ??= workspaceFolder.uri.toString();
 
     if (this.panel) {
       this.panel.reveal(vscode.ViewColumn.One);
@@ -150,7 +153,7 @@ export class InsightsProvider {
 
     this.panel = vscode.window.createWebviewPanel(
       'planfsInsights',
-      'PlanFS Insights',
+      `PlanFS Insights — ${workspaceFolder.name}`,
       vscode.ViewColumn.One,
       {
         enableScripts: true,
@@ -160,6 +163,8 @@ export class InsightsProvider {
 
     this.panel.onDidDispose(() => {
       this.panel = undefined;
+      this.hasRenderedInsights = false;
+      this.workspaceUri = undefined;
     });
 
     this.panel.webview.onDidReceiveMessage(async message => {
@@ -195,7 +200,7 @@ export class InsightsProvider {
       return;
     }
 
-    const workspaceFolder = getPlanFSWorkspaceFolder();
+    const workspaceFolder = this.workspaceFolder();
     if (!workspaceFolder) {
       this.panel.webview.html = renderMessage('No workspace folder open');
       return;
@@ -204,11 +209,16 @@ export class InsightsProvider {
     try {
       const repository = await loadRepository(workspaceFolder.uri.fsPath);
       const payload = await createPayload(repository, this.extensionUri);
+      if (this.hasRenderedInsights && await this.panel.webview.postMessage({ type: 'updateInsights', payload })) {
+        return;
+      }
       this.panel.webview.html = renderInsights(this.panel.webview, payload);
+      this.hasRenderedInsights = true;
     } catch (error) {
       this.panel.webview.html = renderMessage(
         `Failed to load PlanFS insights: ${error instanceof Error ? error.message : String(error)}`
       );
+      this.hasRenderedInsights = false;
     }
   }
 
@@ -216,7 +226,7 @@ export class InsightsProvider {
     milestoneId: string,
     targetDate: string
   ): Promise<void> {
-    const workspaceFolder = getPlanFSWorkspaceFolder();
+    const workspaceFolder = this.workspaceFolder();
     if (!workspaceFolder) {
       vscode.window.showErrorMessage('No workspace folder open');
       return;
@@ -241,6 +251,12 @@ export class InsightsProvider {
       );
       await this.render();
     }
+  }
+
+  private workspaceFolder(): vscode.WorkspaceFolder | undefined {
+    return this.workspaceUri
+      ? vscode.workspace.workspaceFolders?.find(folder => folder.uri.toString() === this.workspaceUri)
+      : getPlanFSWorkspaceFolder();
   }
 }
 
@@ -1118,7 +1134,7 @@ function renderInsights(webview: vscode.Webview, payload: InsightsPayload): stri
 
   <script nonce="${nonce}">
     const vscode = acquireVsCodeApi();
-    const state = ${JSON.stringify(payload)};
+    let state = ${JSON.stringify(payload)};
     const helpButtons = {
       timeline: ${JSON.stringify(renderHelpButton('insights.timeline', 'Show help for the timeline'))},
       graph: ${JSON.stringify(renderHelpButton('insights.graph', 'Show help for the dependency graph'))},
@@ -1131,17 +1147,54 @@ function renderInsights(webview: vscode.Webview, payload: InsightsPayload): stri
     let graphZoom = 1;
     let selectedTimelineItem;
 
-    tabs.forEach(tab => tab.addEventListener('click', () => {
+    const restoredState = vscode.getState?.() || {};
+    let activeTab = ['timeline', 'graph', 'reports', 'branch'].includes(restoredState.activeTab)
+      ? restoredState.activeTab
+      : 'timeline';
+    function setActiveTab(tabId) {
       tabs.forEach(item => item.classList.remove('active'));
       panels.forEach(panel => panel.classList.remove('active'));
-      tab.classList.add('active');
-      document.getElementById(tab.dataset.tab).classList.add('active');
-    }));
+      const tab = Array.from(tabs).find(item => item.dataset.tab === tabId);
+      tab?.classList.add('active');
+      document.getElementById(tabId)?.classList.add('active');
+      activeTab = tabId;
+      vscode.setState?.({ ...(vscode.getState?.() || {}), activeTab });
+    }
+    tabs.forEach(tab => tab.addEventListener('click', () => setActiveTab(tab.dataset.tab)));
+    setActiveTab(activeTab);
 
     renderGraph();
     renderTimeline();
     renderReports();
     renderBranch();
+
+    window.addEventListener('message', event => {
+      if (event.data?.type !== 'updateInsights') return;
+      const controls = captureControls();
+      state = event.data.payload;
+      renderGraph();
+      renderTimeline();
+      renderReports();
+      renderBranch();
+      restoreControls(controls);
+      setActiveTab(activeTab);
+    });
+
+    function captureControls() {
+      return Object.fromEntries(Array.from(document.querySelectorAll('input[id], select[id]')).map(control => [control.id, control.value]));
+    }
+    function restoreControls(values) {
+      for (const [id, value] of Object.entries(values)) {
+        const control = document.getElementById(id);
+        if (control && Array.from(control.options || []).some(option => option.value === value)) {
+          control.value = value;
+          control.dispatchEvent(new Event('change'));
+        } else if (control && control.tagName === 'INPUT') {
+          control.value = value;
+          control.dispatchEvent(new Event('input'));
+        }
+      }
+    }
 
     document.addEventListener('click', event => {
       const button = event.target.closest('[data-open-entity]');

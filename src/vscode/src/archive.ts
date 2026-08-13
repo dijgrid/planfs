@@ -30,6 +30,8 @@ interface ArchivePayload {
     status?: string;
     archivedAt?: string;
     originalPath?: string;
+    disposition?: string;
+    note?: string;
     body: string;
   }>;
   helpTopics: HelpTopic[];
@@ -37,6 +39,8 @@ interface ArchivePayload {
 
 export class ArchiveProvider {
   private panel: vscode.WebviewPanel | undefined;
+  private hasRenderedArchive = false;
+  private workspaceUri: string | undefined;
 
   constructor(private readonly extensionUri: vscode.Uri) {}
 
@@ -46,6 +50,7 @@ export class ArchiveProvider {
       vscode.window.showErrorMessage('No workspace folder open');
       return;
     }
+    this.workspaceUri ??= workspaceFolder.uri.toString();
 
     if (this.panel) {
       this.panel.reveal(vscode.ViewColumn.One);
@@ -55,7 +60,7 @@ export class ArchiveProvider {
 
     this.panel = vscode.window.createWebviewPanel(
       'planfsArchive',
-      'PlanFS Archive',
+      `PlanFS Archive — ${workspaceFolder.name}`,
       vscode.ViewColumn.One,
       {
         enableScripts: true,
@@ -64,6 +69,8 @@ export class ArchiveProvider {
     );
     this.panel.onDidDispose(() => {
       this.panel = undefined;
+      this.hasRenderedArchive = false;
+      this.workspaceUri = undefined;
     });
     this.panel.webview.onDidReceiveMessage(async message => {
       if (message?.type === 'restore') {
@@ -88,7 +95,7 @@ export class ArchiveProvider {
   }
 
   private async render(): Promise<void> {
-    const workspaceFolder = getPlanFSWorkspaceFolder();
+    const workspaceFolder = this.workspaceFolder();
     if (!workspaceFolder || !this.panel) {
       return;
     }
@@ -101,17 +108,24 @@ export class ArchiveProvider {
       status: String(entity.status ?? ''),
       archivedAt: entity.archive?.archivedAt,
       originalPath: entity.archive?.originalPath,
+      disposition: entity.archive?.disposition,
+      note: entity.archive?.note,
       body: entity.body
     }));
 
-    this.panel.webview.html = renderArchiveHtml({
+    const payload = {
       items,
       helpTopics: createHelpTopics(this.extensionUri, ['archive'])
-    });
+    };
+    if (this.hasRenderedArchive && await this.panel.webview.postMessage({ type: 'updateArchive', payload })) {
+      return;
+    }
+    this.panel.webview.html = renderArchiveHtml(payload);
+    this.hasRenderedArchive = true;
   }
 
   private async restore(id: string): Promise<void> {
-    const workspaceFolder = getPlanFSWorkspaceFolder();
+    const workspaceFolder = this.workspaceFolder();
     if (!workspaceFolder) {
       return;
     }
@@ -122,7 +136,7 @@ export class ArchiveProvider {
   }
 
   private async delete(id: string): Promise<void> {
-    const workspaceFolder = getPlanFSWorkspaceFolder();
+    const workspaceFolder = this.workspaceFolder();
     if (!workspaceFolder) {
       return;
     }
@@ -142,7 +156,7 @@ export class ArchiveProvider {
   }
 
   private async openRaw(id: string): Promise<void> {
-    const workspaceFolder = getPlanFSWorkspaceFolder();
+    const workspaceFolder = this.workspaceFolder();
     if (!workspaceFolder) {
       return;
     }
@@ -156,6 +170,12 @@ export class ArchiveProvider {
 
     const document = await vscode.workspace.openTextDocument(entity.filePath);
     await vscode.window.showTextDocument(document, { preview: false });
+  }
+
+  private workspaceFolder(): vscode.WorkspaceFolder | undefined {
+    return this.workspaceUri
+      ? vscode.workspace.workspaceFolders?.find(folder => folder.uri.toString() === this.workspaceUri)
+      : getPlanFSWorkspaceFolder();
   }
 }
 
@@ -194,8 +214,18 @@ export async function archiveExplorerItem(item: { entity?: Entity } | undefined)
     }
   }
 
-  const result = await archiveEntity(workspaceFolder.uri.fsPath, entity.id, { includeChildren });
+  const disposition = entity.status === 'done' ? 'completed' : await pickArchiveDisposition(entity.id);
+  if (!disposition) return;
+  const result = await archiveEntity(workspaceFolder.uri.fsPath, entity.id, { includeChildren, disposition });
   vscode.window.showInformationMessage(`Archived ${result.archived.length} item${result.archived.length === 1 ? '' : 's'}`);
+}
+
+async function pickArchiveDisposition(entityId: string): Promise<'cancelled' | 'duplicate' | 'deferred' | 'superseded' | undefined> {
+  const selected = await vscode.window.showQuickPick([
+    { label: 'Cancelled', value: 'cancelled' as const }, { label: 'Duplicate', value: 'duplicate' as const },
+    { label: 'Deferred', value: 'deferred' as const }, { label: 'Superseded', value: 'superseded' as const }
+  ], { title: `Why archive unfinished ${entityId}?`, placeHolder: 'Choose an archive disposition' });
+  return selected?.value;
 }
 
 function renderArchiveHtml(payload: ArchivePayload): string {
@@ -240,12 +270,17 @@ function renderArchiveHtml(payload: ArchivePayload): string {
   ${renderHelpPanel()}
   <script>
     const vscode = acquireVsCodeApi();
-    const payload = ${json};
+    let payload = ${json};
     const content = document.getElementById('content');
     const queryInput = document.getElementById('query');
     const typeInput = document.getElementById('type');
     queryInput.addEventListener('input', render);
     typeInput.addEventListener('change', render);
+    window.addEventListener('message', event => {
+      if (event.data?.type !== 'updateArchive') return;
+      payload = event.data.payload;
+      render();
+    });
 
     function render() {
       const query = queryInput.value.trim().toLowerCase();
@@ -274,7 +309,7 @@ function renderArchiveHtml(payload: ArchivePayload): string {
     function renderItem(item) {
       return '<section class="card">' +
         '<div class="head"><div><h2>' + escapeHtml(item.id) + ' ' + escapeHtml(item.title) + '</h2>' +
-        '<div class="meta">' + [item.type, item.status, item.archivedAt ? 'archived ' + item.archivedAt : '', item.originalPath].filter(Boolean).map(escapeHtml).join(' | ') + '</div></div>' +
+        '<div class="meta">' + [item.type, item.status, item.disposition ? 'disposition: ' + item.disposition : 'legacy archive', item.archivedAt ? 'archived ' + item.archivedAt : '', item.originalPath].filter(Boolean).map(escapeHtml).join(' | ') + '</div>' + (item.note ? '<div class="meta">' + escapeHtml(item.note) + '</div>' : '') + '</div>' +
         '<div class="actions"><button type="button" data-restore="' + escapeHtml(item.id) + '">Restore</button>' +
         '<button type="button" class="secondary" data-open-raw="' + escapeHtml(item.id) + '">Open Markdown</button>' +
         '<button type="button" class="secondary" data-delete="' + escapeHtml(item.id) + '">Delete</button></div></div>' +

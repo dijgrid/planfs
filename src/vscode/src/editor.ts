@@ -7,6 +7,7 @@ import {
   archiveEntity,
   Entity,
   Epic,
+  Decision,
   getRepositoryDevelopers,
   getMilestoneRollup,
   loadRepository,
@@ -47,7 +48,7 @@ interface EditorPayload {
   helpTopics: HelpTopic[];
 }
 
-type EditableEntity = Task | Epic | Milestone;
+type EditableEntity = Task | Epic | Milestone | Decision;
 
 interface EpicBoardTask {
   id: string;
@@ -69,8 +70,15 @@ interface BacklogReadinessInfo {
   reasons: string[];
 }
 
+interface EditorSession {
+  workspaceUri: string;
+  loadedUpdatedAt?: string;
+  dirty?: boolean;
+}
+
 export class EntityEditorProvider {
   private panels = new Map<string, vscode.WebviewPanel>();
+  private sessions = new Map<string, EditorSession>();
 
   constructor(private readonly extensionUri: vscode.Uri) {}
 
@@ -94,16 +102,13 @@ export class EntityEditorProvider {
       const existingPanel = this.panels.get(entity.id);
       if (existingPanel) {
         existingPanel.reveal(vscode.ViewColumn.One);
-        existingPanel.webview.html = renderEditor(
-          existingPanel.webview,
-          await createPayload(repository, entity, this.extensionUri)
-        );
+        await this.updateCleanPanel(entity.id, existingPanel, repository, entity);
         return;
       }
 
       const panel = vscode.window.createWebviewPanel(
         'planfsEntityEditor',
-        `PlanFS Editor: ${entity.id}`,
+        `PlanFS Editor: ${entity.id} — ${workspaceFolder.name}`,
         vscode.ViewColumn.One,
         {
           enableScripts: true,
@@ -112,7 +117,11 @@ export class EntityEditorProvider {
       );
 
       this.panels.set(entity.id, panel);
-      panel.onDidDispose(() => this.panels.delete(entity.id));
+      this.sessions.set(entity.id, { workspaceUri: workspaceFolder.uri.toString(), loadedUpdatedAt: entity.updatedAt });
+      panel.onDidDispose(() => {
+        this.panels.delete(entity.id);
+        this.sessions.delete(entity.id);
+      });
       panel.webview.onDidReceiveMessage(async message => {
         if (message?.type === 'save') {
           await this.save(String(entity.id), message.entity as EditableEntity, panel);
@@ -120,6 +129,19 @@ export class EntityEditorProvider {
 
         if (message?.type === 'openRaw') {
           await openRawFile(String(entity.id));
+        }
+
+        if (message?.type === 'draftState') {
+          const session = this.sessions.get(entity.id);
+          if (session) session.dirty = Boolean(message.dirty);
+        }
+
+        if (message?.type === 'reload') {
+          await this.reload(entity.id, panel);
+        }
+
+        if (message?.type === 'retrySave') {
+          await this.save(String(entity.id), message.entity as EditableEntity, panel, true);
         }
 
         if (message?.type === 'openEntity') {
@@ -160,10 +182,20 @@ export class EntityEditorProvider {
     try {
       const repository = await loadRepository(workspaceFolder.uri.fsPath);
       for (const [entityId, panel] of this.panels.entries()) {
+        const session = this.sessions.get(entityId);
+        if (session?.workspaceUri !== workspaceFolder.uri.toString()) continue;
         const entity = findEditableEntity(repository, entityId);
-        panel.webview.html = entity
-          ? renderEditor(panel.webview, await createPayload(repository, entity, this.extensionUri))
-          : renderMessage(`Entity not found: ${entityId}`);
+        if (!entity) {
+          await panel.webview.postMessage({ type: 'conflict', entityId, reason: 'deleted' });
+          continue;
+        }
+        if (session?.dirty) {
+          if (entity.updatedAt !== session.loadedUpdatedAt) {
+            await panel.webview.postMessage({ type: 'conflict', entityId, reason: 'changed' });
+          }
+          continue;
+        }
+        await this.updateCleanPanel(entityId, panel, repository, entity);
       }
     } catch (error) {
       const message = `Failed to refresh PlanFS editor: ${error instanceof Error ? error.message : String(error)}`;
@@ -176,7 +208,8 @@ export class EntityEditorProvider {
   private async save(
     originalEntityId: string,
     edited: EditableEntity,
-    panel: vscode.WebviewPanel
+    panel: vscode.WebviewPanel,
+    allowConflict = false
   ): Promise<void> {
     const workspaceFolder = getPlanFSWorkspaceFolder();
     if (!workspaceFolder) {
@@ -198,6 +231,12 @@ export class EntityEditorProvider {
         return;
       }
 
+      const session = this.sessions.get(originalEntityId);
+      if (!allowConflict && session && current.updatedAt !== session.loadedUpdatedAt) {
+        await panel.webview.postMessage({ type: 'conflict', entityId: originalEntityId, reason: 'changed' });
+        return;
+      }
+
       const entity = mergeEditableEntity(current, edited);
       const errors = validateEntity(entity).filter(error => error.severity === 'error');
 
@@ -211,16 +250,44 @@ export class EntityEditorProvider {
 
       await saveEntity(workspaceFolder.uri.fsPath, entity);
       const refreshed = await loadRepository(workspaceFolder.uri.fsPath);
-      panel.webview.html = renderEditor(
-        panel.webview,
-        await createPayload(refreshed, findEditableEntity(refreshed, originalEntityId) ?? entity, this.extensionUri)
-      );
+      const saved = findEditableEntity(refreshed, originalEntityId) ?? entity;
+      const updatedSession = this.sessions.get(originalEntityId);
+      if (updatedSession) {
+        updatedSession.loadedUpdatedAt = saved.updatedAt;
+        updatedSession.dirty = false;
+      }
+      await panel.webview.postMessage({ type: 'saved', payload: await createPayload(refreshed, saved, this.extensionUri) });
       vscode.window.showInformationMessage(`Saved ${entity.id}`);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       panel.webview.postMessage({ type: 'validation', errors: [message] });
       vscode.window.showErrorMessage(`Failed to save entity: ${message}`);
     }
+  }
+
+  private async updateCleanPanel(
+    entityId: string,
+    panel: vscode.WebviewPanel,
+    repository: Repository,
+    entity: EditableEntity
+  ): Promise<void> {
+    const session = this.sessions.get(entityId);
+    if (session) session.loadedUpdatedAt = entity.updatedAt;
+    await panel.webview.postMessage({ type: 'updateEditor', payload: await createPayload(repository, entity, this.extensionUri) });
+  }
+
+  private async reload(entityId: string, panel: vscode.WebviewPanel): Promise<void> {
+    const session = this.sessions.get(entityId);
+    const workspaceFolder = getPlanFSWorkspaceFolder();
+    if (!session || !workspaceFolder || session.workspaceUri !== workspaceFolder.uri.toString()) return;
+    const repository = await loadRepository(workspaceFolder.uri.fsPath);
+    const entity = findEditableEntity(repository, entityId);
+    if (!entity) {
+      await panel.webview.postMessage({ type: 'conflict', entityId, reason: 'deleted' });
+      return;
+    }
+    session.dirty = false;
+    await this.updateCleanPanel(entityId, panel, repository, entity);
   }
 
   private async setMilestoneTask(
@@ -311,7 +378,9 @@ export class EntityEditorProvider {
         }
       }
 
-      await archiveEntity(workspaceFolder.uri.fsPath, entity.id, { includeChildren });
+      const disposition = entity.status === 'done' ? 'completed' : await pickArchiveDisposition(entity.id);
+      if (!disposition) return;
+      await archiveEntity(workspaceFolder.uri.fsPath, entity.id, { includeChildren, disposition });
       panel.webview.html = renderMessage(`Archived ${entity.id}`);
       vscode.window.showInformationMessage(`Archived ${entity.id}`);
       await vscode.commands.executeCommand('planfs.refreshExplorer');
@@ -322,6 +391,14 @@ export class EntityEditorProvider {
     }
   }
 
+}
+
+async function pickArchiveDisposition(entityId: string): Promise<'cancelled' | 'duplicate' | 'deferred' | 'superseded' | undefined> {
+  const selected = await vscode.window.showQuickPick([
+    { label: 'Cancelled', value: 'cancelled' as const }, { label: 'Duplicate', value: 'duplicate' as const },
+    { label: 'Deferred', value: 'deferred' as const }, { label: 'Superseded', value: 'superseded' as const }
+  ], { title: `Why archive unfinished ${entityId}?`, placeHolder: 'Choose an archive disposition' });
+  return selected?.value;
 }
 
 function renderMessage(message: string): string {
@@ -350,7 +427,8 @@ async function pickEditableEntity(
   const items = [
     ...Array.from(repository.tasks.values()),
     ...Array.from(repository.epics.values()),
-    ...Array.from(repository.milestones.values())
+    ...Array.from(repository.milestones.values()),
+    ...Array.from(repository.decisions.values())
   ].map(entity => ({
     label: entity.id,
     description: entity.title,
@@ -360,7 +438,7 @@ async function pickEditableEntity(
 
   const selected = await vscode.window.showQuickPick(items, {
     title: 'Open PlanFS Structured Editor',
-    placeHolder: 'Select a task, epic, or milestone'
+    placeHolder: 'Select a task, epic, milestone, or decision'
   });
 
   return selected?.entity;
@@ -379,7 +457,8 @@ function findEditableEntity(
 ): EditableEntity | undefined {
   return repository.tasks.get(entityId)
     ?? repository.epics.get(entityId)
-    ?? repository.milestones.get(entityId);
+    ?? repository.milestones.get(entityId)
+    ?? repository.decisions.get(entityId);
 }
 
 async function createPayload(
@@ -922,7 +1001,7 @@ function renderEditor(webview: vscode.Webview, payload: EditorPayload): string {
   ${renderHelpPanel()}
   <script nonce="${nonce}">
     const vscode = acquireVsCodeApi();
-    const initial = ${JSON.stringify(payload.entity)};
+    let initial = ${JSON.stringify(payload.entity)};
     const state = { helpTopics: ${JSON.stringify(payload.helpTopics)} };
     const form = document.getElementById('form');
     const errors = document.getElementById('errors');
@@ -939,6 +1018,8 @@ function renderEditor(webview: vscode.Webview, payload: EditorPayload): string {
     document.getElementById('archiveEntity')?.addEventListener('click', () => {
       vscode.postMessage({ type: 'archiveEntity' });
     });
+    form.addEventListener('input', () => vscode.postMessage({ type: 'draftState', dirty: true }));
+    form.addEventListener('change', () => vscode.postMessage({ type: 'draftState', dirty: true }));
     document.querySelectorAll('[data-open-entity]').forEach(button => {
       button.addEventListener('click', () => {
         vscode.postMessage({ type: 'openEntity', entityId: button.dataset.openEntity });
@@ -961,7 +1042,54 @@ function renderEditor(webview: vscode.Webview, payload: EditorPayload): string {
       if (event.data?.type === 'validation') {
         renderErrors(event.data.errors || []);
       }
+      if (event.data?.type === 'updateEditor' || event.data?.type === 'saved') {
+        applyPayload(event.data.payload);
+        if (event.data?.type === 'saved') renderErrors([]);
+      }
+      if (event.data?.type === 'conflict') {
+        renderConflict(event.data);
+      }
     });
+
+    function applyPayload(payload) {
+      if (!payload?.entity) return;
+      initial = payload.entity;
+      for (const element of form.elements) {
+        if (!element.name || element.type === 'checkbox') continue;
+        const value = initial[element.name];
+        if (element.name === 'tags') {
+          element.value = Array.isArray(value) ? value.join(', ') : '';
+        } else if (element.name === 'links') {
+          element.value = value ? JSON.stringify(value, null, 2) : '';
+        } else if (element.name === 'dueDate' || element.name === 'targetDate') {
+          element.value = String(value || '').slice(0, 10);
+        } else {
+          element.value = value ?? '';
+        }
+      }
+      document.querySelectorAll('[data-dependency]').forEach(input => {
+        input.checked = Array.isArray(initial.dependsOn) && initial.dependsOn.includes(input.value);
+      });
+      vscode.postMessage({ type: 'draftState', dirty: false });
+    }
+
+    function renderConflict(conflict) {
+      const description = conflict.reason === 'deleted'
+        ? 'This entity was deleted from disk while your editor was open. Your draft is still in this tab.'
+        : 'This entity changed on disk while this editor has a draft. Your draft has not been overwritten.';
+      errors.style.display = 'block';
+      errors.innerHTML = '<strong>Save conflict</strong><p>' + escapeHtml(description) + '</p>'
+        + '<div class="actions"><button type="button" id="reloadConflict" class="secondary">Reload from disk</button>'
+        + '<button type="button" id="compareConflict" class="secondary">Open Markdown</button>'
+        + (conflict.reason === 'changed' ? '<button type="button" id="retryConflict">Retry save</button>' : '')
+        + '</div>';
+      document.getElementById('reloadConflict')?.addEventListener('click', () => vscode.postMessage({ type: 'reload' }));
+      document.getElementById('compareConflict')?.addEventListener('click', () => vscode.postMessage({ type: 'openRaw' }));
+      document.getElementById('retryConflict')?.addEventListener('click', () => {
+        const entity = collectEntity();
+        if (entity) vscode.postMessage({ type: 'retrySave', entity });
+      });
+    }
 
     function collectEntity() {
       const entity = { ...initial };
@@ -1091,6 +1219,19 @@ function renderEntityFields(payload: EditorPayload): string {
       renderAdditionalMetadata(epic),
       renderEpicBoard(payload),
       renderBodySections(epic.body, 'Epic Planning Notes')
+    ].join('');
+  }
+
+  if (entity.type === 'decision') {
+    const decision = entity as Decision;
+    return [
+      renderDiagnostics(payload),
+      compactMeta([common[0], compactSelect('Status', 'status', decision.status, ['proposed', 'accepted', 'rejected', 'superseded'])]),
+      common[1], input('Date', 'date', toDateInput(decision.date), 'date'), input('Author', 'author', decision.author ?? ''),
+      textarea('Context', 'context', decision.context ?? '', 'full'), textarea('Decision', 'decision', decision.decision ?? '', 'full'),
+      textarea('Consequences', 'consequences', decision.consequences ?? '', 'full'),
+      input('Supersedes', 'supersedes', decision.supersedes ?? ''), input('Superseded By', 'supersededBy', decision.supersededBy ?? ''),
+      renderAdditionalMetadata(decision), renderBodySections(decision.body, 'Decision Notes')
     ].join('');
   }
 
@@ -1328,6 +1469,8 @@ function knownMetadataFields(type: EditableEntity['type']): Set<string> {
         'owner',
         'links'
       ]);
+    case 'decision':
+      return new Set([...common, 'date', 'author', 'context', 'decision', 'consequences', 'supersedes', 'supersededBy']);
     default:
       return new Set(common);
   }
@@ -1341,7 +1484,7 @@ function formatMetadataValue(value: unknown): string {
 }
 
 function renderBodySections(body: string, heading = 'Markdown Sections'): string {
-  const { sections, additionalMarkdown } = extractMarkdownBody(body, ['Acceptance Criteria', 'Questions']);
+  const { sections, additionalMarkdown } = extractMarkdownBody(body, ['Acceptance Criteria', 'Questions', 'Findings']);
 
   return [
     '<section class="card full">',
@@ -1351,7 +1494,7 @@ function renderBodySections(body: string, heading = 'Markdown Sections'): string
       ? '<section class="markdownFallback"><h2>Additional Markdown</h2>' + renderMarkdownPreview(additionalMarkdown) + '</section>'
       : '<p class="subtle">No additional Markdown body content found outside known planning sections.</p>',
     sections.length === 0
-      ? '<p class="subtle">No Acceptance Criteria or Questions sections found.</p>'
+      ? '<p class="subtle">No Acceptance Criteria, Questions, or Findings sections found.</p>'
       : '<div class="sectionList">' + sections.map(renderMarkdownSection).join('') + '</div>',
     '</section>'
   ].join('');
@@ -1447,6 +1590,9 @@ function renderMarkdownSection(section: MarkdownSection): string {
   return [
     '<section>',
     '<h2>' + escapeHtml(section.title) + '</h2>',
+    section.title === 'Findings'
+      ? '<p class="subtle">Findings are read-only here. Use Open Markdown to add or edit evidence.</p>'
+      : '',
     paragraphs,
     checklist || (paragraphs ? '' : '<p class="subtle">Section is empty.</p>'),
     '</section>'

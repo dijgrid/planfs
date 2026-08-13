@@ -49,12 +49,14 @@
     "onCommand:planfs.createTask",
     "onCommand:planfs.createEpic",
     "onCommand:planfs.createMilestone",
+    "onCommand:planfs.createDecision",
     "onCommand:planfs.openTask",
     "onCommand:planfs.archiveItem",
     "onCommand:planfs.openEditor",
     "onCommand:planfs.applySavedFilter",
     "onCommand:planfs.clearSavedFilter",
     "onCommand:planfs.refreshExplorer"
+    ,"onCommand:planfs.selectWorkspace"
   ],
   "main": "./dist/extension.js",
   "contributes": {
@@ -96,6 +98,10 @@
         "title": "PlanFS: Create Milestone"
       },
       {
+        "command": "planfs.createDecision",
+        "title": "PlanFS: Create Decision"
+      },
+      {
         "command": "planfs.openTask",
         "title": "PlanFS: Open Task"
       },
@@ -118,6 +124,10 @@
       {
         "command": "planfs.refreshExplorer",
         "title": "PlanFS: Refresh Views"
+      },
+      {
+        "command": "planfs.selectWorkspace",
+        "title": "PlanFS: Choose Repository"
       }
     ],
     "views": {
@@ -133,7 +143,7 @@
       "view/item/context": [
         {
           "command": "planfs.openEditor",
-          "when": "view == planfs-explorer && viewItem =~ /^(task|epic|milestone)$/",
+          "when": "view == planfs-explorer && viewItem =~ /^(task|epic|milestone|decision)$/",
           "group": "navigation"
         },
         {
@@ -157,6 +167,8 @@
     "build": "tsc",
     "build:watch": "tsc --watch",
     "test": "jest --passWithNoTests",
+    "test:coverage": "jest --coverage --runInBand",
+    "test:extension-host": "npm run build && node ./dist/extensionHost/runTest.js",
     "lint": "eslint src --ext .ts",
     "vscode:prepublish": "npm run build",
     "clean": "rm -rf dist"
@@ -170,6 +182,7 @@
     "@types/vscode": "1.60.0",
     "@typescript-eslint/eslint-plugin": "^8.61.1",
     "@typescript-eslint/parser": "^8.61.1",
+    "@vscode/test-electron": "^3.1.0",
     "eslint": "^8.57.0",
     "jest": "^30.4.2",
     "ts-jest": "^29.4.11",

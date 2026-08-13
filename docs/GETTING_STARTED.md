@@ -181,6 +181,12 @@ Initialize the project repository with core structure and documentation.
 planfs validate
 ```
 
+Validation always reports warning and error totals. Use `planfs validate --verbose` to inspect warning paths, or `planfs validate --strict` in CI when warnings should fail the build. `planfs validate --format json` includes stable severity and diagnostic-category counts for automation.
+
+Use `planfs doctor` for a focused health report. It separates actionable conditions such as unfinished archived work and stale review tasks from historical-reference noise; `--format json` is suitable for dashboards.
+
+Use `planfs update <id> --dry-run` to preview a normal single-entity metadata change, then replay it with `--expected-updated-at`. Clear an optional field only with an explicit `--clear fieldName`; use `ai update-task` for automation-specific task workflows and `bulk-update-tasks` for bounded task batches.
+
 ### 5. Commit to Git
 
 ```bash

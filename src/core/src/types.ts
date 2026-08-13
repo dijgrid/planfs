@@ -13,6 +13,8 @@ export type DecisionStatus = 'proposed' | 'accepted' | 'rejected' | 'superseded'
 export interface ArchiveMetadata {
   archivedAt: string;
   originalPath: string;
+  disposition?: 'completed' | 'cancelled' | 'duplicate' | 'deferred' | 'superseded';
+  note?: string;
 }
 
 /**

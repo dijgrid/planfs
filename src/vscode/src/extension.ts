@@ -11,10 +11,11 @@ import { EntityEditorProvider } from './editor';
 import { ExplorerProvider } from './explorer';
 import { InsightsProvider } from './insights';
 import { PlanFSUiPreferences } from './preferences';
-import { createTaskCommand, createEpicCommand, createMilestoneCommand } from './commands/create';
+import { createTaskCommand, createEpicCommand, createMilestoneCommand, createDecisionCommand } from './commands/create';
 import { initializeRepositoryCommand } from './commands/init';
 import { openTaskCommand } from './commands/open';
-import { selectPlanFSWorkspaceFolderForUri } from './workspace';
+import { choosePlanFSWorkspaceFolder, getPlanFSWorkspaceFolder } from './workspace';
+import { RefreshCoordinator } from './refreshCoordinator';
 
 let explorerProvider: ExplorerProvider;
 let backlogProvider: BacklogProvider;
@@ -22,7 +23,7 @@ let archiveProvider: ArchiveProvider;
 let boardProvider: BoardProvider;
 let insightsProvider: InsightsProvider;
 let editorProvider: EntityEditorProvider;
-let refreshQueue = Promise.resolve();
+const refreshCoordinator = new RefreshCoordinator();
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   console.log('PlanFS extension activated');
@@ -53,10 +54,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand('planfs.createTask', () => createTaskCommand(explorerProvider)),
     vscode.commands.registerCommand('planfs.createEpic', () => createEpicCommand(explorerProvider)),
     vscode.commands.registerCommand('planfs.createMilestone', () => createMilestoneCommand(explorerProvider)),
+    vscode.commands.registerCommand('planfs.createDecision', () => createDecisionCommand(explorerProvider)),
     vscode.commands.registerCommand('planfs.openTask', (item) => openTaskCommand(item)),
     vscode.commands.registerCommand('planfs.openEditor', (item) => editorProvider.open(resolveEditorEntityId(item))),
     vscode.commands.registerCommand('planfs.applySavedFilter', () => explorerProvider.applySavedFilter()),
     vscode.commands.registerCommand('planfs.clearSavedFilter', () => explorerProvider.clearSavedFilter()),
+    vscode.commands.registerCommand('planfs.selectWorkspace', async () => { if (await choosePlanFSWorkspaceFolder()) await refreshViews(); }),
     vscode.commands.registerCommand('planfs.refreshExplorer', () => refreshViews())
   );
 
@@ -86,15 +89,17 @@ async function refreshViews(): Promise<void> {
 }
 
 function queueRefreshViews(changedUri?: vscode.Uri): void {
+  // A watcher event must never retarget the selected repository. Open views are
+  // bound by their opening command; changes from another workspace are ignored
+  // until the user deliberately switches the selected repository.
   if (changedUri) {
-    selectPlanFSWorkspaceFolderForUri(changedUri);
+    const selected = getPlanFSWorkspaceFolder();
+    const changedFolder = vscode.workspace.getWorkspaceFolder(changedUri);
+    if (selected && changedFolder && selected.uri.toString() !== changedFolder.uri.toString()) return;
   }
 
-  refreshQueue = refreshQueue
-    .then(refreshViews)
-    .catch(error => {
-      console.error('Failed to refresh PlanFS views:', error);
-    });
+  const selected = getPlanFSWorkspaceFolder();
+  if (selected) refreshCoordinator.schedule(selected.uri.toString(), refreshViews);
 }
 
 export function deactivate(): void {

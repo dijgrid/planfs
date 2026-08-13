@@ -2,10 +2,12 @@ import { promises as fs } from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import {
-  buildPlanningSummary,
+  buildPlanningSummary
+} from './ai';
+import {
   parseTaskUpdatePatch,
   updateTaskPlanning
-} from './ai';
+} from './task-update';
 import { ensurePlanfsStructure } from './files';
 import {
   createTaskTemplate,
@@ -72,6 +74,39 @@ describe('AI planning helpers', () => {
     });
     expect(summary.stalePlanIndicators.map(item => item.id)).toEqual(['TASK-003', 'TASK-004']);
     expect(summary.openTasks[0]).toHaveProperty('filePath');
+  });
+
+  it('applies every planning summary scope and deterministic completion ordering', () => {
+    const first = {
+      ...createTask('TASK-010', 'Scoped task', 'todo'),
+      assignee: 'justin',
+      epic: 'EPIC-release',
+      milestone: 'MILESTONE-release',
+      refinementState: 'captured' as const
+    };
+    const second = {
+      ...createTask('TASK-011', 'Other task', 'review'),
+      assignee: 'casey',
+      epic: 'EPIC-other',
+      milestone: 'MILESTONE-other',
+      refinementState: 'ready' as const
+    };
+    const doneA = { ...createTask('TASK-020', 'Done A', 'done'), updatedAt: 'invalid' };
+    const doneB = { ...createTask('TASK-021', 'Done B', 'done') };
+    const repository = createRepository([first, second, doneA, doneB]);
+
+    expect(buildPlanningSummary(repository, { assignee: 'justin' }).openTasks.map(task => task.id))
+      .toEqual(['TASK-010']);
+    expect(buildPlanningSummary(repository, { epic: 'EPIC-release' }).openTasks.map(task => task.id))
+      .toEqual(['TASK-010']);
+    expect(buildPlanningSummary(repository, { milestone: 'MILESTONE-release' }).openTasks.map(task => task.id))
+      .toEqual(['TASK-010']);
+    expect(buildPlanningSummary(repository, { status: ['todo'] }).openTasks.map(task => task.id))
+      .toEqual(['TASK-010']);
+    expect(buildPlanningSummary(repository, { refinementState: 'captured' }).openTasks.map(task => task.id))
+      .toEqual(['TASK-010']);
+    expect(buildPlanningSummary(repository, { recentLimit: 1 }).recentlyCompletedWork.map(task => task.id))
+      .toEqual(['TASK-021']);
   });
 
   it('previews and applies validated task metadata updates', async () => {
@@ -149,6 +184,102 @@ describe('AI planning helpers', () => {
       })).rejects.toThrow('TASK-001 changed since preview');
 
       expect((await loadRepository(rootPath)).tasks.get('TASK-001')?.status).toBe('todo');
+    } finally {
+      await fs.rm(rootPath, { recursive: true, force: true });
+    }
+  });
+
+  it('updates titles and removes cleared optional metadata', async () => {
+    const rootPath = await fs.mkdtemp(path.join(os.tmpdir(), 'planfs-task-update-fields-'));
+    try {
+      await ensurePlanfsStructure(rootPath);
+      await saveEntity(rootPath, {
+        ...createTaskTemplate('TASK-001', 'Original title'),
+        priority: 'high',
+        tags: ['cleanup']
+      });
+      const repository = await loadRepository(rootPath);
+
+      const result = await updateTaskPlanning(rootPath, repository, {
+        id: 'TASK-001',
+        patch: parseTaskUpdatePatch({
+          title: 'Updated title',
+          priority: '',
+          tags: []
+        }),
+        now
+      });
+
+      expect(result.changedFields).toEqual(['title', 'priority', 'tags']);
+      const updated = (await loadRepository(rootPath)).tasks.get('TASK-001');
+      expect(updated?.title).toBe('Updated title');
+      expect(updated?.priority).toBeUndefined();
+      expect(updated?.tags).toBeUndefined();
+      const markdown = await fs.readFile(path.join(rootPath, '.planfs', 'tasks', 'TASK-001.md'), 'utf8');
+      expect(markdown).not.toContain('priority:');
+      expect(markdown).not.toContain('tags:');
+    } finally {
+      await fs.rm(rootPath, { recursive: true, force: true });
+    }
+  });
+
+  it('supports task-scoped validation when unrelated repository errors already exist', async () => {
+    const rootPath = await fs.mkdtemp(path.join(os.tmpdir(), 'planfs-task-update-scope-'));
+    try {
+      await ensurePlanfsStructure(rootPath);
+      await saveEntity(rootPath, createTaskTemplate('TASK-001', 'Update me'));
+      await saveEntity(rootPath, {
+        ...createTaskTemplate('TASK-002', 'Unrelated invalid task'),
+        status: 'active' as never
+      });
+      const repository = await loadRepository(rootPath);
+
+      await updateTaskPlanning(rootPath, repository, {
+        id: 'TASK-001',
+        patch: { assignee: 'PlanFS Test' },
+        validationScope: 'task',
+        now
+      });
+
+      expect((await loadRepository(rootPath)).tasks.get('TASK-001')?.assignee).toBe('PlanFS Test');
+    } finally {
+      await fs.rm(rootPath, { recursive: true, force: true });
+    }
+  });
+
+  it('handles no-op, missing-task, unset-timestamp, and parser edge cases', async () => {
+    const rootPath = await fs.mkdtemp(path.join(os.tmpdir(), 'planfs-task-update-edges-'));
+    try {
+      await ensurePlanfsStructure(rootPath);
+      await saveEntity(rootPath, {
+        ...createTaskTemplate('TASK-001', 'No-op task'),
+        updatedAt: undefined
+      });
+      let repository = await loadRepository(rootPath);
+
+      await expect(updateTaskPlanning(rootPath, repository, {
+        id: 'TASK-999', patch: {}
+      })).rejects.toThrow('Task not found');
+      await expect(updateTaskPlanning(rootPath, repository, {
+        id: 'TASK-001', patch: { status: 'todo' }, dryRun: true
+      })).resolves.toMatchObject({ changedFields: [], dryRun: true });
+      await expect(updateTaskPlanning(rootPath, repository, {
+        id: 'TASK-001', patch: { assignee: 'casey' }, expectedUpdatedAt: null, now
+      })).resolves.toMatchObject({ changedFields: ['assignee'] });
+
+      repository = await loadRepository(rootPath);
+      expect(repository.tasks.get('TASK-001')?.assignee).toBe('casey');
+      expect(parseTaskUpdatePatch({ assignee: undefined })).toEqual({});
+      expect(parseTaskUpdatePatch({ tags: '' })).toEqual({ tags: undefined });
+      expect(parseTaskUpdatePatch({ tags: [] })).toEqual({ tags: undefined });
+      expect(() => parseTaskUpdatePatch({ title: ' ' })).toThrow('title is required');
+      expect(() => parseTaskUpdatePatch({ status: 'active' })).toThrow('status must be one of');
+      expect(() => parseTaskUpdatePatch({ priority: 'urgent' })).toThrow('priority must be one of');
+      expect(() => parseTaskUpdatePatch({ refinementState: 'unknown' }))
+        .toThrow('refinementState must be one of');
+      expect(() => parseTaskUpdatePatch({ assignee: 42 })).toThrow('Expected a string');
+      expect(() => parseTaskUpdatePatch({ tags: [42] })).toThrow('tags must be');
+      expect(() => parseTaskUpdatePatch({ unknown: 'value' })).toThrow('Unsupported task update field');
     } finally {
       await fs.rm(rootPath, { recursive: true, force: true });
     }

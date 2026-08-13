@@ -157,7 +157,7 @@ function validateArchiveMetadata(entity: Entity): ValidationError[] {
     }];
   }
 
-  const record = archive as { archivedAt?: unknown; originalPath?: unknown };
+  const record = archive as { archivedAt?: unknown; originalPath?: unknown; disposition?: unknown; note?: unknown };
   const errors: ValidationError[] = [];
   if (typeof record.archivedAt !== 'string' || parseDate(record.archivedAt) === undefined) {
     errors.push({
@@ -174,6 +174,12 @@ function validateArchiveMetadata(entity: Entity): ValidationError[] {
       message: 'Archive metadata originalPath is required',
       severity: 'error'
     });
+  }
+  if (record.disposition !== undefined && !['completed', 'cancelled', 'duplicate', 'deferred', 'superseded'].includes(String(record.disposition))) {
+    errors.push({ id: entity.id, path: entity.filePath, message: 'Archive metadata disposition is invalid', severity: 'error' });
+  }
+  if (record.note !== undefined && typeof record.note !== 'string') {
+    errors.push({ id: entity.id, path: entity.filePath, message: 'Archive metadata note must be text', severity: 'error' });
   }
 
   return errors;
@@ -449,6 +455,18 @@ export function validateRepository(
     errors.push(...refErrors);
   }
 
+  for (const decision of entities.filter((entity): entity is Decision => entity.type === 'decision')) {
+    for (const reference of [decision.supersedes, decision.supersededBy].filter(Boolean) as string[]) {
+      const target = idMap.get(reference);
+      if (!target || target.type !== 'decision') {
+        errors.push({ id: decision.id, message: `Referenced decision not found: ${reference}`, severity: 'error' });
+      }
+    }
+    if (decision.supersedes === decision.id || decision.supersededBy === decision.id) {
+      errors.push({ id: decision.id, message: 'Decision cannot supersede itself', severity: 'error' });
+    }
+  }
+
   // Check for circular dependencies
   const circularDeps = findCircularDependencies(entities);
   for (const [id, chain] of circularDeps) {
@@ -486,7 +504,7 @@ function checkEntityReferences(
           message: `Task references archived epic: ${task.epic}`,
           severity: 'warning'
         });
-      } else if (epic.status === 'completed' || epic.status === 'archived') {
+      } else if (task.status !== 'done' && (epic.status === 'completed' || epic.status === 'archived')) {
         errors.push({
           id: task.id,
           message: `Task references ${epic.status} epic: ${task.epic}`,

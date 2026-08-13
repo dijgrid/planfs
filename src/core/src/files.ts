@@ -158,6 +158,13 @@ export async function ensurePlanfsStructure(
     }
   }
 
+  const configPath = path.join(rootPath, '.planfs', 'planfs.json');
+  try {
+    await fs.access(configPath);
+  } catch {
+    await fs.writeFile(configPath, '{\n  "formatVersion": 1\n}\n', 'utf8');
+  }
+
   return result;
 }
 

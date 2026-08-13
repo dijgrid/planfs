@@ -614,10 +614,13 @@ describe('Repository', () => {
       await saveEntity(rootPath, task);
 
       const result = await archiveEntity(rootPath, task.id, {
-        now: new Date('2026-06-21T18:44:00Z')
+        now: new Date('2026-06-21T18:44:00Z'),
+        disposition: 'deferred',
+        note: 'Waiting for a later release'
       });
 
       expect(result.archived.map(entity => entity.id)).toEqual(['TASK-001']);
+      expect(result.archived[0].archive?.disposition).toBe('deferred');
       await expect(
         fs.stat(path.join(rootPath, '.planfs', 'tasks', 'TASK-001.md'))
       ).rejects.toMatchObject({ code: 'ENOENT' });
@@ -676,7 +679,7 @@ describe('Repository', () => {
       await saveEntity(rootPath, epic);
       await saveEntity(rootPath, child);
 
-      const result = await archiveEntity(rootPath, epic.id, { includeChildren: true });
+      const result = await archiveEntity(rootPath, epic.id, { includeChildren: true, disposition: 'deferred' });
       expect(result.archived.map(entity => entity.id).sort()).toEqual(['EPIC-archive', 'TASK-001']);
 
       await deleteArchivedEntity(rootPath, 'TASK-001');

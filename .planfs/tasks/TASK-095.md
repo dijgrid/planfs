@@ -5,15 +5,16 @@ status: review
 priority: medium
 assignee: justin
 createdAt: 2026-07-30T22:46:48.245Z
-updatedAt: 2026-07-30T22:57:08.615Z
+updatedAt: 2026-08-12T23:04:57.698Z
 epic: EPIC-phase-5-advanced
-milestone: MILESTONE-phase-5
+milestone: MILESTONE-v1-3
 tags:
   - vscode
   - marketplace
   - documentation
   - release
 refinementState: ready
+dueDate: 2026-09-30
 ---
 
 Review and improve the README and Marketplace presentation for the PlanFS VS Code extension so prospective extension users see the extension's capabilities first and do not mistake repository or CLI workflows for features available through the Marketplace installation.
