@@ -1,11 +1,11 @@
 ---
 id: TASK-096
 title: Remove the VS Code Marketplace Preview designation
-status: review
+status: done
 priority: high
 assignee: justin
 createdAt: 2026-07-30T22:52:28.136Z
-updatedAt: 2026-08-12T23:04:57.970Z
+updatedAt: 2026-08-13T03:48:45.018Z
 epic: EPIC-phase-5-advanced
 milestone: MILESTONE-v1-3
 tags:

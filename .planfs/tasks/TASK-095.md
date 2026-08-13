@@ -1,11 +1,11 @@
 ---
 id: TASK-095
 title: Refocus the VS Code Marketplace README on extension features
-status: review
+status: done
 priority: medium
 assignee: justin
 createdAt: 2026-07-30T22:46:48.245Z
-updatedAt: 2026-08-12T23:04:57.698Z
+updatedAt: 2026-08-13T03:48:44.880Z
 epic: EPIC-phase-5-advanced
 milestone: MILESTONE-v1-3
 tags:
