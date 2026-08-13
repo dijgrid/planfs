@@ -504,7 +504,7 @@ function checkEntityReferences(
           message: `Task references archived epic: ${task.epic}`,
           severity: 'warning'
         });
-      } else if (epic.status === 'completed' || epic.status === 'archived') {
+      } else if (task.status !== 'done' && (epic.status === 'completed' || epic.status === 'archived')) {
         errors.push({
           id: task.id,
           message: `Task references ${epic.status} epic: ${task.epic}`,
