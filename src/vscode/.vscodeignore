@@ -3,6 +3,11 @@ src/**
 tsconfig.json
 jest.config.js
 .vscode-test/**
+coverage/**
+dist/**/*.d.ts
+dist/**/*.map
+dist/extensionHost/**
+dist/test/**
 node_modules/**/.bin/**
 node_modules/**/*.map
 resources/icon-source.png

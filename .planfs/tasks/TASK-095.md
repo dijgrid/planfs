@@ -1,11 +1,11 @@
 ---
 id: TASK-095
 title: Refocus the VS Code Marketplace README on extension features
-status: review
+status: done
 priority: medium
 assignee: justin
 createdAt: 2026-07-30T22:46:48.245Z
-updatedAt: 2026-08-12T23:04:57.698Z
+updatedAt: 2026-08-13T03:48:44.880Z
 epic: EPIC-phase-5-advanced
 milestone: MILESTONE-v1-3
 tags:
@@ -34,21 +34,21 @@ The current extension README is a good foundation, but the published page should
 ## Acceptance Criteria
 
 - [x] The source of the Marketplace Features presentation is verified and documented before restructuring the README or manifest
-- [ ] The published overview leads with VS Code extension benefits and contains a prominent, correctly rendered feature section
+- [x] The published overview leads with VS Code extension benefits and contains a prominent, correctly rendered feature section
 - [x] Every advertised feature is available from the Marketplace-installed extension and matches current extension behavior
 - [x] CLI commands are not presented as capabilities provided by installing the VS Code extension
 - [x] Contributor setup, workspace builds, local VSIX packaging, and architecture details are reduced to concise links to repository documentation
 - [x] Installation and getting-started steps work for a user who has only installed the extension from the Marketplace
 - [x] Screenshots or visual examples use Marketplace-safe URLs, useful alt text, and current UI
 - [x] README links, images, headings, and formatting are checked in the packaged VSIX
-- [ ] A Marketplace preview or published-page verification confirms the intended Overview and Features rendering
+- [x] A Marketplace preview or published-page verification confirms the intended Overview and Features rendering
 - [x] Release documentation includes a repeatable check that guards against repository-focused content returning to the extension listing
 
 ## Implementation Notes
 
 - The Marketplace web page renders the packaged README in its Overview; VS Code's Feature Contributions view is generated from `package.json` contribution points.
 - The README now leads with extension workflows, provides a concise first-run path, and explicitly states that the Marketplace extension does not install the separate CLI.
-- The packaged VSIX contains the new README and manifest. Final published-page verification remains for the release step.
+- The 1.3.0 Marketplace page was verified after propagation and renders the extension-focused Overview and manifest-derived Feature Contributions.
 
 ## Non-Goals
 

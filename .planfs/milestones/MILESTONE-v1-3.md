@@ -1,12 +1,12 @@
 ---
 id: MILESTONE-v1-3
 title: v1.3.0
-status: active
+status: completed
 targetDate: 2026-09-30
 description: Reliability and workflow parity release
 owner: justin
 createdAt: 2026-08-12T22:59:18.973Z
-updatedAt: 2026-08-12T23:00:40Z
+updatedAt: 2026-08-13T03:48:45.155Z
 ---
 
 Ship a dependable everyday PlanFS experience before expanding into custom fields, risks, requirements, and external imports.
