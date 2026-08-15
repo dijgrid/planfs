@@ -100,6 +100,26 @@ const criteria = selectSemanticInspectionView(
 
 The result keeps authoritative frontmatter relationships separate from advisory body mentions. Core analysis remains explicit; interactive PlanFS inspection enables it by default and offers an opt-out.
 
+### Previewing and Applying Semantic Formatting
+
+Semantic formatting is explicit, source-fingerprinted, and limited to edits proven by the shared semantic model:
+
+```typescript
+import {
+  applySemanticFormats,
+  previewSemanticFormats
+} from 'planfs-core';
+
+const preview = await previewSemanticFormats(rootPath, ['TASK-001']);
+const applied = await applySemanticFormats(
+  rootPath,
+  ['TASK-001'],
+  preview.expectedFingerprints
+);
+```
+
+Preview never writes. Apply refuses stale fingerprints, validates all proposed results before writing, preserves unknown Markdown and frontmatter, and is idempotent.
+
 ### Optional Local Prose Analysis
 
 Advisory analysis is explicit and local. Omitting `enabled: true` performs no analysis:

@@ -19,7 +19,7 @@ dueDate: 2026-12-15
 refinementState: ready
 backlogOrder: 70
 createdAt: 2026-08-15T00:02:14.143Z
-updatedAt: 2026-08-15T18:37:44.274Z
+updatedAt: 2026-08-15T19:02:36.207Z
 ---
 
 Harden semantic document behavior against real repository variation and publish the compatibility and automation guidance needed to ship PlanFS 1.4.0 confidently.
@@ -35,6 +35,7 @@ Harden semantic document behavior against real repository variation and publish 
 - Define stable workspace and user settings for automatic interactive analysis, explicit validation enablement, language selection or detection, and complete disablement.
 - Harden suppression and dismissal behavior so repeated advisory findings remain quiet without altering source Markdown or authoritative metadata.
 - Add a safe explicit Apply workflow for supported metadata suggestions. The control must be paired with an explanation widget showing why the suggestion exists, its source evidence, the exact field/value change, and that the user—not the analyzer—is authorizing an authoritative metadata edit.
+- Document archived semantic artifacts as immutable and excluded from formatting. If archive-time formatting is later exposed, it must be an explicit option applied and previewed before the artifact moves into the archive.
 - Measure incremental analysis latency and cache behavior for viewed and changed tickets, with graceful fallback when a language or analyzer is unsupported.
 - Run the full release verification suite and validate the repository's own planning artifacts under the intended baseline and automation-ready profiles.
 

@@ -14,6 +14,7 @@ Command-line interface for PlanFS.
 - **Show** - Display entity details
 - **Create** - Create new entities
 - **PR** - Generate pull request planning context
+- **Format** - Check, preview, and explicitly apply conservative semantic Markdown repairs
 
 ## Installation
 
@@ -139,6 +140,21 @@ planfs inspect TASK-001 --view raw --no-nlp
 Semantic inspection runs the bundled local analyzer by default and can be made structural-only with `--no-nlp`. Normal text output shows deduplicated actionable suggestions; full JSON preserves analyzer identity, language, evidence, confidence, provenance, raw signals, exact source ranges, and raw Markdown. Analysis remains advisory and never modifies frontmatter. This does not change `validate`: analysis during validation is still explicitly enabled with `--nlp`.
 
 Focused views are `all`, `acceptance-criteria`, `findings`, `sections`, `mentions`, `relationships`, and `raw`. See [Semantic Entity Inspection](../../docs/SEMANTIC_INSPECTION.md) for the stable envelope and integration examples.
+
+### Semantic Formatting
+
+Keep validation, formatting checks, previews, and writes explicit:
+
+```bash
+planfs validate --semantic automation-ready
+planfs format TASK-001 --check
+planfs format TASK-001 --format json
+planfs format TASK-001 --apply --expected-fingerprint sha256:...
+planfs format TASK-001 TASK-002 --format json
+planfs format --all --check
+```
+
+`format` canonicalizes only uniquely recognized headings and acceptance/release checklist markers. Preview is the default and never writes. Apply requires the source fingerprint returned by preview; batch fingerprints use `ENTITY-ID=sha256:...`. Unknown sections, code, HTML, comments, links, images, line endings, and frontmatter remain unchanged. Duplicate recognized sections and unsafe regions are reported rather than merged or guessed. See [Semantic Markdown Formatting](../../docs/SEMANTIC_FORMATTING.md) for the complete safety contract.
 
 ### Create
 

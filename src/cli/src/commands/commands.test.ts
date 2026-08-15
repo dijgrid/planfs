@@ -8,6 +8,7 @@ import { backlogCommand } from './backlog';
 import { gitCommand } from './git';
 import { initCommand } from './init';
 import { inspectCommand } from './inspect';
+import { formatCommand } from './format';
 import { listCommand } from './list';
 import { nextCommand } from './next';
 import { pullRequestCommand } from './pr';
@@ -212,6 +213,72 @@ describe('CLI commands', () => {
       }
     });
     expect(await fs.readFile(taskPath, 'utf-8')).toBe(before);
+  });
+
+  it('checks, previews, and applies exact semantic formatter snapshots', async () => {
+    await initCommand(rootPath, { format: 'json' });
+    const taskPath = path.join(rootPath, '.planfs', 'tasks', 'TASK-001.md');
+    await fs.writeFile(taskPath, [
+      '---',
+      'id: TASK-001',
+      'title: Format through CLI',
+      'status: todo',
+      '---',
+      '',
+      'Summary mentioning TASK-999.',
+      '',
+      '## Acceptance',
+      '',
+      '* [X] Preserve [this link](https://example.com).',
+      '- Ordinary criterion.',
+      '',
+      '## Custom Notes',
+      '',
+      '<!-- untouched -->',
+      ''
+    ].join('\n'), 'utf8');
+    const before = await fs.readFile(taskPath, 'utf8');
+
+    await expect(formatCommand(rootPath, {
+      ids: ['TASK-001'],
+      check: true,
+      format: 'json'
+    })).resolves.toBe(1);
+    expect(await fs.readFile(taskPath, 'utf8')).toBe(before);
+
+    await expect(formatCommand(rootPath, {
+      ids: ['TASK-001'],
+      format: 'json'
+    })).resolves.toBe(0);
+    const preview = JSON.parse(logSpy.mock.calls[logSpy.mock.calls.length - 1]?.[0] as string);
+    expect(preview).toMatchObject({
+      mode: 'preview',
+      changedEntityIds: ['TASK-001'],
+      previews: [{ entityId: 'TASK-001', changed: true, blocked: false }]
+    });
+    expect(preview.previews[0].diff).toContain('+## Acceptance Criteria');
+    expect(await fs.readFile(taskPath, 'utf8')).toBe(before);
+
+    await expect(formatCommand(rootPath, {
+      ids: ['TASK-001'],
+      apply: true,
+      expectedFingerprint: [preview.expectedFingerprints['TASK-001']],
+      format: 'json'
+    })).resolves.toBe(0);
+    const formatted = await fs.readFile(taskPath, 'utf8');
+    expect(formatted).toContain('## Acceptance Criteria');
+    expect(formatted).toContain('- [x] Preserve [this link](https://example.com).');
+    expect(formatted).toContain('- [ ] Ordinary criterion.');
+    expect(formatted).toContain('Summary mentioning TASK-999.');
+    expect(formatted).toContain('## Custom Notes\n\n<!-- untouched -->');
+    expect(formatted.slice(0, formatted.indexOf('---\n\n') + 5))
+      .toBe(before.slice(0, before.indexOf('---\n\n') + 5));
+
+    await expect(formatCommand(rootPath, {
+      ids: ['TASK-001'],
+      check: true,
+      format: 'json'
+    })).resolves.toBe(0);
   });
 
   it('prints concise actionable semantic inspection without dumping raw analyzer signals', async () => {

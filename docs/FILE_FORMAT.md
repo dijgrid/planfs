@@ -2,6 +2,8 @@
 
 PlanFS uses a simple, human-readable format combining Markdown with YAML frontmatter. This ensures that files remain accessible to version control systems and readable by humans, even without specialized tooling.
 
+Semantic inspection and validation are additive derived views over this source. Optional semantic formatting is explicit and previewable: it canonicalizes only uniquely recognized section headings and acceptance/release checklist markers, preserves all other source text, and requires a whole-file fingerprint before applying a preview. See [Semantic Markdown Formatting](SEMANTIC_FORMATTING.md).
+
 Repositories use `.planfs/planfs.json` to declare `formatVersion`. Version 1 is the current format; repositories created before this marker are treated as compatible v1 repositories until `planfs migrate --apply` writes the marker. Normal reads and saves never add it implicitly. Use `planfs migrate` to preview changes first, and keep version-control backups available before applying a migration. A repository declaring a newer format is refused with an upgrade message rather than rewritten.
 
 Archived tasks and epics retain an `archive` object with `archivedAt`, `originalPath`, and, for unfinished work, an explicit `disposition` (`cancelled`, `duplicate`, `deferred`, or `superseded`). An optional `note` records the human reason. Older archives without a disposition remain readable and appear as legacy archives; restoring removes archive-only metadata.

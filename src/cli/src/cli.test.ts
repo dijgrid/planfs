@@ -132,4 +132,34 @@ describe('CLI argument wiring', () => {
       language: 'en'
     });
   });
+
+  it('wires semantic formatter preview and check modes', async () => {
+    process.argv = ['node', 'planfs', 'init', '--format', 'json'];
+    await main();
+    exitSpy.mockClear();
+    await fs.writeFile(path.join(rootPath, '.planfs', 'tasks', 'TASK-001.md'), [
+      '---',
+      'id: TASK-001',
+      'title: Format through public CLI',
+      'status: todo',
+      '---',
+      '',
+      '## Acceptance',
+      '',
+      '- Criterion',
+      ''
+    ].join('\n'), 'utf8');
+
+    process.argv = ['node', 'planfs', 'format', 'TASK-001', '--format', 'json'];
+    await main();
+    expect(process.exitCode).toBe(0);
+    let output = JSON.parse(logSpy.mock.calls[logSpy.mock.calls.length - 1]?.[0] as string);
+    expect(output).toMatchObject({ mode: 'preview', changedEntityIds: ['TASK-001'] });
+
+    process.argv = ['node', 'planfs', 'format', 'TASK-001', '--check', '--format', 'json'];
+    await main();
+    expect(process.exitCode).toBe(1);
+    output = JSON.parse(logSpy.mock.calls[logSpy.mock.calls.length - 1]?.[0] as string);
+    expect(output.mode).toBe('check');
+  });
 });

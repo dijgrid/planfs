@@ -24,6 +24,7 @@ import { migrateCommand } from './commands/migrate';
 import { updateCommand } from './commands/update';
 import { filterCommand, FilterAction } from './commands/filter';
 import { historyCommand } from './commands/history';
+import { formatCommand } from './commands/format';
 import pkg from '../package.json';
 
 export async function main(): Promise<void> {
@@ -248,6 +249,54 @@ export async function main(): Promise<void> {
       (y) => y.option('apply', { type: 'boolean', default: false }).option('format', { type: 'string', choices: ['text', 'json'], default: 'text' }),
       async (args) => {
         process.exit(await migrateCommand(process.cwd(), { apply: args.apply as boolean, format: args.format as 'text' | 'json' }));
+      }
+    )
+    .command(
+      'format [ids..]',
+      'Check, preview, or explicitly apply conservative semantic Markdown formatting',
+      (y) =>
+        y
+          .positional('ids', {
+            type: 'string',
+            array: true,
+            description: 'Entity IDs to format (comma-separated or repeated)'
+          })
+          .option('all', {
+            type: 'boolean',
+            default: false,
+            description: 'Select every active repository entity'
+          })
+          .option('check', {
+            type: 'boolean',
+            default: false,
+            description: 'Exit non-zero when a selected file needs formatting'
+          })
+          .option('apply', {
+            type: 'boolean',
+            default: false,
+            description: 'Apply a previously previewed snapshot'
+          })
+          .option('expected-fingerprint', {
+            type: 'array',
+            string: true,
+            description: 'Required apply token: sha256:... for one entity or ENTITY-ID=sha256:... for a batch'
+          })
+          .option('format', {
+            type: 'string',
+            choices: ['text', 'json'],
+            default: 'text',
+            description: 'Output format'
+          }),
+      async (args) => {
+        const exitCode = await formatCommand(process.cwd(), {
+          ids: args.ids as string[] | undefined,
+          all: args.all as boolean,
+          check: args.check as boolean,
+          apply: args.apply as boolean,
+          expectedFingerprint: args.expectedFingerprint as string[] | undefined,
+          format: args.format as 'text' | 'json'
+        });
+        process.exitCode = exitCode;
       }
     )
     .command(
