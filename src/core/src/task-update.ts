@@ -21,12 +21,13 @@ export type TaskUpdateField =
   | 'dueDate'
   | 'epic'
   | 'milestone'
+  | 'dependsOn'
   | 'tags'
   | 'estimate';
 
 export type TaskUpdatePatch = Partial<Pick<
   Task,
-  'title' | 'status' | 'priority' | 'assignee' | 'refinementState' | 'dueDate' | 'epic' | 'milestone' | 'tags' | 'estimate'
+  'title' | 'status' | 'priority' | 'assignee' | 'refinementState' | 'dueDate' | 'epic' | 'milestone' | 'dependsOn' | 'tags' | 'estimate'
 >>;
 
 export interface TaskUpdateOptions {
@@ -137,6 +138,9 @@ export function parseTaskUpdatePatch(values: Record<string, unknown>): TaskUpdat
       case 'tags':
         patch.tags = parseTags(value);
         break;
+      case 'dependsOn':
+        patch.dependsOn = parseStringList(value, 'dependsOn');
+        break;
       default:
         throw new Error(`Unsupported task update field: ${field}`);
     }
@@ -160,6 +164,13 @@ function applyTaskPatch(task: Task, patch: TaskUpdatePatch): TaskUpdateField[] {
     changed.push(field);
   }
   return changed;
+}
+
+function parseStringList(value: unknown, field: string): string[] {
+  if (!Array.isArray(value) || value.some(item => typeof item !== 'string' || item.trim().length === 0)) {
+    throw new Error(`${field} must be an array of non-empty strings`);
+  }
+  return value.map(item => item.trim());
 }
 
 function cloneTask(task: Task): Task {

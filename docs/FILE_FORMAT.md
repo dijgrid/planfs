@@ -4,6 +4,38 @@ PlanFS uses a simple, human-readable format combining Markdown with YAML frontma
 
 Semantic inspection and validation are additive derived views over this source. Optional semantic formatting is explicit and previewable: it canonicalizes only uniquely recognized section headings and acceptance/release checklist markers, preserves all other source text, and requires a whole-file fingerprint before applying a preview. See [Semantic Markdown Formatting](SEMANTIC_FORMATTING.md).
 
+## Semantic Markdown profiles (v1.4)
+
+The YAML schema, Markdown profile, advisory analysis, and repository validation are separate layers. YAML frontmatter is authoritative for `status`, `dependsOn`, `epic`, `milestone`, parents, supersession, and every other planning relationship. Markdown is authoritative only as human-authored content. PlanFS derives a loss-aware structural view from it, while prose mentions and local analyzer signals are advisory and never alter metadata by themselves. Repository validation checks cross-file integrity and is read-only.
+
+The semantic contract and each entity profile are version `1.0.0`. A body consists of an exact preamble followed by source-ordered level-two sections. Level-three through level-six headings remain nested content. Unknown, duplicate, empty, malformed, raw-HTML, fenced-code, and imported content is preserved. Source ranges use zero-based UTF-16 offsets, one-based lines/columns, inclusive starts, and exclusive ends against the exact raw Markdown body.
+
+| Entity | Canonical section | Explicit aliases | Expected shape |
+| --- | --- | --- | --- |
+| Task | Scope | In Scope | prose or list |
+| Task | Acceptance Criteria | Acceptance; Success Criteria | task list |
+| Task | Non-Goals | Out of Scope | prose or list |
+| Task | Implementation Notes | Technical Notes | mixed |
+| Task | Testing Strategy | Test Plan | prose or list |
+| Epic | Outcomes | Goals | prose or list |
+| Epic | Child Tasks | Tasks | list or references |
+| Milestone | Release Criteria | Exit Criteria; Success Criteria | task list |
+| Milestone | Child Epics | Epics | list or references |
+| Milestone | Risks | Known Risks | prose or list |
+| Decision | Context | Background | prose |
+| Decision | Decision | Resolution | prose |
+| Decision | Consequences | Implications | prose or list |
+| Decision | Alternatives | Options Considered | prose or list |
+| All applicable profiles | Findings | none | prose or list |
+| All applicable profiles | References | Links | list or references |
+| All applicable profiles | Questions | Open Questions | prose or list |
+
+Tasks and epics also recognize the shared Scope and Non-Goals rows; epics and milestones recognize Outcomes; task, epic, and milestone profiles recognize Decisions (`Decision Log`); exact per-profile definitions live in [the semantic contract](SEMANTIC_DOCUMENTS_V1_4.md). Every recognized section has cardinality `0..1`. Reads remain tolerant when cardinality or shape is violated and report stable diagnostics instead of discarding content.
+
+Acceptance and release criteria preserve all list items. `[x]`/`[X]` becomes `checked: true`, `[ ]` becomes `checked: false`, and an ordinary list item becomes `checked: null`. The provenance values are `canonical`, `alias`, `rule-inferred`, and `nlp-inferred`. Only the first three can describe structural extraction; `nlp-inferred` is always advisory.
+
+Conformance is explicit: baseline checks parseability and unambiguous structure; automation-ready adds required sections, expected shapes, and criterion-state policy; lifecycle checks compare authored content with authoritative lifecycle metadata; optional analysis contributes advisory diagnostics without changing structural conformance. Diagnostic consumers should key on code and structured fields, not English messages. See [Semantic Validation](SEMANTIC_VALIDATION.md), [Compatibility and Automation](SEMANTIC_COMPATIBILITY_AND_AUTOMATION.md), and [Local Advisory Analysis](SEMANTIC_ANALYSIS.md).
+
 Repositories use `.planfs/planfs.json` to declare `formatVersion`. Version 1 is the current format; repositories created before this marker are treated as compatible v1 repositories until `planfs migrate --apply` writes the marker. Normal reads and saves never add it implicitly. Use `planfs migrate` to preview changes first, and keep version-control backups available before applying a migration. A repository declaring a newer format is refused with an upgrade message rather than rewritten.
 
 Archived tasks and epics retain an `archive` object with `archivedAt`, `originalPath`, and, for unfinished work, an explicit `disposition` (`cancelled`, `duplicate`, `deferred`, or `superseded`). An optional `note` records the human reason. Older archives without a disposition remain readable and appear as legacy archives; restoring removes archive-only metadata.
@@ -547,7 +579,7 @@ The format uses semantic versioning:
 - `v1.1` - Minor improvements (backward compatible)
 - `v2.0` - Breaking changes
 
-Each schema version is independently versioned. Tools support multiple versions during migration periods.
+Each schema version is independently versioned. Semantic reads are an additive capability of repository format v1 and require no source rewrite. The semantic document, inspection JSON, content profiles, diagnostics, and formatter plan each expose their own version. New optional JSON fields, diagnostics, or aliases may be additive within a compatible release; removing an alias, changing a field's meaning/type, or changing a diagnostic code's meaning requires the corresponding semantic/profile contract version to change. A repository `formatVersion` transition is reserved for source syntax or authority changes that older tools cannot safely read. Tools support multiple versions during migration periods.
 
 ---
 

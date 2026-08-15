@@ -1,12 +1,12 @@
 # Semantic Markdown Documents (Proposed v1.4)
 
-Status: proposed for PlanFS 1.4 implementation and human review
+Status: implemented contract for PlanFS 1.4 release review
 
 Semantic contract version: `1.0.0`
 
 Initial profile version: `1.0.0`
 
-This document defines the proposed contract between human-authored Markdown bodies and PlanFS consumers. It is an implementation-neutral design for TASK-110, not a claim that the parser, validator, formatter, CLI, or editor behavior already exists.
+This document defines the contract between human-authored Markdown bodies and PlanFS consumers. The parser, validator, formatter, core/CLI inspection, local analyzer, and editor surfaces implement this contract; release compatibility and automation guidance is in [Semantic Compatibility and Automation](SEMANTIC_COMPATIBILITY_AND_AUTOMATION.md).
 
 ## 1. Principles and boundaries
 

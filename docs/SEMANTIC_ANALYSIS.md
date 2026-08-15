@@ -57,7 +57,7 @@ Observable-action, actor/object, vague-wording, compound-criterion, and unrestri
 
 ## Authority and privacy
 
-Analysis is read-only and advisory. A relationship mention never changes `dependsOn`, `epic`, `milestone`, status, check state, or repository graph calculations. Consumers may compare a suggestion with frontmatter and offer an explicit previewable update, but the analyzer returns no write instruction.
+Analysis is read-only and advisory. A relationship mention never changes `dependsOn`, `epic`, `milestone`, status, check state, or repository graph calculations. The analyzer returns no write instruction. The VS Code editor may separately offer an explicit Apply control only when a task signal maps unambiguously to `dependsOn`, `epic`, or `milestone` and the referenced entity exists with the expected type. Its explanation widget shows the source evidence and exact metadata change; confirmation, repository validation, and an `updatedAt` concurrency check occur before the authoritative edit. Dirty drafts, stale files, unsupported mappings, ambiguous signals, and invalid targets cannot be applied.
 
 Analysis runs in the PlanFS process. It contains no network client, remote API, LLM, model file, runtime download, or prose logging. An analyzer failure diagnostic intentionally omits the underlying error message so an adapter cannot accidentally place ticket prose in output.
 
@@ -69,8 +69,12 @@ The analyzer consumes criteria already identified by the semantic Markdown parse
 
 The built-in analyzer supports English and normalizes tags such as `en-US` to `en`. An unsupported language returns no signals and one `analysis.language.unsupported` informational diagnostic. A local analyzer exception returns no signals and one `analysis.analyzer.unavailable` warning. Neither case changes or hides the structural semantic document or entity.
 
+Interactive CLI inspection and VS Code ticket inspection enable the supported local English rules by default because they provide immediate, bounded feedback. `inspect --no-nlp`, the editor's workspace-scoped Disable control, or leaving analysis disabled in the core API turns it off completely. Validation and CI never enable it implicitly: callers must pass `validate --nlp` and may select a language with `--language`. Automatic language detection and non-English analyzers are not implemented in v1.4; unsupported selections fall back to structural output plus the informational diagnostic. Multilingual work is deferred to `EPIC-multilingual-semantic-analysis`.
+
 ## Cache and packaging
 
 `LocalRuleSemanticAnalyzer` has a 256-entry LRU cache by default. The key includes raw body content, normalized language, analyzer ID/version, entity profile type/version, and therefore invalidates after source, language, analyzer, or profile changes. Callers may set a non-negative `cacheSize`, inspect `cacheStats`, or clear the cache. Returned results are defensive copies.
+
+The editor additionally uses a bounded `SemanticInspectionCache` so an unchanged visible ticket is not structurally reparsed or revalidated on refresh. Metadata, body, profile/validation options, language, and analyzer identity participate in its key; changed input produces a miss. Suppressed suggestions are stored separately per workspace using a stable entity/code/target key. Suppression is reversible, does not change Markdown, and never adds an inferred relationship.
 
 The analyzer is compiled into `planfs-core`; there is no model or analyzer asset to copy. Package dry runs include `dist/semantic-analyzer.js` and its declarations. `planfs-cli` and the VS Code extension resolve the same `planfs-core` workspace/package dependency.

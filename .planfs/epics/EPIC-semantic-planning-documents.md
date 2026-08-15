@@ -52,6 +52,16 @@ Dependencies, parent relationships, status, and other planning metadata remain a
 
 - EPIC-multilingual-semantic-analysis: Multilingual Semantic Analysis (`on-hold`; deferred beyond v1.4)
 
+## Findings
+
+- The v1.4 implementation now provides the loss-aware model, entity profiles, stable diagnostics, shared core/CLI inspection, optional local analysis, conservative formatter, and VS Code presentation described by this epic.
+- TASK-116 release verification found the active repository baseline-conformant with zero semantic diagnostics; stricter automation-ready findings remain advisory and visible rather than triggering rewrites.
+- The VS Code Apply path remains separate from analysis and accepts only narrow, explained, user-confirmed, validation-safe metadata changes.
+
+## Questions
+
+- Human release review should decide whether to apply the two optional milestone formatting previews; compatibility does not require them.
+
 ## Non-Goals
 
 - Replacing Markdown bodies with JSON or YAML content fields

@@ -18,7 +18,9 @@ import {
   reviewBacklog,
   readFile,
   saveEntity,
+  SemanticInspectionCache,
   Task,
+  updateTask,
   validateEntity
 } from 'planfs-core';
 import type {
@@ -59,6 +61,14 @@ interface SemanticEditorSuggestion {
   key: string;
   conclusion: SemanticAdvisoryConclusion;
   evidence: string[];
+  application: SemanticSuggestionApplication | null;
+}
+
+interface SemanticSuggestionApplication {
+  field: 'dependsOn' | 'epic' | 'milestone';
+  value: string;
+  exactChange: string;
+  explanation: string;
 }
 
 interface SemanticEditorPayload {
@@ -99,6 +109,7 @@ interface EditorSession {
 export class EntityEditorProvider {
   private panels = new Map<string, vscode.WebviewPanel>();
   private sessions = new Map<string, EditorSession>();
+  private readonly semanticInspectionCache = new SemanticInspectionCache({ capacity: 256 });
 
   constructor(
     private readonly extensionUri: vscode.Uri,
@@ -182,6 +193,10 @@ export class EntityEditorProvider {
           await this.previewSemanticSuggestion(String(entity.id), String(message.key));
         }
 
+        if (message?.type === 'applySemanticSuggestion') {
+          await this.applySemanticSuggestion(String(entity.id), String(message.key), panel);
+        }
+
         if (message?.type === 'draftState') {
           const session = this.sessions.get(entity.id);
           if (session) session.dirty = Boolean(message.dirty);
@@ -211,7 +226,14 @@ export class EntityEditorProvider {
       });
       panel.webview.html = renderEditor(
         panel.webview,
-        await createPayload(repository, entity, this.extensionUri, this.uiPreferences, workspaceFolder)
+        await createPayload(
+          repository,
+          entity,
+          this.extensionUri,
+          this.uiPreferences,
+          workspaceFolder,
+          this.semanticInspectionCache
+        )
       );
     } catch (error) {
       vscode.window.showErrorMessage(
@@ -312,7 +334,14 @@ export class EntityEditorProvider {
       }
       await panel.webview.postMessage({
         type: 'saved',
-        payload: await createPayload(refreshed, saved, this.extensionUri, this.uiPreferences, workspaceFolder)
+        payload: await createPayload(
+          refreshed,
+          saved,
+          this.extensionUri,
+          this.uiPreferences,
+          workspaceFolder,
+          this.semanticInspectionCache
+        )
       });
       vscode.window.showInformationMessage(`Saved ${entity.id}`);
     } catch (error) {
@@ -334,14 +363,21 @@ export class EntityEditorProvider {
     if (!workspaceFolder) return;
     await panel.webview.postMessage({
       type: 'updateEditor',
-      payload: await createPayload(repository, entity, this.extensionUri, this.uiPreferences, workspaceFolder)
+      payload: await createPayload(
+        repository,
+        entity,
+        this.extensionUri,
+        this.uiPreferences,
+        workspaceFolder,
+        this.semanticInspectionCache
+      )
     });
   }
 
   private async reload(entityId: string, panel: vscode.WebviewPanel): Promise<void> {
     const session = this.sessions.get(entityId);
-    const workspaceFolder = getPlanFSWorkspaceFolder();
-    if (!session || !workspaceFolder || session.workspaceUri !== workspaceFolder.uri.toString()) return;
+    const workspaceFolder = this.workspaceFolderForSession(entityId);
+    if (!session || !workspaceFolder) return;
     const repository = await loadRepository(workspaceFolder.uri.fsPath);
     const entity = findEditableEntity(repository, entityId);
     if (!entity) {
@@ -389,7 +425,14 @@ export class EntityEditorProvider {
       const refreshed = await loadRepository(workspaceFolder.uri.fsPath);
       panel.webview.html = renderEditor(
         panel.webview,
-        await createPayload(refreshed, milestone, this.extensionUri, this.uiPreferences, workspaceFolder)
+        await createPayload(
+          refreshed,
+          milestone,
+          this.extensionUri,
+          this.uiPreferences,
+          workspaceFolder,
+          this.semanticInspectionCache
+        )
       );
       vscode.window.showInformationMessage(`${assigned ? 'Added' : 'Removed'} ${task.id} ${assigned ? 'to' : 'from'} ${milestoneId}`);
     } catch (error) {
@@ -469,7 +512,13 @@ export class EntityEditorProvider {
     const repository = await loadRepository(workspaceFolder.uri.fsPath);
     const entity = findEditableEntity(repository, entityId);
     if (!entity) return undefined;
-    return createSemanticEditorPayload(entity, this.uiPreferences, workspaceFolder);
+    return createSemanticEditorPayload(
+      repository,
+      entity,
+      this.uiPreferences,
+      workspaceFolder,
+      this.semanticInspectionCache
+    );
   }
 
   private async postSemanticPayload(entityId: string, panel: vscode.WebviewPanel): Promise<void> {
@@ -547,6 +596,109 @@ export class EntityEditorProvider {
         start: suggestion.conclusion.range.start.offset,
         end: suggestion.conclusion.range.end.offset
       });
+    }
+  }
+
+  private async applySemanticSuggestion(
+    entityId: string,
+    key: string,
+    panel: vscode.WebviewPanel
+  ): Promise<void> {
+    const workspaceFolder = this.workspaceFolderForSession(entityId);
+    const session = this.sessions.get(entityId);
+    if (!workspaceFolder || !session) return;
+    if (session.dirty) {
+      vscode.window.showWarningMessage('Save or reload your current draft before applying a semantic suggestion.');
+      return;
+    }
+
+    try {
+      let repository = await loadRepository(workspaceFolder.uri.fsPath);
+      let entity = findEditableEntity(repository, entityId);
+      if (!entity) return;
+      if (entity.updatedAt !== session.loadedUpdatedAt) {
+        await panel.webview.postMessage({ type: 'conflict', entityId, reason: 'changed' });
+        return;
+      }
+
+      let semantic = await createSemanticEditorPayload(
+        repository,
+        entity,
+        this.uiPreferences,
+        workspaceFolder,
+        this.semanticInspectionCache
+      );
+      let suggestion = semantic.suggestions.find(candidate => candidate.key === key);
+      if (!suggestion?.application || entity.type !== 'task') return;
+      const application = suggestion.application;
+      const evidence = suggestion.evidence.length > 0
+        ? ` Evidence: ${suggestion.evidence.join(' · ')}.`
+        : '';
+      const answer = await vscode.window.showWarningMessage(
+        `${application.explanation}${evidence} Proposed authoritative change: ${application.exactChange}. ` +
+          'The analyzer remains advisory; this edit happens only because you choose Apply.',
+        { modal: true },
+        'Apply metadata change',
+        'Open source'
+      );
+      if (answer === 'Open source') {
+        await this.openSource(entityId, {
+          start: suggestion.conclusion.range.start.offset,
+          end: suggestion.conclusion.range.end.offset
+        });
+        return;
+      }
+      if (answer !== 'Apply metadata change') return;
+
+      repository = await loadRepository(workspaceFolder.uri.fsPath);
+      entity = findEditableEntity(repository, entityId);
+      if (!entity || entity.type !== 'task' || entity.updatedAt !== session.loadedUpdatedAt) {
+        await panel.webview.postMessage({ type: 'conflict', entityId, reason: entity ? 'changed' : 'deleted' });
+        return;
+      }
+      semantic = await createSemanticEditorPayload(
+        repository,
+        entity,
+        this.uiPreferences,
+        workspaceFolder,
+        this.semanticInspectionCache
+      );
+      suggestion = semantic.suggestions.find(candidate => candidate.key === key);
+      if (!suggestion?.application || !sameApplication(application, suggestion.application)) {
+        throw new Error('The suggestion changed while it was being reviewed. Refresh and review it again.');
+      }
+
+      const patch = application.field === 'dependsOn'
+        ? { dependsOn: [...(entity.dependsOn ?? []), application.value] }
+        : application.field === 'epic'
+          ? { epic: application.value }
+          : { milestone: application.value };
+      const result = await updateTask(workspaceFolder.uri.fsPath, repository, {
+        id: entity.id,
+        patch,
+        expectedUpdatedAt: session.loadedUpdatedAt ?? null,
+        validationScope: 'repository'
+      });
+      session.loadedUpdatedAt = result.task.updatedAt;
+      session.dirty = false;
+      const refreshed = await loadRepository(workspaceFolder.uri.fsPath);
+      const saved = refreshed.tasks.get(entity.id) ?? result.task;
+      await panel.webview.postMessage({
+        type: 'saved',
+        payload: await createPayload(
+          refreshed,
+          saved,
+          this.extensionUri,
+          this.uiPreferences,
+          workspaceFolder,
+          this.semanticInspectionCache
+        )
+      });
+      vscode.window.showInformationMessage(`Applied ${application.field} metadata to ${entity.id}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      panel.webview.postMessage({ type: 'validation', errors: [message] });
+      vscode.window.showErrorMessage(`Failed to apply semantic suggestion: ${message}`);
     }
   }
 
@@ -633,7 +785,8 @@ async function createPayload(
   entity: EditableEntity,
   extensionUri: vscode.Uri,
   uiPreferences: PlanFSUiPreferences | undefined,
-  workspaceFolder: vscode.WorkspaceFolder
+  workspaceFolder: vscode.WorkspaceFolder,
+  semanticInspectionCache?: SemanticInspectionCache
 ): Promise<EditorPayload> {
   const tags = new Set<string>();
   for (const task of repository.tasks.values()) {
@@ -671,7 +824,13 @@ async function createPayload(
       tags: Array.from(tags).sort(),
       developers: developers.map(developer => developer.label)
     },
-    semantic: await createSemanticEditorPayload(entity, uiPreferences, workspaceFolder),
+    semantic: await createSemanticEditorPayload(
+      repository,
+      entity,
+      uiPreferences,
+      workspaceFolder,
+      semanticInspectionCache
+    ),
     helpTopics: createHelpTopics(extensionUri, ['editor'])
   };
 
@@ -691,9 +850,11 @@ async function createPayload(
 }
 
 async function createSemanticEditorPayload(
+  repository: Repository,
   entity: EditableEntity,
   uiPreferences: PlanFSUiPreferences | undefined,
-  workspaceFolder: vscode.WorkspaceFolder
+  workspaceFolder: vscode.WorkspaceFolder,
+  semanticInspectionCache?: SemanticInspectionCache
 ): Promise<SemanticEditorPayload> {
   const analysisEnabled = uiPreferences?.get(
     UI_PREFERENCES.semanticAnalysisEnabled,
@@ -703,17 +864,25 @@ async function createSemanticEditorPayload(
     UI_PREFERENCES.semanticSuggestionSuppressions,
     workspaceFolder
   ) ?? []);
-  const inspection = await inspectSemanticEntity(entity, {
+  const inspectionOptions = {
     tier: 'automation-ready',
     analysis: analysisEnabled,
     language: 'en'
-  });
+  } as const;
+  const inspection = semanticInspectionCache
+    ? await semanticInspectionCache.inspect(entity, inspectionOptions)
+    : await inspectSemanticEntity(entity, inspectionOptions);
   const suggestions = inspection.advisory.conclusions.map(conclusion => {
     const key = semanticSuggestionKey(entity.id, conclusion);
     const evidence = inspection.analysis?.signals
       .filter(signal => conclusion.signalKinds.includes(signal.kind) && signalMatchesConclusion(signal, conclusion))
       .flatMap(signal => signal.evidence.map(item => item.text)) ?? [];
-    return { key, conclusion, evidence: [...new Set(evidence)] };
+    return {
+      key,
+      conclusion,
+      evidence: [...new Set(evidence)],
+      application: createSemanticSuggestionApplication(repository, entity, conclusion)
+    };
   });
   return {
     inspection,
@@ -721,6 +890,43 @@ async function createSemanticEditorPayload(
     suggestions: suggestions.filter(suggestion => !suppressed.has(suggestion.key)),
     suppressedCount: suggestions.filter(suggestion => suppressed.has(suggestion.key)).length
   };
+}
+
+function createSemanticSuggestionApplication(
+  repository: Repository,
+  entity: EditableEntity,
+  conclusion: SemanticAdvisoryConclusion
+): SemanticSuggestionApplication | null {
+  if (entity.type !== 'task' || conclusion.code !== 'analysis.relationship.metadata-missing') return null;
+  const field = conclusion.data.suggestedField;
+  const value = conclusion.data.targetId;
+  if ((field !== 'dependsOn' && field !== 'epic' && field !== 'milestone') || typeof value !== 'string') {
+    return null;
+  }
+  if (field === 'dependsOn') {
+    if (!repository.tasks.has(value) || entity.dependsOn?.includes(value)) return null;
+    return {
+      field,
+      value,
+      exactChange: `append ${value} to dependsOn`,
+      explanation: `${value} was found near dependency wording in this task's Markdown.`
+    };
+  }
+  const targetExists = field === 'epic' ? repository.epics.has(value) : repository.milestones.has(value);
+  if (!targetExists || entity[field]) return null;
+  return {
+    field,
+    value,
+    exactChange: `set ${field} to ${value}`,
+    explanation: `${value} was found near parent relationship wording in this task's Markdown.`
+  };
+}
+
+function sameApplication(
+  left: SemanticSuggestionApplication,
+  right: SemanticSuggestionApplication
+): boolean {
+  return left.field === right.field && left.value === right.value;
 }
 
 function semanticSuggestionKey(entityId: string, conclusion: SemanticAdvisoryConclusion): string {
@@ -1142,6 +1348,26 @@ function renderEditor(webview: vscode.Webview, payload: EditorPayload): string {
 
     .semanticEvidence {
       grid-column: 2 / -1;
+    }
+
+    .semanticExplanation {
+      grid-column: 2 / -1;
+      padding: 7px 8px;
+      border-left: 3px solid var(--vscode-inputValidation-infoBorder, var(--border));
+      background: color-mix(in srgb, var(--panel) 82%, var(--bg));
+    }
+
+    .semanticExplanation summary {
+      cursor: pointer;
+      color: var(--vscode-textLink-foreground);
+      font-weight: 600;
+    }
+
+    .semanticExplanation p {
+      margin: 7px 0 0;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.45;
     }
 
     .semanticLink {
@@ -1585,6 +1811,12 @@ function renderEditor(webview: vscode.Webview, payload: EditorPayload): string {
           key: button.dataset.previewSuggestion
         }));
       });
+      container.querySelectorAll('[data-apply-suggestion]').forEach(button => {
+        button.addEventListener('click', () => vscode.postMessage({
+          type: 'applySemanticSuggestion',
+          key: button.dataset.applySuggestion
+        }));
+      });
       document.getElementById('toggleSemanticAnalysis')?.addEventListener('click', () => {
         vscode.postMessage({ type: 'toggleSemanticAnalysis', enabled: !semantic.analysisEnabled });
       });
@@ -1625,11 +1857,20 @@ function renderEditor(webview: vscode.Webview, payload: EditorPayload): string {
       const preview = conclusion.repair.previewable
         ? '<button type="button" class="semanticLink" data-preview-suggestion="' + escapeHtml(suggestion.key) + '">Preview change</button>'
         : '';
+      const application = suggestion.application;
+      const apply = application
+        ? '<button type="button" data-apply-suggestion="' + escapeHtml(suggestion.key) + '">Apply…</button>'
+        : '';
+      const explanation = application
+        ? '<details class="semanticExplanation"><summary>Why this suggestion?</summary><p>' +
+          escapeHtml(application.explanation) + ' Evidence remains advisory. Exact metadata change: ' +
+          escapeHtml(application.exactChange) + '. Only your confirmation authorizes this edit.</p></details>'
+        : '<details class="semanticExplanation"><summary>Why no Apply button?</summary><p>This signal is ambiguous, unsupported, already represented, or does not map to an existing compatible PlanFS entity. Review the source manually.</p></details>';
       return '<div class="semanticItem semanticSuggestion"><span class="semanticMark">~</span><div>' +
         '<div class="semanticText">' + escapeHtml(conclusion.message) + '</div>' +
         '<div class="semanticMeta">Advisory · ' + escapeHtml(conclusion.provenance) + ' · ' + escapeHtml(conclusion.repair.summary) + '</div></div>' +
-        '<div class="semanticActions">' + sourceButton(conclusion.range) + preview +
-          '<button type="button" class="semanticLink" data-dismiss-suggestion="' + escapeHtml(suggestion.key) + '">Dismiss</button></div>' + evidence + '</div>';
+        '<div class="semanticActions">' + sourceButton(conclusion.range) + preview + apply +
+          '<button type="button" class="semanticLink" data-dismiss-suggestion="' + escapeHtml(suggestion.key) + '">Dismiss</button></div>' + evidence + explanation + '</div>';
     }
 
     function renderMention(mention) {

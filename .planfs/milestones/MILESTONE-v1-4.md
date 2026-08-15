@@ -35,3 +35,13 @@ The December 15 target is provisional. The release should favor tolerant reading
 ## Child Epic
 
 - EPIC-semantic-planning-documents: Semantic Planning Documents
+
+## Findings
+
+- Verified behavior now covers typed loss-aware extraction, stable inspection JSON, baseline/automation-ready/lifecycle validation, local advisory English signals, explicit formatting, and shared VS Code inspection.
+- The 2026-08-15 release check passed lint, all workspace builds, 246 workspace tests, repository validation, CLI inspection, semantic validation, and formatter preview checks.
+- Existing format-v1 artifacts require no rewrite. Archived artifacts are immutable; optional formatting applies only to active artifacts after an explicit preview.
+
+## Questions
+
+- Two active milestones have optional checklist normalizations available. Applying those previews is a release presentation choice, not a compatibility requirement.

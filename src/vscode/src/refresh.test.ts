@@ -1573,6 +1573,7 @@ describe('VS Code view refresh workspace selection', () => {
 
   it('renders and controls shared semantic inspection without mutating Markdown', async () => {
     selectPlanFSWorkspaceFolder(firstFolder);
+    await saveEntity(firstRoot, createTaskTemplate('TASK-999', 'Existing dependency target'));
     const body = [
       'Inspect semantic UI.',
       '',
@@ -1595,18 +1596,18 @@ describe('VS Code view refresh workspace selection', () => {
       'Custom content remains visible with raw <script>markup</script>.'
     ].join('\n');
     await saveEntity(firstRoot, {
-      ...createTaskTemplate('TASK-semantic', 'Semantic editor task'),
+      ...createTaskTemplate('TASK-020', 'Semantic editor task'),
       dependsOn: ['TASK-001'],
       body
     });
     const before = await fs.readFile(
-      path.join(firstRoot, '.planfs', 'tasks', 'TASK-semantic.md'),
+      path.join(firstRoot, '.planfs', 'tasks', 'TASK-020.md'),
       'utf-8'
     );
     const preferences = new PlanFSUiPreferences(new TestMemento());
     const editor = new EntityEditorProvider(vscode.Uri.file('/extension'), preferences);
 
-    await editor.open('TASK-semantic');
+    await editor.open('TASK-020');
 
     const editorPanel = jest.mocked(vscode.window.createWebviewPanel).mock.results[0].value;
     expect(editorPanel.webview.html).toContain('"analysisEnabled":true');
@@ -1621,6 +1622,11 @@ describe('VS Code view refresh workspace selection', () => {
     expect(editorPanel.webview.html).toContain('analysis.relationship.metadata-missing');
     expect(editorPanel.webview.html).toContain('TASK-999');
     expect(editorPanel.webview.html).toContain('data-preview-suggestion');
+    expect(editorPanel.webview.html).toContain('data-apply-suggestion');
+    expect(editorPanel.webview.html).toContain('Why this suggestion?');
+    expect(editorPanel.webview.html).toContain('append TASK-999 to dependsOn');
+    expect(editorPanel.webview.html).toContain('Only your confirmation authorizes this edit.');
+    expect(editorPanel.webview.html).toContain('"application":null');
     expect(editorPanel.webview.html).toContain('data-dismiss-suggestion');
     expect(editorPanel.webview.html).toContain('data-source-start');
     expect(editorPanel.webview.html).toContain('Non-authoritative prose mention');
@@ -1632,7 +1638,7 @@ describe('VS Code view refresh workspace selection', () => {
       end: body.indexOf('The shared parser') + 'The shared parser'.length
     });
     expect(vscode.workspace.openTextDocument).toHaveBeenLastCalledWith(
-      path.join(firstRoot, '.planfs', 'tasks', 'TASK-semantic.md')
+      path.join(firstRoot, '.planfs', 'tasks', 'TASK-020.md')
     );
     expect(vscode.window.showTextDocument).toHaveBeenLastCalledWith(
       expect.anything(),
@@ -1644,7 +1650,7 @@ describe('VS Code view refresh workspace selection', () => {
       })
     );
 
-    const suggestionKey = 'TASK-semantic:analysis.relationship.metadata-missing:TASK-999';
+    const suggestionKey = 'TASK-020:analysis.relationship.metadata-missing:TASK-999';
     jest.mocked(vscode.window.showInformationMessage).mockResolvedValueOnce('Open source' as never);
     await editorPanel.webview.postMessage({
       type: 'previewSemanticSuggestion',
@@ -1695,9 +1701,50 @@ describe('VS Code view refresh workspace selection', () => {
       })
     }));
     expect(await fs.readFile(
-      path.join(firstRoot, '.planfs', 'tasks', 'TASK-semantic.md'),
+      path.join(firstRoot, '.planfs', 'tasks', 'TASK-020.md'),
       'utf-8'
     )).toBe(before);
+
+    await editorPanel.webview.postMessage({ type: 'toggleSemanticAnalysis', enabled: true });
+    await editorPanel.webview.postMessage({ type: 'draftState', dirty: true });
+    await editorPanel.webview.postMessage({
+      type: 'applySemanticSuggestion',
+      key: suggestionKey
+    });
+    expect(vscode.window.showWarningMessage).toHaveBeenCalledWith(
+      'Save or reload your current draft before applying a semantic suggestion.'
+    );
+    expect((await loadRepository(firstRoot)).tasks.get('TASK-020')?.dependsOn).toEqual(['TASK-001']);
+
+    await editorPanel.webview.postMessage({ type: 'draftState', dirty: false });
+    const changedOnDisk = (await loadRepository(firstRoot)).tasks.get('TASK-020');
+    expect(changedOnDisk).toBeDefined();
+    await saveEntity(firstRoot, { ...changedOnDisk!, updatedAt: '2030-01-01T00:00:00.000Z' });
+    await editorPanel.webview.postMessage({ type: 'applySemanticSuggestion', key: suggestionKey });
+    expect(editorPanel.webview.postedMessages).toContainEqual(expect.objectContaining({
+      type: 'conflict',
+      entityId: 'TASK-020',
+      reason: 'changed'
+    }));
+    expect((await loadRepository(firstRoot)).tasks.get('TASK-020')?.dependsOn).toEqual(['TASK-001']);
+    await editorPanel.webview.postMessage({ type: 'reload' });
+
+    jest.mocked(vscode.window.showWarningMessage).mockReset().mockResolvedValueOnce('Apply metadata change' as never);
+    await editorPanel.webview.postMessage({
+      type: 'applySemanticSuggestion',
+      key: suggestionKey
+    });
+    expect(vscode.window.showWarningMessage).toHaveBeenCalledWith(
+      expect.stringContaining('Proposed authoritative change: append TASK-999 to dependsOn'),
+      { modal: true },
+      'Apply metadata change',
+      'Open source'
+    );
+    expect(vscode.window.showErrorMessage).not.toHaveBeenCalled();
+    const applied = (await loadRepository(firstRoot)).tasks.get('TASK-020');
+    expect(applied?.dependsOn).toEqual(['TASK-001', 'TASK-999']);
+    expect(applied?.body).toBe(body);
+    expect(editorPanel.webview.postedMessages).toContainEqual(expect.objectContaining({ type: 'saved' }));
   });
 
   it('keeps editor documents stable on refresh and refuses stale structured saves', async () => {

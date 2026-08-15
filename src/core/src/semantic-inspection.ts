@@ -117,6 +117,77 @@ export interface SemanticInspectionViewResult {
   diagnostics: SemanticValidationDiagnostic[];
 }
 
+export interface SemanticInspectionCacheOptions {
+  capacity?: number;
+}
+
+export interface SemanticInspectionCacheStats {
+  size: number;
+  capacity: number;
+  hits: number;
+  misses: number;
+  evictions: number;
+}
+
+/**
+ * Bounded per-consumer cache for repeated inspection of unchanged entities.
+ * Callers opt in so one-shot CLI commands do not retain repository bodies.
+ */
+export class SemanticInspectionCache {
+  private readonly entries = new Map<string, SemanticInspectionResult>();
+  private readonly capacity: number;
+  private hits = 0;
+  private misses = 0;
+  private evictions = 0;
+
+  constructor(options: SemanticInspectionCacheOptions = {}) {
+    const capacity = options.capacity ?? 256;
+    if (!Number.isSafeInteger(capacity) || capacity < 0) {
+      throw new Error('capacity must be a non-negative safe integer');
+    }
+    this.capacity = capacity;
+  }
+
+  get stats(): SemanticInspectionCacheStats {
+    return {
+      size: this.entries.size,
+      capacity: this.capacity,
+      hits: this.hits,
+      misses: this.misses,
+      evictions: this.evictions
+    };
+  }
+
+  clear(): void {
+    this.entries.clear();
+  }
+
+  async inspect(
+    entity: Entity,
+    options: SemanticInspectionOptions = {}
+  ): Promise<SemanticInspectionResult> {
+    const key = semanticInspectionCacheKey(entity, options);
+    const cached = this.entries.get(key);
+    if (cached) {
+      this.hits += 1;
+      this.entries.delete(key);
+      this.entries.set(key, cached);
+      return cloneInspection(cached);
+    }
+    this.misses += 1;
+    const result = await inspectSemanticEntity(entity, options);
+    if (this.capacity > 0) {
+      this.entries.set(key, cloneInspection(result));
+      if (this.entries.size > this.capacity) {
+        const oldest = this.entries.keys().next().value as string | undefined;
+        if (oldest !== undefined) this.entries.delete(oldest);
+        this.evictions += 1;
+      }
+    }
+    return cloneInspection(result);
+  }
+}
+
 /**
  * Build a read-only semantic inspection result for one already loaded entity.
  * Analysis is optional at the core boundary; interactive callers may enable it
@@ -224,6 +295,28 @@ function authoritativeRelationships(entity: Entity): AuthoritativeRelationships 
     supersedes: entity.type === 'decision' ? entity.supersedes ?? null : null,
     supersededBy: entity.type === 'decision' ? entity.supersededBy ?? null : null
   };
+}
+
+function semanticInspectionCacheKey(entity: Entity, options: SemanticInspectionOptions): string {
+  return JSON.stringify({
+    id: entity.id,
+    type: entity.type,
+    body: entity.body,
+    metadata: entity.metadata,
+    updatedAt: entity.updatedAt ?? null,
+    tier: options.tier ?? 'automation-ready',
+    lifecycle: options.lifecycle ?? false,
+    criterionCheckState: options.criterionCheckState ?? null,
+    analysis: options.analysis === true,
+    language: options.language ?? 'en',
+    analyzer: options.analyzer
+      ? `${options.analyzer.identity.id}@${options.analyzer.identity.version}`
+      : null
+  });
+}
+
+function cloneInspection(inspection: SemanticInspectionResult): SemanticInspectionResult {
+  return JSON.parse(JSON.stringify(inspection)) as SemanticInspectionResult;
 }
 
 function actionableConclusions(

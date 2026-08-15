@@ -198,6 +198,7 @@ describe('AI planning helpers', () => {
         priority: 'high',
         tags: ['cleanup']
       });
+      await saveEntity(rootPath, createTaskTemplate('TASK-002', 'Dependency target'));
       const repository = await loadRepository(rootPath);
 
       const result = await updateTaskPlanning(rootPath, repository, {
@@ -205,15 +206,17 @@ describe('AI planning helpers', () => {
         patch: parseTaskUpdatePatch({
           title: 'Updated title',
           priority: '',
+          dependsOn: ['TASK-002'],
           tags: []
         }),
         now
       });
 
-      expect(result.changedFields).toEqual(['title', 'priority', 'tags']);
+      expect(result.changedFields).toEqual(['title', 'priority', 'dependsOn', 'tags']);
       const updated = (await loadRepository(rootPath)).tasks.get('TASK-001');
       expect(updated?.title).toBe('Updated title');
       expect(updated?.priority).toBeUndefined();
+      expect(updated?.dependsOn).toEqual(['TASK-002']);
       expect(updated?.tags).toBeUndefined();
       const markdown = await fs.readFile(path.join(rootPath, '.planfs', 'tasks', 'TASK-001.md'), 'utf8');
       expect(markdown).not.toContain('priority:');
@@ -279,6 +282,7 @@ describe('AI planning helpers', () => {
         .toThrow('refinementState must be one of');
       expect(() => parseTaskUpdatePatch({ assignee: 42 })).toThrow('Expected a string');
       expect(() => parseTaskUpdatePatch({ tags: [42] })).toThrow('tags must be');
+      expect(() => parseTaskUpdatePatch({ dependsOn: [42] })).toThrow('dependsOn must be');
       expect(() => parseTaskUpdatePatch({ unknown: 'value' })).toThrow('Unsupported task update field');
     } finally {
       await fs.rm(rootPath, { recursive: true, force: true });
