@@ -21,3 +21,7 @@ export * from './ai';
 export * from './task-update';
 export * from './format';
 export * from './history';
+export * from './semantic-types';
+export * from './semantic-profiles';
+export * from './semantic';
+export * from './semantic-analyzer';

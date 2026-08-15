@@ -8,6 +8,7 @@ Core parsing and validation library for PlanFS.
 
 - **File Discovery** - Discover `.planfs/` files in a repository
 - **Parsing** - Extract YAML frontmatter and markdown body
+- **Semantic Markdown** - Inspect body structure without rewriting source files
 - **Type System** - Strong typing for all entity types
 - **Validation** - Schema validation and constraint checking
 - **Repository API** - Load and query repositories
@@ -59,6 +60,45 @@ const todoTasks = getTasksByStatus(repo, 'todo');
 const myTasks = getTasksByAssignee(repo, 'user@example.com');
 ```
 
+### Inspecting Semantic Markdown
+
+Semantic parsing is explicit and deferred, so loading a repository does not parse every body automatically:
+
+```typescript
+import { parseSemanticDocument } from 'planfs-core';
+
+const semantic = parseSemanticDocument('task', task.body, {
+  filePath: task.filePath
+});
+
+console.log(semantic.preamble.text);
+console.log(semantic.criteria);
+console.log(semantic.mentions); // advisory; never authoritative metadata
+```
+
+The result preserves the original Markdown and exact source ranges. It exposes PlanFS concepts rather than the underlying parser's syntax tree.
+
+### Optional Local Prose Analysis
+
+Advisory analysis is explicit and local. Omitting `enabled: true` performs no analysis:
+
+```typescript
+import {
+  parseSemanticDocument,
+  runSemanticAnalysis
+} from 'planfs-core';
+
+const semantic = parseSemanticDocument('task', task.body, {
+  filePath: task.filePath
+});
+const analysis = await runSemanticAnalysis(semantic, {
+  enabled: true,
+  language: 'en'
+});
+```
+
+The built-in analyzer emits only the English-language rule signals promoted by the v1.4 spikes: modality, negation, condition introducers, explicit dates/durations, and possible relationship mentions. Every signal is `nlp-inferred`, includes exact source evidence, and has `authoritative: false`. It never updates frontmatter or repository relationships, makes no network calls, and does not require an NLP model or runtime download. Unsupported languages return an advisory diagnostic and no signals.
+
 ## API Reference
 
 ### Types
@@ -99,6 +139,9 @@ const myTasks = getTasksByAssignee(repo, 'user@example.com');
 
 - `parseFrontmatter(content)` - Parse YAML frontmatter and markdown
 - `normalizeMetadata(metadata)` - Convert kebab-case and snake_case to camelCase
+- `parseSemanticDocument(entityType, body, options)` - Parse a body into the loss-aware semantic document model
+- `runSemanticAnalysis(document, options)` - Explicitly run optional advisory prose analysis
+- `LocalRuleSemanticAnalyzer` - Reusable local analyzer with a bounded content/version-aware cache
 
 ## Testing
 

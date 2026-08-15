@@ -53,6 +53,86 @@ describe('CLI commands', () => {
     expect(logSpy).toHaveBeenCalledWith('✓ Created task: TASK-001');
   });
 
+  it('explicitly enables local advisory analysis in text and stable JSON output', async () => {
+    await initCommand(rootPath, { format: 'json' });
+    const taskPath = path.join(rootPath, '.planfs', 'tasks', 'TASK-001.md');
+    await fs.writeFile(taskPath, [
+      '---',
+      'id: TASK-001',
+      'title: Advisory analysis',
+      'status: todo',
+      'dependsOn:',
+      '  - TASK-100',
+      '---',
+      '',
+      '## Acceptance Criteria',
+      '',
+      '- [ ] Must not send prose over the network.',
+      '- [ ] Complete this after TASK-118.',
+      '- [ ] Render `should depend on TASK-999` literally.',
+      ''
+    ].join('\n'), 'utf-8');
+    const before = await fs.readFile(taskPath, 'utf-8');
+
+    await expect(showCommand(rootPath, 'TASK-001', {
+      nlp: true,
+      format: 'json',
+      language: 'en-US'
+    })).resolves.toBe(0);
+    const jsonOutput = JSON.parse(
+      logSpy.mock.calls[logSpy.mock.calls.length - 1]?.[0] as string
+    );
+    expect(jsonOutput).toMatchObject({
+      entity: { id: 'TASK-001', status: 'todo', dependsOn: ['TASK-100'] },
+      analysis: {
+        analyzer: { id: 'planfs-local-english-rules', version: '1.0.0' },
+        language: 'en',
+        diagnostics: []
+      }
+    });
+    expect(new Set(jsonOutput.analysis.signals.map((signal: { kind: string }) => signal.kind))).toEqual(
+      new Set(['modality', 'negation', 'condition', 'relationship-mention'])
+    );
+    expect(jsonOutput.analysis.signals.some((signal: { data: { targetId?: string } }) => (
+      signal.data.targetId === 'TASK-999'
+    ))).toBe(false);
+    expect(await fs.readFile(taskPath, 'utf-8')).toBe(before);
+
+    await expect(showCommand(rootPath, 'TASK-001', {
+      nlp: true,
+      format: 'pretty'
+    })).resolves.toBe(0);
+    expect(logSpy).toHaveBeenCalledWith('\nAdvisory prose analysis:');
+    expect(logSpy).toHaveBeenCalledWith(
+      'Advisory only; frontmatter and repository relationships are unchanged.'
+    );
+  });
+
+  it('preserves legacy show JSON when analysis is disabled and bounds unsupported languages', async () => {
+    await createCommand(rootPath, 'task', { title: 'Disabled analysis' });
+
+    await expect(showCommand(rootPath, 'TASK-001', { format: 'json' })).resolves.toBe(0);
+    const disabled = JSON.parse(
+      logSpy.mock.calls[logSpy.mock.calls.length - 1]?.[0] as string
+    );
+    expect(disabled.id).toBe('TASK-001');
+    expect(disabled).not.toHaveProperty('entity');
+    expect(disabled).not.toHaveProperty('analysis');
+
+    await expect(showCommand(rootPath, 'TASK-001', {
+      format: 'json',
+      nlp: true,
+      language: 'fr'
+    })).resolves.toBe(0);
+    const unsupported = JSON.parse(
+      logSpy.mock.calls[logSpy.mock.calls.length - 1]?.[0] as string
+    );
+    expect(unsupported.analysis).toMatchObject({
+      signals: [],
+      diagnostics: [{ code: 'analysis.language.unsupported', severity: 'info' }]
+    });
+  });
+
   it('initializes repository structure idempotently', async () => {
     await expect(initCommand(rootPath, { format: 'json' })).resolves.toBe(0);
 

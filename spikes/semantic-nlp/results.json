@@ -1,0 +1,2355 @@
+{
+  "schemaVersion": 1,
+  "runtime": {
+    "node": "v24.16.0",
+    "platform": "darwin",
+    "architecture": "arm64",
+    "fixtureCount": 40,
+    "timedDocumentsPerCandidate": 10000,
+    "note": "Cold start is module import plus analyzer initialization in one fresh benchmark process; filesystem cache may benefit later candidates."
+  },
+  "thresholds": {
+    "promotePrecision": 0.9,
+    "promoteRecall": 0.8,
+    "maxColdStartMs": 100,
+    "minThroughputDocsPerSecond": 1000,
+    "maxInstalledBytes": 5000000
+  },
+  "results": [
+    {
+      "id": "planfs-token-rules",
+      "identity": {
+        "package": "none",
+        "version": "prototype-1"
+      },
+      "coldStartMs": 0.007,
+      "throughputDocsPerSecond": 1692966.334,
+      "packageBytes": 0,
+      "moduleCompatibility": {
+        "commonjs": true,
+        "esm": true,
+        "browser": true
+      },
+      "sample": {
+        "tokens": [
+          "If",
+          "the",
+          "cache",
+          "is",
+          "unavailable",
+          ",",
+          "retry",
+          "twice",
+          "."
+        ],
+        "sentences": [
+          "If the cache is unavailable, retry twice."
+        ],
+        "signals": [
+          "action",
+          "condition"
+        ]
+      },
+      "metrics": {
+        "modality": {
+          "truePositive": 5,
+          "falsePositive": 0,
+          "falseNegative": 0,
+          "precision": 1,
+          "recall": 1,
+          "f1": 1,
+          "falsePositives": [],
+          "falseNegatives": []
+        },
+        "negation": {
+          "truePositive": 4,
+          "falsePositive": 0,
+          "falseNegative": 0,
+          "precision": 1,
+          "recall": 1,
+          "f1": 1,
+          "falsePositives": [],
+          "falseNegatives": []
+        },
+        "condition": {
+          "truePositive": 6,
+          "falsePositive": 0,
+          "falseNegative": 0,
+          "precision": 1,
+          "recall": 1,
+          "f1": 1,
+          "falsePositives": [],
+          "falseNegatives": []
+        },
+        "action": {
+          "truePositive": 25,
+          "falsePositive": 1,
+          "falseNegative": 5,
+          "precision": 0.962,
+          "recall": 0.833,
+          "f1": 0.893,
+          "falsePositives": [
+            "relative-date"
+          ],
+          "falseNegatives": [
+            "context-mention",
+            "absolute-date",
+            "measured-fast",
+            "observable-passive",
+            "optional-context"
+          ]
+        },
+        "vague": {
+          "truePositive": 5,
+          "falsePositive": 0,
+          "falseNegative": 0,
+          "precision": 1,
+          "recall": 1,
+          "f1": 1,
+          "falsePositives": [],
+          "falseNegatives": []
+        },
+        "compound": {
+          "truePositive": 3,
+          "falsePositive": 0,
+          "falseNegative": 0,
+          "precision": 1,
+          "recall": 1,
+          "f1": 1,
+          "falsePositives": [],
+          "falseNegatives": []
+        },
+        "relationship": {
+          "truePositive": 5,
+          "falsePositive": 0,
+          "falseNegative": 0,
+          "precision": 1,
+          "recall": 1,
+          "f1": 1,
+          "falsePositives": [],
+          "falseNegatives": []
+        },
+        "date-duration": {
+          "truePositive": 7,
+          "falsePositive": 0,
+          "falseNegative": 0,
+          "precision": 1,
+          "recall": 1,
+          "f1": 1,
+          "falsePositives": [],
+          "falseNegatives": []
+        }
+      },
+      "micro": {
+        "precision": 0.984,
+        "recall": 0.923,
+        "f1": 0.952
+      },
+      "predictions": [
+        {
+          "id": "canonical-return",
+          "predicted": [
+            "action"
+          ],
+          "expected": [
+            "action"
+          ]
+        },
+        {
+          "id": "modal-vague",
+          "predicted": [
+            "modality",
+            "vague"
+          ],
+          "expected": [
+            "modality",
+            "vague"
+          ]
+        },
+        {
+          "id": "negative-action",
+          "predicted": [
+            "action",
+            "negation"
+          ],
+          "expected": [
+            "action",
+            "negation"
+          ]
+        },
+        {
+          "id": "conditional-retry",
+          "predicted": [
+            "action",
+            "condition"
+          ],
+          "expected": [
+            "action",
+            "condition"
+          ]
+        },
+        {
+          "id": "compound-actions",
+          "predicted": [
+            "action",
+            "compound"
+          ],
+          "expected": [
+            "action",
+            "compound"
+          ]
+        },
+        {
+          "id": "context-mention",
+          "predicted": [],
+          "expected": [
+            "action"
+          ]
+        },
+        {
+          "id": "dependency",
+          "predicted": [
+            "relationship"
+          ],
+          "expected": [
+            "relationship"
+          ]
+        },
+        {
+          "id": "ordered-relationship",
+          "predicted": [
+            "action",
+            "condition",
+            "relationship"
+          ],
+          "expected": [
+            "action",
+            "condition",
+            "relationship"
+          ]
+        },
+        {
+          "id": "latency",
+          "predicted": [
+            "action",
+            "date-duration"
+          ],
+          "expected": [
+            "action",
+            "date-duration"
+          ]
+        },
+        {
+          "id": "absolute-date",
+          "predicted": [
+            "date-duration"
+          ],
+          "expected": [
+            "action",
+            "date-duration"
+          ]
+        },
+        {
+          "id": "appropriate",
+          "predicted": [
+            "action",
+            "vague"
+          ],
+          "expected": [
+            "action",
+            "vague"
+          ]
+        },
+        {
+          "id": "modal-action",
+          "predicted": [
+            "action",
+            "modality"
+          ],
+          "expected": [
+            "action",
+            "modality"
+          ]
+        },
+        {
+          "id": "negative-frontmatter",
+          "predicted": [
+            "action",
+            "negation"
+          ],
+          "expected": [
+            "action",
+            "negation"
+          ]
+        },
+        {
+          "id": "conditional-token",
+          "predicted": [
+            "action",
+            "condition"
+          ],
+          "expected": [
+            "action",
+            "condition"
+          ]
+        },
+        {
+          "id": "compound-parse",
+          "predicted": [
+            "action",
+            "compound"
+          ],
+          "expected": [
+            "action",
+            "compound"
+          ]
+        },
+        {
+          "id": "alternative-object",
+          "predicted": [
+            "action"
+          ],
+          "expected": [
+            "action"
+          ]
+        },
+        {
+          "id": "noun-conjunction",
+          "predicted": [],
+          "expected": []
+        },
+        {
+          "id": "measured-fast",
+          "predicted": [
+            "date-duration"
+          ],
+          "expected": [
+            "action",
+            "date-duration"
+          ]
+        },
+        {
+          "id": "easy",
+          "predicted": [
+            "action",
+            "vague"
+          ],
+          "expected": [
+            "action",
+            "vague"
+          ]
+        },
+        {
+          "id": "preserve",
+          "predicted": [
+            "action"
+          ],
+          "expected": [
+            "action"
+          ]
+        },
+        {
+          "id": "example-mention",
+          "predicted": [],
+          "expected": []
+        },
+        {
+          "id": "blocks",
+          "predicted": [
+            "condition",
+            "relationship"
+          ],
+          "expected": [
+            "condition",
+            "relationship"
+          ]
+        },
+        {
+          "id": "modal-negative",
+          "predicted": [
+            "action",
+            "modality",
+            "negation"
+          ],
+          "expected": [
+            "action",
+            "modality",
+            "negation"
+          ]
+        },
+        {
+          "id": "modal-duration",
+          "predicted": [
+            "action",
+            "date-duration",
+            "modality"
+          ],
+          "expected": [
+            "action",
+            "date-duration",
+            "modality"
+          ]
+        },
+        {
+          "id": "review",
+          "predicted": [
+            "action"
+          ],
+          "expected": [
+            "action"
+          ]
+        },
+        {
+          "id": "descriptive-note",
+          "predicted": [],
+          "expected": []
+        },
+        {
+          "id": "unless",
+          "predicted": [
+            "action",
+            "condition"
+          ],
+          "expected": [
+            "action",
+            "condition"
+          ]
+        },
+        {
+          "id": "modal-passive",
+          "predicted": [
+            "modality"
+          ],
+          "expected": [
+            "modality"
+          ]
+        },
+        {
+          "id": "three-actions",
+          "predicted": [
+            "action",
+            "compound"
+          ],
+          "expected": [
+            "action",
+            "compound"
+          ]
+        },
+        {
+          "id": "stable-vague",
+          "predicted": [
+            "action",
+            "vague"
+          ],
+          "expected": [
+            "action",
+            "vague"
+          ]
+        },
+        {
+          "id": "graph-description",
+          "predicted": [],
+          "expected": []
+        },
+        {
+          "id": "after-sequence",
+          "predicted": [
+            "action",
+            "condition",
+            "relationship"
+          ],
+          "expected": [
+            "action",
+            "condition",
+            "relationship"
+          ]
+        },
+        {
+          "id": "retention",
+          "predicted": [
+            "action",
+            "date-duration"
+          ],
+          "expected": [
+            "action",
+            "date-duration"
+          ]
+        },
+        {
+          "id": "relative-date",
+          "predicted": [
+            "action",
+            "date-duration"
+          ],
+          "expected": [
+            "date-duration"
+          ]
+        },
+        {
+          "id": "negative-compound",
+          "predicted": [
+            "action",
+            "negation"
+          ],
+          "expected": [
+            "action",
+            "negation"
+          ]
+        },
+        {
+          "id": "observable-passive",
+          "predicted": [],
+          "expected": [
+            "action"
+          ]
+        },
+        {
+          "id": "quick-with-threshold",
+          "predicted": [
+            "action",
+            "date-duration"
+          ],
+          "expected": [
+            "action",
+            "date-duration"
+          ]
+        },
+        {
+          "id": "quick-without-threshold",
+          "predicted": [
+            "action",
+            "vague"
+          ],
+          "expected": [
+            "action",
+            "vague"
+          ]
+        },
+        {
+          "id": "optional-context",
+          "predicted": [],
+          "expected": [
+            "action"
+          ]
+        },
+        {
+          "id": "parent-suggestion",
+          "predicted": [
+            "relationship"
+          ],
+          "expected": [
+            "relationship"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "wink-nlp",
+      "identity": {
+        "package": "wink-nlp + wink-eng-lite-web-model",
+        "version": "2.4.0 + 1.8.1"
+      },
+      "coldStartMs": 78.155,
+      "throughputDocsPerSecond": 64094.963,
+      "packageBytes": 4480646,
+      "moduleCompatibility": {
+        "commonjs": true,
+        "esm": true,
+        "browser": true
+      },
+      "sample": {
+        "tokens": [
+          "If",
+          "the",
+          "cache",
+          "is",
+          "unavailable",
+          ",",
+          "retry",
+          "twice",
+          "."
+        ],
+        "lemmas": [
+          "if",
+          "the",
+          "cache",
+          "be",
+          "unavailable",
+          ",",
+          "retry",
+          "twice",
+          "."
+        ],
+        "partOfSpeech": [
+          "SCONJ",
+          "DET",
+          "NOUN",
+          "AUX",
+          "ADJ",
+          "PUNCT",
+          "VERB",
+          "ADV",
+          "PUNCT"
+        ],
+        "sentences": [
+          "If the cache is unavailable, retry twice."
+        ],
+        "signals": [
+          "action",
+          "condition"
+        ]
+      },
+      "metrics": {
+        "modality": {
+          "truePositive": 5,
+          "falsePositive": 0,
+          "falseNegative": 0,
+          "precision": 1,
+          "recall": 1,
+          "f1": 1,
+          "falsePositives": [],
+          "falseNegatives": []
+        },
+        "negation": {
+          "truePositive": 4,
+          "falsePositive": 0,
+          "falseNegative": 0,
+          "precision": 1,
+          "recall": 1,
+          "f1": 1,
+          "falsePositives": [],
+          "falseNegatives": []
+        },
+        "condition": {
+          "truePositive": 6,
+          "falsePositive": 0,
+          "falseNegative": 0,
+          "precision": 1,
+          "recall": 1,
+          "f1": 1,
+          "falsePositives": [],
+          "falseNegatives": []
+        },
+        "action": {
+          "truePositive": 21,
+          "falsePositive": 6,
+          "falseNegative": 9,
+          "precision": 0.778,
+          "recall": 0.7,
+          "f1": 0.737,
+          "falsePositives": [
+            "dependency",
+            "example-mention",
+            "blocks",
+            "modal-passive",
+            "graph-description",
+            "parent-suggestion"
+          ],
+          "falseNegatives": [
+            "canonical-return",
+            "ordered-relationship",
+            "conditional-token",
+            "modal-duration",
+            "review",
+            "stable-vague",
+            "retention",
+            "quick-with-threshold",
+            "quick-without-threshold"
+          ]
+        },
+        "vague": {
+          "truePositive": 5,
+          "falsePositive": 0,
+          "falseNegative": 0,
+          "precision": 1,
+          "recall": 1,
+          "f1": 1,
+          "falsePositives": [],
+          "falseNegatives": []
+        },
+        "compound": {
+          "truePositive": 3,
+          "falsePositive": 0,
+          "falseNegative": 0,
+          "precision": 1,
+          "recall": 1,
+          "f1": 1,
+          "falsePositives": [],
+          "falseNegatives": []
+        },
+        "relationship": {
+          "truePositive": 5,
+          "falsePositive": 0,
+          "falseNegative": 0,
+          "precision": 1,
+          "recall": 1,
+          "f1": 1,
+          "falsePositives": [],
+          "falseNegatives": []
+        },
+        "date-duration": {
+          "truePositive": 7,
+          "falsePositive": 0,
+          "falseNegative": 0,
+          "precision": 1,
+          "recall": 1,
+          "f1": 1,
+          "falsePositives": [],
+          "falseNegatives": []
+        }
+      },
+      "micro": {
+        "precision": 0.903,
+        "recall": 0.862,
+        "f1": 0.882
+      },
+      "predictions": [
+        {
+          "id": "canonical-return",
+          "predicted": [],
+          "expected": [
+            "action"
+          ]
+        },
+        {
+          "id": "modal-vague",
+          "predicted": [
+            "modality",
+            "vague"
+          ],
+          "expected": [
+            "modality",
+            "vague"
+          ]
+        },
+        {
+          "id": "negative-action",
+          "predicted": [
+            "action",
+            "negation"
+          ],
+          "expected": [
+            "action",
+            "negation"
+          ]
+        },
+        {
+          "id": "conditional-retry",
+          "predicted": [
+            "action",
+            "condition"
+          ],
+          "expected": [
+            "action",
+            "condition"
+          ]
+        },
+        {
+          "id": "compound-actions",
+          "predicted": [
+            "action",
+            "compound"
+          ],
+          "expected": [
+            "action",
+            "compound"
+          ]
+        },
+        {
+          "id": "context-mention",
+          "predicted": [
+            "action"
+          ],
+          "expected": [
+            "action"
+          ]
+        },
+        {
+          "id": "dependency",
+          "predicted": [
+            "action",
+            "relationship"
+          ],
+          "expected": [
+            "relationship"
+          ]
+        },
+        {
+          "id": "ordered-relationship",
+          "predicted": [
+            "condition",
+            "relationship"
+          ],
+          "expected": [
+            "action",
+            "condition",
+            "relationship"
+          ]
+        },
+        {
+          "id": "latency",
+          "predicted": [
+            "action",
+            "date-duration"
+          ],
+          "expected": [
+            "action",
+            "date-duration"
+          ]
+        },
+        {
+          "id": "absolute-date",
+          "predicted": [
+            "action",
+            "date-duration"
+          ],
+          "expected": [
+            "action",
+            "date-duration"
+          ]
+        },
+        {
+          "id": "appropriate",
+          "predicted": [
+            "action",
+            "vague"
+          ],
+          "expected": [
+            "action",
+            "vague"
+          ]
+        },
+        {
+          "id": "modal-action",
+          "predicted": [
+            "action",
+            "modality"
+          ],
+          "expected": [
+            "action",
+            "modality"
+          ]
+        },
+        {
+          "id": "negative-frontmatter",
+          "predicted": [
+            "action",
+            "negation"
+          ],
+          "expected": [
+            "action",
+            "negation"
+          ]
+        },
+        {
+          "id": "conditional-token",
+          "predicted": [
+            "condition"
+          ],
+          "expected": [
+            "action",
+            "condition"
+          ]
+        },
+        {
+          "id": "compound-parse",
+          "predicted": [
+            "action",
+            "compound"
+          ],
+          "expected": [
+            "action",
+            "compound"
+          ]
+        },
+        {
+          "id": "alternative-object",
+          "predicted": [
+            "action"
+          ],
+          "expected": [
+            "action"
+          ]
+        },
+        {
+          "id": "noun-conjunction",
+          "predicted": [],
+          "expected": []
+        },
+        {
+          "id": "measured-fast",
+          "predicted": [
+            "action",
+            "date-duration"
+          ],
+          "expected": [
+            "action",
+            "date-duration"
+          ]
+        },
+        {
+          "id": "easy",
+          "predicted": [
+            "action",
+            "vague"
+          ],
+          "expected": [
+            "action",
+            "vague"
+          ]
+        },
+        {
+          "id": "preserve",
+          "predicted": [
+            "action"
+          ],
+          "expected": [
+            "action"
+          ]
+        },
+        {
+          "id": "example-mention",
+          "predicted": [
+            "action"
+          ],
+          "expected": []
+        },
+        {
+          "id": "blocks",
+          "predicted": [
+            "action",
+            "condition",
+            "relationship"
+          ],
+          "expected": [
+            "condition",
+            "relationship"
+          ]
+        },
+        {
+          "id": "modal-negative",
+          "predicted": [
+            "action",
+            "modality",
+            "negation"
+          ],
+          "expected": [
+            "action",
+            "modality",
+            "negation"
+          ]
+        },
+        {
+          "id": "modal-duration",
+          "predicted": [
+            "date-duration",
+            "modality"
+          ],
+          "expected": [
+            "action",
+            "date-duration",
+            "modality"
+          ]
+        },
+        {
+          "id": "review",
+          "predicted": [],
+          "expected": [
+            "action"
+          ]
+        },
+        {
+          "id": "descriptive-note",
+          "predicted": [],
+          "expected": []
+        },
+        {
+          "id": "unless",
+          "predicted": [
+            "action",
+            "condition"
+          ],
+          "expected": [
+            "action",
+            "condition"
+          ]
+        },
+        {
+          "id": "modal-passive",
+          "predicted": [
+            "action",
+            "modality"
+          ],
+          "expected": [
+            "modality"
+          ]
+        },
+        {
+          "id": "three-actions",
+          "predicted": [
+            "action",
+            "compound"
+          ],
+          "expected": [
+            "action",
+            "compound"
+          ]
+        },
+        {
+          "id": "stable-vague",
+          "predicted": [
+            "vague"
+          ],
+          "expected": [
+            "action",
+            "vague"
+          ]
+        },
+        {
+          "id": "graph-description",
+          "predicted": [
+            "action"
+          ],
+          "expected": []
+        },
+        {
+          "id": "after-sequence",
+          "predicted": [
+            "action",
+            "condition",
+            "relationship"
+          ],
+          "expected": [
+            "action",
+            "condition",
+            "relationship"
+          ]
+        },
+        {
+          "id": "retention",
+          "predicted": [
+            "date-duration"
+          ],
+          "expected": [
+            "action",
+            "date-duration"
+          ]
+        },
+        {
+          "id": "relative-date",
+          "predicted": [
+            "date-duration"
+          ],
+          "expected": [
+            "date-duration"
+          ]
+        },
+        {
+          "id": "negative-compound",
+          "predicted": [
+            "action",
+            "negation"
+          ],
+          "expected": [
+            "action",
+            "negation"
+          ]
+        },
+        {
+          "id": "observable-passive",
+          "predicted": [
+            "action"
+          ],
+          "expected": [
+            "action"
+          ]
+        },
+        {
+          "id": "quick-with-threshold",
+          "predicted": [
+            "date-duration"
+          ],
+          "expected": [
+            "action",
+            "date-duration"
+          ]
+        },
+        {
+          "id": "quick-without-threshold",
+          "predicted": [
+            "vague"
+          ],
+          "expected": [
+            "action",
+            "vague"
+          ]
+        },
+        {
+          "id": "optional-context",
+          "predicted": [
+            "action"
+          ],
+          "expected": [
+            "action"
+          ]
+        },
+        {
+          "id": "parent-suggestion",
+          "predicted": [
+            "action",
+            "relationship"
+          ],
+          "expected": [
+            "relationship"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "compromise",
+      "identity": {
+        "package": "compromise",
+        "version": "14.16.0"
+      },
+      "coldStartMs": 268.21,
+      "throughputDocsPerSecond": 2903.89,
+      "packageBytes": 2733133,
+      "moduleCompatibility": {
+        "commonjs": true,
+        "esm": true,
+        "browser": true
+      },
+      "sample": {
+        "terms": [
+          {
+            "text": "If",
+            "terms": [
+              {
+                "text": "If",
+                "pre": "",
+                "post": " ",
+                "tags": [
+                  "Conjunction"
+                ],
+                "normal": "if",
+                "index": [
+                  0,
+                  0
+                ],
+                "id": "if|001000007",
+                "dirty": true,
+                "chunk": "Pivot"
+              }
+            ]
+          },
+          {
+            "text": "the",
+            "terms": [
+              {
+                "text": "the",
+                "pre": "",
+                "post": " ",
+                "tags": [
+                  "Determiner"
+                ],
+                "normal": "the",
+                "index": [
+                  0,
+                  1
+                ],
+                "id": "the|00200001C",
+                "dirty": true,
+                "chunk": "Noun"
+              }
+            ]
+          },
+          {
+            "text": "cache",
+            "terms": [
+              {
+                "text": "cache",
+                "pre": "",
+                "post": " ",
+                "tags": [
+                  "Noun",
+                  "Singular"
+                ],
+                "normal": "cache",
+                "index": [
+                  0,
+                  2
+                ],
+                "id": "cache|00300002K",
+                "confidence": 0.2,
+                "chunk": "Noun"
+              }
+            ]
+          },
+          {
+            "text": "is",
+            "terms": [
+              {
+                "text": "is",
+                "pre": "",
+                "post": " ",
+                "tags": [
+                  "Verb",
+                  "Copula",
+                  "PresentTense"
+                ],
+                "normal": "is",
+                "index": [
+                  0,
+                  3
+                ],
+                "id": "is|00400003F",
+                "chunk": "Verb",
+                "dirty": true
+              }
+            ]
+          },
+          {
+            "text": "unavailable,",
+            "terms": [
+              {
+                "text": "unavailable",
+                "pre": "",
+                "post": ", ",
+                "tags": [
+                  "Adjective"
+                ],
+                "normal": "unavailable",
+                "index": [
+                  0,
+                  4
+                ],
+                "id": "unavailable|00500004W",
+                "dirty": true,
+                "confidence": 0.6,
+                "chunk": "Adjective"
+              }
+            ]
+          },
+          {
+            "text": "retry",
+            "terms": [
+              {
+                "text": "retry",
+                "pre": "",
+                "post": " ",
+                "tags": [
+                  "Noun",
+                  "Singular"
+                ],
+                "normal": "retry",
+                "index": [
+                  0,
+                  5
+                ],
+                "id": "retry|00600005N",
+                "confidence": 0.1,
+                "chunk": "Noun"
+              }
+            ]
+          },
+          {
+            "text": "twice.",
+            "terms": [
+              {
+                "text": "twice",
+                "pre": "",
+                "post": ".",
+                "tags": [
+                  "Adverb"
+                ],
+                "normal": "twice",
+                "index": [
+                  0,
+                  6
+                ],
+                "id": "twice|00700006F",
+                "dirty": true,
+                "chunk": null
+              }
+            ]
+          }
+        ],
+        "verbs": [
+          "is"
+        ],
+        "sentences": [
+          "If the cache is unavailable, retry twice."
+        ],
+        "signals": [
+          "condition"
+        ]
+      },
+      "metrics": {
+        "modality": {
+          "truePositive": 5,
+          "falsePositive": 0,
+          "falseNegative": 0,
+          "precision": 1,
+          "recall": 1,
+          "f1": 1,
+          "falsePositives": [],
+          "falseNegatives": []
+        },
+        "negation": {
+          "truePositive": 4,
+          "falsePositive": 0,
+          "falseNegative": 0,
+          "precision": 1,
+          "recall": 1,
+          "f1": 1,
+          "falsePositives": [],
+          "falseNegatives": []
+        },
+        "condition": {
+          "truePositive": 6,
+          "falsePositive": 0,
+          "falseNegative": 0,
+          "precision": 1,
+          "recall": 1,
+          "f1": 1,
+          "falsePositives": [],
+          "falseNegatives": []
+        },
+        "action": {
+          "truePositive": 28,
+          "falsePositive": 7,
+          "falseNegative": 2,
+          "precision": 0.8,
+          "recall": 0.933,
+          "f1": 0.862,
+          "falsePositives": [
+            "modal-vague",
+            "dependency",
+            "example-mention",
+            "blocks",
+            "modal-passive",
+            "graph-description",
+            "parent-suggestion"
+          ],
+          "falseNegatives": [
+            "conditional-retry",
+            "optional-context"
+          ]
+        },
+        "vague": {
+          "truePositive": 5,
+          "falsePositive": 0,
+          "falseNegative": 0,
+          "precision": 1,
+          "recall": 1,
+          "f1": 1,
+          "falsePositives": [],
+          "falseNegatives": []
+        },
+        "compound": {
+          "truePositive": 2,
+          "falsePositive": 0,
+          "falseNegative": 1,
+          "precision": 1,
+          "recall": 0.667,
+          "f1": 0.8,
+          "falsePositives": [],
+          "falseNegatives": [
+            "compound-parse"
+          ]
+        },
+        "relationship": {
+          "truePositive": 5,
+          "falsePositive": 0,
+          "falseNegative": 0,
+          "precision": 1,
+          "recall": 1,
+          "f1": 1,
+          "falsePositives": [],
+          "falseNegatives": []
+        },
+        "date-duration": {
+          "truePositive": 7,
+          "falsePositive": 0,
+          "falseNegative": 0,
+          "precision": 1,
+          "recall": 1,
+          "f1": 1,
+          "falsePositives": [],
+          "falseNegatives": []
+        }
+      },
+      "micro": {
+        "precision": 0.899,
+        "recall": 0.954,
+        "f1": 0.925
+      },
+      "predictions": [
+        {
+          "id": "canonical-return",
+          "predicted": [
+            "action"
+          ],
+          "expected": [
+            "action"
+          ]
+        },
+        {
+          "id": "modal-vague",
+          "predicted": [
+            "action",
+            "modality",
+            "vague"
+          ],
+          "expected": [
+            "modality",
+            "vague"
+          ]
+        },
+        {
+          "id": "negative-action",
+          "predicted": [
+            "action",
+            "negation"
+          ],
+          "expected": [
+            "action",
+            "negation"
+          ]
+        },
+        {
+          "id": "conditional-retry",
+          "predicted": [
+            "condition"
+          ],
+          "expected": [
+            "action",
+            "condition"
+          ]
+        },
+        {
+          "id": "compound-actions",
+          "predicted": [
+            "action",
+            "compound"
+          ],
+          "expected": [
+            "action",
+            "compound"
+          ]
+        },
+        {
+          "id": "context-mention",
+          "predicted": [
+            "action"
+          ],
+          "expected": [
+            "action"
+          ]
+        },
+        {
+          "id": "dependency",
+          "predicted": [
+            "action",
+            "relationship"
+          ],
+          "expected": [
+            "relationship"
+          ]
+        },
+        {
+          "id": "ordered-relationship",
+          "predicted": [
+            "action",
+            "condition",
+            "relationship"
+          ],
+          "expected": [
+            "action",
+            "condition",
+            "relationship"
+          ]
+        },
+        {
+          "id": "latency",
+          "predicted": [
+            "action",
+            "date-duration"
+          ],
+          "expected": [
+            "action",
+            "date-duration"
+          ]
+        },
+        {
+          "id": "absolute-date",
+          "predicted": [
+            "action",
+            "date-duration"
+          ],
+          "expected": [
+            "action",
+            "date-duration"
+          ]
+        },
+        {
+          "id": "appropriate",
+          "predicted": [
+            "action",
+            "vague"
+          ],
+          "expected": [
+            "action",
+            "vague"
+          ]
+        },
+        {
+          "id": "modal-action",
+          "predicted": [
+            "action",
+            "modality"
+          ],
+          "expected": [
+            "action",
+            "modality"
+          ]
+        },
+        {
+          "id": "negative-frontmatter",
+          "predicted": [
+            "action",
+            "negation"
+          ],
+          "expected": [
+            "action",
+            "negation"
+          ]
+        },
+        {
+          "id": "conditional-token",
+          "predicted": [
+            "action",
+            "condition"
+          ],
+          "expected": [
+            "action",
+            "condition"
+          ]
+        },
+        {
+          "id": "compound-parse",
+          "predicted": [
+            "action"
+          ],
+          "expected": [
+            "action",
+            "compound"
+          ]
+        },
+        {
+          "id": "alternative-object",
+          "predicted": [
+            "action"
+          ],
+          "expected": [
+            "action"
+          ]
+        },
+        {
+          "id": "noun-conjunction",
+          "predicted": [],
+          "expected": []
+        },
+        {
+          "id": "measured-fast",
+          "predicted": [
+            "action",
+            "date-duration"
+          ],
+          "expected": [
+            "action",
+            "date-duration"
+          ]
+        },
+        {
+          "id": "easy",
+          "predicted": [
+            "action",
+            "vague"
+          ],
+          "expected": [
+            "action",
+            "vague"
+          ]
+        },
+        {
+          "id": "preserve",
+          "predicted": [
+            "action"
+          ],
+          "expected": [
+            "action"
+          ]
+        },
+        {
+          "id": "example-mention",
+          "predicted": [
+            "action"
+          ],
+          "expected": []
+        },
+        {
+          "id": "blocks",
+          "predicted": [
+            "action",
+            "condition",
+            "relationship"
+          ],
+          "expected": [
+            "condition",
+            "relationship"
+          ]
+        },
+        {
+          "id": "modal-negative",
+          "predicted": [
+            "action",
+            "modality",
+            "negation"
+          ],
+          "expected": [
+            "action",
+            "modality",
+            "negation"
+          ]
+        },
+        {
+          "id": "modal-duration",
+          "predicted": [
+            "action",
+            "date-duration",
+            "modality"
+          ],
+          "expected": [
+            "action",
+            "date-duration",
+            "modality"
+          ]
+        },
+        {
+          "id": "review",
+          "predicted": [
+            "action"
+          ],
+          "expected": [
+            "action"
+          ]
+        },
+        {
+          "id": "descriptive-note",
+          "predicted": [],
+          "expected": []
+        },
+        {
+          "id": "unless",
+          "predicted": [
+            "action",
+            "condition"
+          ],
+          "expected": [
+            "action",
+            "condition"
+          ]
+        },
+        {
+          "id": "modal-passive",
+          "predicted": [
+            "action",
+            "modality"
+          ],
+          "expected": [
+            "modality"
+          ]
+        },
+        {
+          "id": "three-actions",
+          "predicted": [
+            "action",
+            "compound"
+          ],
+          "expected": [
+            "action",
+            "compound"
+          ]
+        },
+        {
+          "id": "stable-vague",
+          "predicted": [
+            "action",
+            "vague"
+          ],
+          "expected": [
+            "action",
+            "vague"
+          ]
+        },
+        {
+          "id": "graph-description",
+          "predicted": [
+            "action"
+          ],
+          "expected": []
+        },
+        {
+          "id": "after-sequence",
+          "predicted": [
+            "action",
+            "condition",
+            "relationship"
+          ],
+          "expected": [
+            "action",
+            "condition",
+            "relationship"
+          ]
+        },
+        {
+          "id": "retention",
+          "predicted": [
+            "action",
+            "date-duration"
+          ],
+          "expected": [
+            "action",
+            "date-duration"
+          ]
+        },
+        {
+          "id": "relative-date",
+          "predicted": [
+            "date-duration"
+          ],
+          "expected": [
+            "date-duration"
+          ]
+        },
+        {
+          "id": "negative-compound",
+          "predicted": [
+            "action",
+            "negation"
+          ],
+          "expected": [
+            "action",
+            "negation"
+          ]
+        },
+        {
+          "id": "observable-passive",
+          "predicted": [
+            "action"
+          ],
+          "expected": [
+            "action"
+          ]
+        },
+        {
+          "id": "quick-with-threshold",
+          "predicted": [
+            "action",
+            "date-duration"
+          ],
+          "expected": [
+            "action",
+            "date-duration"
+          ]
+        },
+        {
+          "id": "quick-without-threshold",
+          "predicted": [
+            "action",
+            "vague"
+          ],
+          "expected": [
+            "action",
+            "vague"
+          ]
+        },
+        {
+          "id": "optional-context",
+          "predicted": [],
+          "expected": [
+            "action"
+          ]
+        },
+        {
+          "id": "parent-suggestion",
+          "predicted": [
+            "action",
+            "relationship"
+          ],
+          "expected": [
+            "relationship"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "retext-pos",
+      "identity": {
+        "package": "retext + retext-english + retext-pos",
+        "version": "9.0.0 + 5.0.0 + 5.0.0"
+      },
+      "coldStartMs": 89.016,
+      "throughputDocsPerSecond": 103665.885,
+      "packageBytes": 180912,
+      "moduleCompatibility": {
+        "commonjs": true,
+        "esm": true,
+        "browser": true
+      },
+      "sample": {
+        "words": [
+          {
+            "text": "If",
+            "partOfSpeech": "IN"
+          },
+          {
+            "text": "the",
+            "partOfSpeech": "DT"
+          },
+          {
+            "text": "cache",
+            "partOfSpeech": "NN"
+          },
+          {
+            "text": "is",
+            "partOfSpeech": "VBZ"
+          },
+          {
+            "text": "unavailable",
+            "partOfSpeech": "JJ"
+          },
+          {
+            "text": "retry",
+            "partOfSpeech": "VB"
+          },
+          {
+            "text": "twice",
+            "partOfSpeech": "RB"
+          }
+        ],
+        "sentences": 1,
+        "signals": [
+          "action",
+          "condition"
+        ]
+      },
+      "metrics": {
+        "modality": {
+          "truePositive": 5,
+          "falsePositive": 0,
+          "falseNegative": 0,
+          "precision": 1,
+          "recall": 1,
+          "f1": 1,
+          "falsePositives": [],
+          "falseNegatives": []
+        },
+        "negation": {
+          "truePositive": 4,
+          "falsePositive": 0,
+          "falseNegative": 0,
+          "precision": 1,
+          "recall": 1,
+          "f1": 1,
+          "falsePositives": [],
+          "falseNegatives": []
+        },
+        "condition": {
+          "truePositive": 6,
+          "falsePositive": 0,
+          "falseNegative": 0,
+          "precision": 1,
+          "recall": 1,
+          "f1": 1,
+          "falsePositives": [],
+          "falseNegatives": []
+        },
+        "action": {
+          "truePositive": 19,
+          "falsePositive": 6,
+          "falseNegative": 11,
+          "precision": 0.76,
+          "recall": 0.633,
+          "f1": 0.691,
+          "falsePositives": [
+            "dependency",
+            "example-mention",
+            "blocks",
+            "modal-passive",
+            "graph-description",
+            "parent-suggestion"
+          ],
+          "falseNegatives": [
+            "canonical-return",
+            "negative-action",
+            "ordered-relationship",
+            "conditional-token",
+            "preserve",
+            "modal-duration",
+            "review",
+            "stable-vague",
+            "retention",
+            "quick-with-threshold",
+            "quick-without-threshold"
+          ]
+        },
+        "vague": {
+          "truePositive": 5,
+          "falsePositive": 0,
+          "falseNegative": 0,
+          "precision": 1,
+          "recall": 1,
+          "f1": 1,
+          "falsePositives": [],
+          "falseNegatives": []
+        },
+        "compound": {
+          "truePositive": 2,
+          "falsePositive": 0,
+          "falseNegative": 1,
+          "precision": 1,
+          "recall": 0.667,
+          "f1": 0.8,
+          "falsePositives": [],
+          "falseNegatives": [
+            "compound-parse"
+          ]
+        },
+        "relationship": {
+          "truePositive": 5,
+          "falsePositive": 0,
+          "falseNegative": 0,
+          "precision": 1,
+          "recall": 1,
+          "f1": 1,
+          "falsePositives": [],
+          "falseNegatives": []
+        },
+        "date-duration": {
+          "truePositive": 7,
+          "falsePositive": 0,
+          "falseNegative": 0,
+          "precision": 1,
+          "recall": 1,
+          "f1": 1,
+          "falsePositives": [],
+          "falseNegatives": []
+        }
+      },
+      "micro": {
+        "precision": 0.898,
+        "recall": 0.815,
+        "f1": 0.855
+      },
+      "predictions": [
+        {
+          "id": "canonical-return",
+          "predicted": [],
+          "expected": [
+            "action"
+          ]
+        },
+        {
+          "id": "modal-vague",
+          "predicted": [
+            "modality",
+            "vague"
+          ],
+          "expected": [
+            "modality",
+            "vague"
+          ]
+        },
+        {
+          "id": "negative-action",
+          "predicted": [
+            "negation"
+          ],
+          "expected": [
+            "action",
+            "negation"
+          ]
+        },
+        {
+          "id": "conditional-retry",
+          "predicted": [
+            "action",
+            "condition"
+          ],
+          "expected": [
+            "action",
+            "condition"
+          ]
+        },
+        {
+          "id": "compound-actions",
+          "predicted": [
+            "action",
+            "compound"
+          ],
+          "expected": [
+            "action",
+            "compound"
+          ]
+        },
+        {
+          "id": "context-mention",
+          "predicted": [
+            "action"
+          ],
+          "expected": [
+            "action"
+          ]
+        },
+        {
+          "id": "dependency",
+          "predicted": [
+            "action",
+            "relationship"
+          ],
+          "expected": [
+            "relationship"
+          ]
+        },
+        {
+          "id": "ordered-relationship",
+          "predicted": [
+            "condition",
+            "relationship"
+          ],
+          "expected": [
+            "action",
+            "condition",
+            "relationship"
+          ]
+        },
+        {
+          "id": "latency",
+          "predicted": [
+            "action",
+            "date-duration"
+          ],
+          "expected": [
+            "action",
+            "date-duration"
+          ]
+        },
+        {
+          "id": "absolute-date",
+          "predicted": [
+            "action",
+            "date-duration"
+          ],
+          "expected": [
+            "action",
+            "date-duration"
+          ]
+        },
+        {
+          "id": "appropriate",
+          "predicted": [
+            "action",
+            "vague"
+          ],
+          "expected": [
+            "action",
+            "vague"
+          ]
+        },
+        {
+          "id": "modal-action",
+          "predicted": [
+            "action",
+            "modality"
+          ],
+          "expected": [
+            "action",
+            "modality"
+          ]
+        },
+        {
+          "id": "negative-frontmatter",
+          "predicted": [
+            "action",
+            "negation"
+          ],
+          "expected": [
+            "action",
+            "negation"
+          ]
+        },
+        {
+          "id": "conditional-token",
+          "predicted": [
+            "condition"
+          ],
+          "expected": [
+            "action",
+            "condition"
+          ]
+        },
+        {
+          "id": "compound-parse",
+          "predicted": [
+            "action"
+          ],
+          "expected": [
+            "action",
+            "compound"
+          ]
+        },
+        {
+          "id": "alternative-object",
+          "predicted": [
+            "action"
+          ],
+          "expected": [
+            "action"
+          ]
+        },
+        {
+          "id": "noun-conjunction",
+          "predicted": [],
+          "expected": []
+        },
+        {
+          "id": "measured-fast",
+          "predicted": [
+            "action",
+            "date-duration"
+          ],
+          "expected": [
+            "action",
+            "date-duration"
+          ]
+        },
+        {
+          "id": "easy",
+          "predicted": [
+            "action",
+            "vague"
+          ],
+          "expected": [
+            "action",
+            "vague"
+          ]
+        },
+        {
+          "id": "preserve",
+          "predicted": [],
+          "expected": [
+            "action"
+          ]
+        },
+        {
+          "id": "example-mention",
+          "predicted": [
+            "action"
+          ],
+          "expected": []
+        },
+        {
+          "id": "blocks",
+          "predicted": [
+            "action",
+            "condition",
+            "relationship"
+          ],
+          "expected": [
+            "condition",
+            "relationship"
+          ]
+        },
+        {
+          "id": "modal-negative",
+          "predicted": [
+            "action",
+            "modality",
+            "negation"
+          ],
+          "expected": [
+            "action",
+            "modality",
+            "negation"
+          ]
+        },
+        {
+          "id": "modal-duration",
+          "predicted": [
+            "date-duration",
+            "modality"
+          ],
+          "expected": [
+            "action",
+            "date-duration",
+            "modality"
+          ]
+        },
+        {
+          "id": "review",
+          "predicted": [],
+          "expected": [
+            "action"
+          ]
+        },
+        {
+          "id": "descriptive-note",
+          "predicted": [],
+          "expected": []
+        },
+        {
+          "id": "unless",
+          "predicted": [
+            "action",
+            "condition"
+          ],
+          "expected": [
+            "action",
+            "condition"
+          ]
+        },
+        {
+          "id": "modal-passive",
+          "predicted": [
+            "action",
+            "modality"
+          ],
+          "expected": [
+            "modality"
+          ]
+        },
+        {
+          "id": "three-actions",
+          "predicted": [
+            "action",
+            "compound"
+          ],
+          "expected": [
+            "action",
+            "compound"
+          ]
+        },
+        {
+          "id": "stable-vague",
+          "predicted": [
+            "vague"
+          ],
+          "expected": [
+            "action",
+            "vague"
+          ]
+        },
+        {
+          "id": "graph-description",
+          "predicted": [
+            "action"
+          ],
+          "expected": []
+        },
+        {
+          "id": "after-sequence",
+          "predicted": [
+            "action",
+            "condition",
+            "relationship"
+          ],
+          "expected": [
+            "action",
+            "condition",
+            "relationship"
+          ]
+        },
+        {
+          "id": "retention",
+          "predicted": [
+            "date-duration"
+          ],
+          "expected": [
+            "action",
+            "date-duration"
+          ]
+        },
+        {
+          "id": "relative-date",
+          "predicted": [
+            "date-duration"
+          ],
+          "expected": [
+            "date-duration"
+          ]
+        },
+        {
+          "id": "negative-compound",
+          "predicted": [
+            "action",
+            "negation"
+          ],
+          "expected": [
+            "action",
+            "negation"
+          ]
+        },
+        {
+          "id": "observable-passive",
+          "predicted": [
+            "action"
+          ],
+          "expected": [
+            "action"
+          ]
+        },
+        {
+          "id": "quick-with-threshold",
+          "predicted": [
+            "date-duration"
+          ],
+          "expected": [
+            "action",
+            "date-duration"
+          ]
+        },
+        {
+          "id": "quick-without-threshold",
+          "predicted": [
+            "vague"
+          ],
+          "expected": [
+            "action",
+            "vague"
+          ]
+        },
+        {
+          "id": "optional-context",
+          "predicted": [
+            "action"
+          ],
+          "expected": [
+            "action"
+          ]
+        },
+        {
+          "id": "parent-suggestion",
+          "predicted": [
+            "action",
+            "relationship"
+          ],
+          "expected": [
+            "relationship"
+          ]
+        }
+      ]
+    }
+  ]
+}

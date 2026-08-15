@@ -3,11 +3,18 @@
  * Display details for a specific entity
  */
 
-import { getTaskPullRequestRefs, loadRepository } from 'planfs-core';
-import type { Task } from 'planfs-core';
+import {
+  getTaskPullRequestRefs,
+  loadRepository,
+  parseSemanticDocument,
+  runSemanticAnalysis
+} from 'planfs-core';
+import type { AnalyzerResult, Task } from 'planfs-core';
 
 export interface ShowOptions {
   format?: 'pretty' | 'json';
+  nlp?: boolean;
+  language?: string;
 }
 
 export async function showCommand(
@@ -31,8 +38,19 @@ export async function showCommand(
       return 1;
     }
 
+    let analysis: AnalyzerResult | null = null;
+    if (options.nlp === true) {
+      const document = parseSemanticDocument(entity.type, entity.body, {
+        filePath: entity.filePath
+      });
+      analysis = await runSemanticAnalysis(document, {
+        enabled: true,
+        language: options.language ?? 'en'
+      });
+    }
+
     if (options.format === 'json') {
-      console.log(JSON.stringify(entity, null, 2));
+      console.log(JSON.stringify(options.nlp === true ? { entity, analysis } : entity, null, 2));
     } else {
       // Pretty format
       console.log(`\n${entity.type.toUpperCase()}: ${entity.id}`);
@@ -69,6 +87,7 @@ export async function showCommand(
       console.log('\nDescription:');
       console.log('-'.repeat(60));
       console.log(entity.body || '(none)');
+      if (analysis) printAnalysis(analysis);
     }
 
     return 0;
@@ -79,4 +98,20 @@ export async function showCommand(
     );
     return 1;
   }
+}
+
+function printAnalysis(analysis: AnalyzerResult): void {
+  console.log('\nAdvisory prose analysis:');
+  console.log('-'.repeat(60));
+  console.log(`Analyzer: ${analysis.analyzer.id}@${analysis.analyzer.version} (${analysis.language})`);
+  if (analysis.signals.length === 0) console.log('(no advisory signals)');
+  for (const signal of analysis.signals) {
+    console.log(
+      `  - ${signal.kind} at ${signal.range.start.line}:${signal.range.start.column}: ${signal.message}`
+    );
+  }
+  for (const diagnostic of analysis.diagnostics) {
+    console.log(`  ! ${diagnostic.code}: ${diagnostic.message}`);
+  }
+  console.log('Advisory only; frontmatter and repository relationships are unchanged.');
 }

@@ -110,7 +110,13 @@ Display entity details:
 ```bash
 planfs show TASK-001
 planfs show TASK-001 --format json
+planfs show TASK-001 --nlp
+planfs show TASK-001 --nlp --language en --format json
 ```
+
+`--nlp` explicitly enables local, advisory English prose analysis. It reports promoted modality, negation, condition, date/duration, and possible relationship-mention signals with source locations. Analysis never edits the file or treats prose as authoritative metadata. It makes no network calls and downloads no model. Other languages return an advisory unsupported-language diagnostic without hiding the entity or failing the command.
+
+Without `--nlp`, JSON output retains the existing entity shape. With `--nlp`, JSON is `{ "entity": ..., "analysis": ... }`; every signal is marked `nlp-inferred` and `authoritative: false`.
 
 ### Create
 

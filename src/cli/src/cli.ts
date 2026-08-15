@@ -594,10 +594,22 @@ export async function main(): Promise<void> {
             type: 'string',
             choices: ['pretty', 'json'],
             default: 'pretty'
+          })
+          .option('nlp', {
+            type: 'boolean',
+            default: false,
+            description: 'Enable local advisory prose analysis'
+          })
+          .option('language', {
+            type: 'string',
+            default: 'en',
+            description: 'Language for advisory prose analysis'
           }),
       async (args) => {
         const exitCode = await showCommand(process.cwd(), args.id as string, {
-          format: args.format as 'pretty' | 'json'
+          format: args.format as 'pretty' | 'json',
+          nlp: args.nlp as boolean,
+          language: args.language as string
         });
         process.exit(exitCode);
       }

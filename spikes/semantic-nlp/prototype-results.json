@@ -1,0 +1,4297 @@
+{
+  "schemaVersion": 1,
+  "analyzer": {
+    "id": "planfs-english-token-rules-experimental",
+    "version": "0.1.0"
+  },
+  "runtime": {
+    "node": "v24.16.0",
+    "platform": "darwin",
+    "architecture": "arm64",
+    "fixtureCount": 47,
+    "coldStartMs": 4.068,
+    "uncachedParseAndAnalyzeDocsPerSecond": 18855.426,
+    "cachedAnalyzeDocsPerSecond": 140491.072,
+    "directPackageBytes": 0
+  },
+  "cache": {
+    "repeatedContentProbe": {
+      "hits": 1,
+      "misses": 2,
+      "evictions": 0
+    },
+    "keyIncludes": [
+      "rawMarkdown",
+      "language",
+      "analyzer.id",
+      "analyzer.version"
+    ],
+    "boundedEntries": 8
+  },
+  "safeguards": {
+    "exclusionFailures": 0,
+    "authoritativeMutationFailures": 0,
+    "rangeFailures": 0,
+    "disabledSemanticDocumentEqual": true,
+    "relationshipMetadataUnchanged": true,
+    "relationshipComparison": [
+      {
+        "targetId": "TASK-117",
+        "state": "already-authoritative",
+        "authoritative": false
+      },
+      {
+        "targetId": "TASK-118",
+        "state": "prose-only-suggestion",
+        "authoritative": false
+      }
+    ],
+    "unsupportedLanguageDiagnostic": "analysis.language.unsupported",
+    "networkCalls": 0
+  },
+  "metrics": {
+    "modality": {
+      "truePositive": 6,
+      "falsePositive": 0,
+      "falseNegative": 0,
+      "precision": 1,
+      "recall": 1,
+      "f1": 1,
+      "falsePositives": [],
+      "falseNegatives": []
+    },
+    "negation": {
+      "truePositive": 5,
+      "falsePositive": 0,
+      "falseNegative": 0,
+      "precision": 1,
+      "recall": 1,
+      "f1": 1,
+      "falsePositives": [],
+      "falseNegatives": []
+    },
+    "condition": {
+      "truePositive": 7,
+      "falsePositive": 0,
+      "falseNegative": 0,
+      "precision": 1,
+      "recall": 1,
+      "f1": 1,
+      "falsePositives": [],
+      "falseNegatives": []
+    },
+    "action": {
+      "truePositive": 30,
+      "falsePositive": 1,
+      "falseNegative": 5,
+      "precision": 0.968,
+      "recall": 0.857,
+      "f1": 0.909,
+      "falsePositives": [
+        "relative-date"
+      ],
+      "falseNegatives": [
+        "context-mention",
+        "absolute-date",
+        "measured-fast",
+        "observable-passive",
+        "optional-context"
+      ]
+    },
+    "vague": {
+      "truePositive": 5,
+      "falsePositive": 0,
+      "falseNegative": 0,
+      "precision": 1,
+      "recall": 1,
+      "f1": 1,
+      "falsePositives": [],
+      "falseNegatives": []
+    },
+    "compound": {
+      "truePositive": 3,
+      "falsePositive": 0,
+      "falseNegative": 0,
+      "precision": 1,
+      "recall": 1,
+      "f1": 1,
+      "falsePositives": [],
+      "falseNegatives": []
+    },
+    "relationship": {
+      "truePositive": 6,
+      "falsePositive": 0,
+      "falseNegative": 0,
+      "precision": 1,
+      "recall": 1,
+      "f1": 1,
+      "falsePositives": [],
+      "falseNegatives": []
+    },
+    "date-duration": {
+      "truePositive": 7,
+      "falsePositive": 0,
+      "falseNegative": 0,
+      "precision": 1,
+      "recall": 1,
+      "f1": 1,
+      "falsePositives": [],
+      "falseNegatives": []
+    }
+  },
+  "predictions": [
+    {
+      "id": "canonical-return",
+      "expected": [
+        "action"
+      ],
+      "predicted": [
+        "action"
+      ],
+      "signals": [
+        {
+          "kind": "action",
+          "message": "Possible observable action detected: Return",
+          "language": "en",
+          "analyzer": {
+            "id": "planfs-english-token-rules-experimental",
+            "version": "0.1.0"
+          },
+          "provenance": "nlp-inferred",
+          "range": {
+            "start": {
+              "offset": 30,
+              "line": 3,
+              "column": 7
+            },
+            "end": {
+              "offset": 36,
+              "line": 3,
+              "column": 13
+            }
+          },
+          "evidence": [
+            {
+              "text": "Return",
+              "range": {
+                "start": {
+                  "offset": 30,
+                  "line": 3,
+                  "column": 7
+                },
+                "end": {
+                  "offset": 36,
+                  "line": 3,
+                  "column": 13
+                }
+              }
+            }
+          ],
+          "confidence": 0.7,
+          "authoritative": false,
+          "data": {
+            "criterionId": "criterion:0:0",
+            "evidenceBasis": "Experimental bounded action lexicon"
+          }
+        }
+      ],
+      "authoritativeUnchanged": true
+    },
+    {
+      "id": "modal-vague",
+      "expected": [
+        "modality",
+        "vague"
+      ],
+      "predicted": [
+        "modality",
+        "vague"
+      ],
+      "signals": [
+        {
+          "kind": "modality",
+          "message": "Modal wording detected: should",
+          "language": "en",
+          "analyzer": {
+            "id": "planfs-english-token-rules-experimental",
+            "version": "0.1.0"
+          },
+          "provenance": "nlp-inferred",
+          "range": {
+            "start": {
+              "offset": 43,
+              "line": 3,
+              "column": 20
+            },
+            "end": {
+              "offset": 49,
+              "line": 3,
+              "column": 26
+            }
+          },
+          "evidence": [
+            {
+              "text": "should",
+              "range": {
+                "start": {
+                  "offset": 43,
+                  "line": 3,
+                  "column": 20
+                },
+                "end": {
+                  "offset": 49,
+                  "line": 3,
+                  "column": 26
+                }
+              }
+            }
+          ],
+          "confidence": 0.98,
+          "authoritative": false,
+          "data": {
+            "criterionId": "criterion:0:0",
+            "evidenceBasis": "Exact modal token"
+          }
+        },
+        {
+          "kind": "vague",
+          "message": "Potentially vague wording detected: fast",
+          "language": "en",
+          "analyzer": {
+            "id": "planfs-english-token-rules-experimental",
+            "version": "0.1.0"
+          },
+          "provenance": "nlp-inferred",
+          "range": {
+            "start": {
+              "offset": 53,
+              "line": 3,
+              "column": 30
+            },
+            "end": {
+              "offset": 57,
+              "line": 3,
+              "column": 34
+            }
+          },
+          "evidence": [
+            {
+              "text": "fast",
+              "range": {
+                "start": {
+                  "offset": 53,
+                  "line": 3,
+                  "column": 30
+                },
+                "end": {
+                  "offset": 57,
+                  "line": 3,
+                  "column": 34
+                }
+              }
+            }
+          ],
+          "confidence": 0.65,
+          "authoritative": false,
+          "data": {
+            "criterionId": "criterion:0:0",
+            "evidenceBasis": "Experimental vague-term lexicon"
+          }
+        }
+      ],
+      "authoritativeUnchanged": true
+    },
+    {
+      "id": "negative-action",
+      "expected": [
+        "action",
+        "negation"
+      ],
+      "predicted": [
+        "action",
+        "negation"
+      ],
+      "signals": [
+        {
+          "kind": "negation",
+          "message": "Negation detected: Never",
+          "language": "en",
+          "analyzer": {
+            "id": "planfs-english-token-rules-experimental",
+            "version": "0.1.0"
+          },
+          "provenance": "nlp-inferred",
+          "range": {
+            "start": {
+              "offset": 30,
+              "line": 3,
+              "column": 7
+            },
+            "end": {
+              "offset": 35,
+              "line": 3,
+              "column": 12
+            }
+          },
+          "evidence": [
+            {
+              "text": "Never",
+              "range": {
+                "start": {
+                  "offset": 30,
+                  "line": 3,
+                  "column": 7
+                },
+                "end": {
+                  "offset": 35,
+                  "line": 3,
+                  "column": 12
+                }
+              }
+            }
+          ],
+          "confidence": 0.98,
+          "authoritative": false,
+          "data": {
+            "criterionId": "criterion:0:0",
+            "evidenceBasis": "Exact negation token"
+          }
+        },
+        {
+          "kind": "action",
+          "message": "Possible observable action detected: log",
+          "language": "en",
+          "analyzer": {
+            "id": "planfs-english-token-rules-experimental",
+            "version": "0.1.0"
+          },
+          "provenance": "nlp-inferred",
+          "range": {
+            "start": {
+              "offset": 36,
+              "line": 3,
+              "column": 13
+            },
+            "end": {
+              "offset": 39,
+              "line": 3,
+              "column": 16
+            }
+          },
+          "evidence": [
+            {
+              "text": "log",
+              "range": {
+                "start": {
+                  "offset": 36,
+                  "line": 3,
+                  "column": 13
+                },
+                "end": {
+                  "offset": 39,
+                  "line": 3,
+                  "column": 16
+                }
+              }
+            }
+          ],
+          "confidence": 0.7,
+          "authoritative": false,
+          "data": {
+            "criterionId": "criterion:0:0",
+            "evidenceBasis": "Experimental bounded action lexicon"
+          }
+        }
+      ],
+      "authoritativeUnchanged": true
+    },
+    {
+      "id": "conditional-retry",
+      "expected": [
+        "action",
+        "condition"
+      ],
+      "predicted": [
+        "action",
+        "condition"
+      ],
+      "signals": [
+        {
+          "kind": "condition",
+          "message": "Conditional wording detected: If",
+          "language": "en",
+          "analyzer": {
+            "id": "planfs-english-token-rules-experimental",
+            "version": "0.1.0"
+          },
+          "provenance": "nlp-inferred",
+          "range": {
+            "start": {
+              "offset": 30,
+              "line": 3,
+              "column": 7
+            },
+            "end": {
+              "offset": 32,
+              "line": 3,
+              "column": 9
+            }
+          },
+          "evidence": [
+            {
+              "text": "If",
+              "range": {
+                "start": {
+                  "offset": 30,
+                  "line": 3,
+                  "column": 7
+                },
+                "end": {
+                  "offset": 32,
+                  "line": 3,
+                  "column": 9
+                }
+              }
+            }
+          ],
+          "confidence": 0.95,
+          "authoritative": false,
+          "data": {
+            "criterionId": "criterion:0:0",
+            "evidenceBasis": "Bounded condition introducer"
+          }
+        },
+        {
+          "kind": "action",
+          "message": "Possible observable action detected: cache",
+          "language": "en",
+          "analyzer": {
+            "id": "planfs-english-token-rules-experimental",
+            "version": "0.1.0"
+          },
+          "provenance": "nlp-inferred",
+          "range": {
+            "start": {
+              "offset": 37,
+              "line": 3,
+              "column": 14
+            },
+            "end": {
+              "offset": 42,
+              "line": 3,
+              "column": 19
+            }
+          },
+          "evidence": [
+            {
+              "text": "cache",
+              "range": {
+                "start": {
+                  "offset": 37,
+                  "line": 3,
+                  "column": 14
+                },
+                "end": {
+                  "offset": 42,
+                  "line": 3,
+                  "column": 19
+                }
+              }
+            }
+          ],
+          "confidence": 0.7,
+          "authoritative": false,
+          "data": {
+            "criterionId": "criterion:0:0",
+            "evidenceBasis": "Experimental bounded action lexicon"
+          }
+        },
+        {
+          "kind": "action",
+          "message": "Possible observable action detected: retry",
+          "language": "en",
+          "analyzer": {
+            "id": "planfs-english-token-rules-experimental",
+            "version": "0.1.0"
+          },
+          "provenance": "nlp-inferred",
+          "range": {
+            "start": {
+              "offset": 59,
+              "line": 3,
+              "column": 36
+            },
+            "end": {
+              "offset": 64,
+              "line": 3,
+              "column": 41
+            }
+          },
+          "evidence": [
+            {
+              "text": "retry",
+              "range": {
+                "start": {
+                  "offset": 59,
+                  "line": 3,
+                  "column": 36
+                },
+                "end": {
+                  "offset": 64,
+                  "line": 3,
+                  "column": 41
+                }
+              }
+            }
+          ],
+          "confidence": 0.7,
+          "authoritative": false,
+          "data": {
+            "criterionId": "criterion:0:0",
+            "evidenceBasis": "Experimental bounded action lexicon"
+          }
+        }
+      ],
+      "authoritativeUnchanged": true
+    },
+    {
+      "id": "compound-actions",
+      "expected": [
+        "action",
+        "compound"
+      ],
+      "predicted": [
+        "action",
+        "compound"
+      ],
+      "signals": [
+        {
+          "kind": "action",
+          "message": "Possible observable action detected: Save",
+          "language": "en",
+          "analyzer": {
+            "id": "planfs-english-token-rules-experimental",
+            "version": "0.1.0"
+          },
+          "provenance": "nlp-inferred",
+          "range": {
+            "start": {
+              "offset": 30,
+              "line": 3,
+              "column": 7
+            },
+            "end": {
+              "offset": 34,
+              "line": 3,
+              "column": 11
+            }
+          },
+          "evidence": [
+            {
+              "text": "Save",
+              "range": {
+                "start": {
+                  "offset": 30,
+                  "line": 3,
+                  "column": 7
+                },
+                "end": {
+                  "offset": 34,
+                  "line": 3,
+                  "column": 11
+                }
+              }
+            }
+          ],
+          "confidence": 0.7,
+          "authoritative": false,
+          "data": {
+            "criterionId": "criterion:0:0",
+            "evidenceBasis": "Experimental bounded action lexicon"
+          }
+        },
+        {
+          "kind": "action",
+          "message": "Possible observable action detected: publish",
+          "language": "en",
+          "analyzer": {
+            "id": "planfs-english-token-rules-experimental",
+            "version": "0.1.0"
+          },
+          "provenance": "nlp-inferred",
+          "range": {
+            "start": {
+              "offset": 50,
+              "line": 3,
+              "column": 27
+            },
+            "end": {
+              "offset": 57,
+              "line": 3,
+              "column": 34
+            }
+          },
+          "evidence": [
+            {
+              "text": "publish",
+              "range": {
+                "start": {
+                  "offset": 50,
+                  "line": 3,
+                  "column": 27
+                },
+                "end": {
+                  "offset": 57,
+                  "line": 3,
+                  "column": 34
+                }
+              }
+            }
+          ],
+          "confidence": 0.7,
+          "authoritative": false,
+          "data": {
+            "criterionId": "criterion:0:0",
+            "evidenceBasis": "Experimental bounded action lexicon"
+          }
+        },
+        {
+          "kind": "compound",
+          "message": "Criterion may contain multiple independent actions",
+          "language": "en",
+          "analyzer": {
+            "id": "planfs-english-token-rules-experimental",
+            "version": "0.1.0"
+          },
+          "provenance": "nlp-inferred",
+          "range": {
+            "start": {
+              "offset": 30,
+              "line": 3,
+              "column": 7
+            },
+            "end": {
+              "offset": 57,
+              "line": 3,
+              "column": 34
+            }
+          },
+          "evidence": [
+            {
+              "text": "Save the record and publish",
+              "range": {
+                "start": {
+                  "offset": 30,
+                  "line": 3,
+                  "column": 7
+                },
+                "end": {
+                  "offset": 57,
+                  "line": 3,
+                  "column": 34
+                }
+              }
+            }
+          ],
+          "confidence": 0.6,
+          "authoritative": false,
+          "data": {
+            "criterionId": "criterion:0:0",
+            "evidenceBasis": "Experimental conjunction between action-lexicon terms"
+          }
+        }
+      ],
+      "authoritativeUnchanged": true
+    },
+    {
+      "id": "context-mention",
+      "expected": [
+        "action"
+      ],
+      "predicted": [],
+      "signals": [],
+      "authoritativeUnchanged": true
+    },
+    {
+      "id": "dependency",
+      "expected": [
+        "relationship"
+      ],
+      "predicted": [
+        "relationship"
+      ],
+      "signals": [
+        {
+          "kind": "relationship",
+          "message": "Possible planning relationship mentioned in prose",
+          "language": "en",
+          "analyzer": {
+            "id": "planfs-english-token-rules-experimental",
+            "version": "0.1.0"
+          },
+          "provenance": "nlp-inferred",
+          "range": {
+            "start": {
+              "offset": 40,
+              "line": 3,
+              "column": 17
+            },
+            "end": {
+              "offset": 59,
+              "line": 3,
+              "column": 36
+            }
+          },
+          "evidence": [
+            {
+              "text": "depends on TASK-111",
+              "range": {
+                "start": {
+                  "offset": 40,
+                  "line": 3,
+                  "column": 17
+                },
+                "end": {
+                  "offset": 59,
+                  "line": 3,
+                  "column": 36
+                }
+              }
+            }
+          ],
+          "confidence": 0.9,
+          "authoritative": false,
+          "data": {
+            "criterionId": "criterion:0:0",
+            "evidenceBasis": "Exact PlanFS ID with bounded relationship phrase",
+            "targetId": "TASK-111"
+          }
+        }
+      ],
+      "authoritativeUnchanged": true
+    },
+    {
+      "id": "ordered-relationship",
+      "expected": [
+        "action",
+        "condition",
+        "relationship"
+      ],
+      "predicted": [
+        "action",
+        "condition",
+        "relationship"
+      ],
+      "signals": [
+        {
+          "kind": "condition",
+          "message": "Conditional wording detected: after",
+          "language": "en",
+          "analyzer": {
+            "id": "planfs-english-token-rules-experimental",
+            "version": "0.1.0"
+          },
+          "provenance": "nlp-inferred",
+          "range": {
+            "start": {
+              "offset": 44,
+              "line": 3,
+              "column": 21
+            },
+            "end": {
+              "offset": 49,
+              "line": 3,
+              "column": 26
+            }
+          },
+          "evidence": [
+            {
+              "text": "after",
+              "range": {
+                "start": {
+                  "offset": 44,
+                  "line": 3,
+                  "column": 21
+                },
+                "end": {
+                  "offset": 49,
+                  "line": 3,
+                  "column": 26
+                }
+              }
+            }
+          ],
+          "confidence": 0.95,
+          "authoritative": false,
+          "data": {
+            "criterionId": "criterion:0:0",
+            "evidenceBasis": "Bounded condition introducer"
+          }
+        },
+        {
+          "kind": "action",
+          "message": "Possible observable action detected: Complete",
+          "language": "en",
+          "analyzer": {
+            "id": "planfs-english-token-rules-experimental",
+            "version": "0.1.0"
+          },
+          "provenance": "nlp-inferred",
+          "range": {
+            "start": {
+              "offset": 30,
+              "line": 3,
+              "column": 7
+            },
+            "end": {
+              "offset": 38,
+              "line": 3,
+              "column": 15
+            }
+          },
+          "evidence": [
+            {
+              "text": "Complete",
+              "range": {
+                "start": {
+                  "offset": 30,
+                  "line": 3,
+                  "column": 7
+                },
+                "end": {
+                  "offset": 38,
+                  "line": 3,
+                  "column": 15
+                }
+              }
+            }
+          ],
+          "confidence": 0.7,
+          "authoritative": false,
+          "data": {
+            "criterionId": "criterion:0:0",
+            "evidenceBasis": "Experimental bounded action lexicon"
+          }
+        },
+        {
+          "kind": "relationship",
+          "message": "Possible planning relationship mentioned in prose",
+          "language": "en",
+          "analyzer": {
+            "id": "planfs-english-token-rules-experimental",
+            "version": "0.1.0"
+          },
+          "provenance": "nlp-inferred",
+          "range": {
+            "start": {
+              "offset": 44,
+              "line": 3,
+              "column": 21
+            },
+            "end": {
+              "offset": 58,
+              "line": 3,
+              "column": 35
+            }
+          },
+          "evidence": [
+            {
+              "text": "after TASK-117",
+              "range": {
+                "start": {
+                  "offset": 44,
+                  "line": 3,
+                  "column": 21
+                },
+                "end": {
+                  "offset": 58,
+                  "line": 3,
+                  "column": 35
+                }
+              }
+            }
+          ],
+          "confidence": 0.9,
+          "authoritative": false,
+          "data": {
+            "criterionId": "criterion:0:0",
+            "evidenceBasis": "Exact PlanFS ID with bounded relationship phrase",
+            "targetId": "TASK-117"
+          }
+        }
+      ],
+      "authoritativeUnchanged": true
+    },
+    {
+      "id": "latency",
+      "expected": [
+        "action",
+        "date-duration"
+      ],
+      "predicted": [
+        "action",
+        "date-duration"
+      ],
+      "signals": [
+        {
+          "kind": "date-duration",
+          "message": "Date or duration wording detected: 200 ms",
+          "language": "en",
+          "analyzer": {
+            "id": "planfs-english-token-rules-experimental",
+            "version": "0.1.0"
+          },
+          "provenance": "nlp-inferred",
+          "range": {
+            "start": {
+              "offset": 44,
+              "line": 3,
+              "column": 21
+            },
+            "end": {
+              "offset": 50,
+              "line": 3,
+              "column": 27
+            }
+          },
+          "evidence": [
+            {
+              "text": "200 ms",
+              "range": {
+                "start": {
+                  "offset": 44,
+                  "line": 3,
+                  "column": 21
+                },
+                "end": {
+                  "offset": 50,
+                  "line": 3,
+                  "column": 27
+                }
+              }
+            }
+          ],
+          "confidence": 0.95,
+          "authoritative": false,
+          "data": {
+            "criterionId": "criterion:0:0",
+            "evidenceBasis": "Explicit date or duration token"
+          }
+        },
+        {
+          "kind": "action",
+          "message": "Possible observable action detected: Finish",
+          "language": "en",
+          "analyzer": {
+            "id": "planfs-english-token-rules-experimental",
+            "version": "0.1.0"
+          },
+          "provenance": "nlp-inferred",
+          "range": {
+            "start": {
+              "offset": 30,
+              "line": 3,
+              "column": 7
+            },
+            "end": {
+              "offset": 36,
+              "line": 3,
+              "column": 13
+            }
+          },
+          "evidence": [
+            {
+              "text": "Finish",
+              "range": {
+                "start": {
+                  "offset": 30,
+                  "line": 3,
+                  "column": 7
+                },
+                "end": {
+                  "offset": 36,
+                  "line": 3,
+                  "column": 13
+                }
+              }
+            }
+          ],
+          "confidence": 0.7,
+          "authoritative": false,
+          "data": {
+            "criterionId": "criterion:0:0",
+            "evidenceBasis": "Experimental bounded action lexicon"
+          }
+        }
+      ],
+      "authoritativeUnchanged": true
+    },
+    {
+      "id": "absolute-date",
+      "expected": [
+        "action",
+        "date-duration"
+      ],
+      "predicted": [
+        "date-duration"
+      ],
+      "signals": [
+        {
+          "kind": "date-duration",
+          "message": "Date or duration wording detected: 2026-12-15",
+          "language": "en",
+          "analyzer": {
+            "id": "planfs-english-token-rules-experimental",
+            "version": "0.1.0"
+          },
+          "provenance": "nlp-inferred",
+          "range": {
+            "start": {
+              "offset": 51,
+              "line": 3,
+              "column": 28
+            },
+            "end": {
+              "offset": 61,
+              "line": 3,
+              "column": 38
+            }
+          },
+          "evidence": [
+            {
+              "text": "2026-12-15",
+              "range": {
+                "start": {
+                  "offset": 51,
+                  "line": 3,
+                  "column": 28
+                },
+                "end": {
+                  "offset": 61,
+                  "line": 3,
+                  "column": 38
+                }
+              }
+            }
+          ],
+          "confidence": 0.95,
+          "authoritative": false,
+          "data": {
+            "criterionId": "criterion:0:0",
+            "evidenceBasis": "Explicit date or duration token"
+          }
+        }
+      ],
+      "authoritativeUnchanged": true
+    },
+    {
+      "id": "appropriate",
+      "expected": [
+        "action",
+        "vague"
+      ],
+      "predicted": [
+        "action",
+        "vague"
+      ],
+      "signals": [
+        {
+          "kind": "vague",
+          "message": "Potentially vague wording detected: appropriate",
+          "language": "en",
+          "analyzer": {
+            "id": "planfs-english-token-rules-experimental",
+            "version": "0.1.0"
+          },
+          "provenance": "nlp-inferred",
+          "range": {
+            "start": {
+              "offset": 34,
+              "line": 3,
+              "column": 11
+            },
+            "end": {
+              "offset": 45,
+              "line": 3,
+              "column": 22
+            }
+          },
+          "evidence": [
+            {
+              "text": "appropriate",
+              "range": {
+                "start": {
+                  "offset": 34,
+                  "line": 3,
+                  "column": 11
+                },
+                "end": {
+                  "offset": 45,
+                  "line": 3,
+                  "column": 22
+                }
+              }
+            }
+          ],
+          "confidence": 0.65,
+          "authoritative": false,
+          "data": {
+            "criterionId": "criterion:0:0",
+            "evidenceBasis": "Experimental vague-term lexicon"
+          }
+        },
+        {
+          "kind": "action",
+          "message": "Possible observable action detected: Use",
+          "language": "en",
+          "analyzer": {
+            "id": "planfs-english-token-rules-experimental",
+            "version": "0.1.0"
+          },
+          "provenance": "nlp-inferred",
+          "range": {
+            "start": {
+              "offset": 30,
+              "line": 3,
+              "column": 7
+            },
+            "end": {
+              "offset": 33,
+              "line": 3,
+              "column": 10
+            }
+          },
+          "evidence": [
+            {
+              "text": "Use",
+              "range": {
+                "start": {
+                  "offset": 30,
+                  "line": 3,
+                  "column": 7
+                },
+                "end": {
+                  "offset": 33,
+                  "line": 3,
+                  "column": 10
+                }
+              }
+            }
+          ],
+          "confidence": 0.7,
+          "authoritative": false,
+          "data": {
+            "criterionId": "criterion:0:0",
+            "evidenceBasis": "Experimental bounded action lexicon"
+          }
+        }
+      ],
+      "authoritativeUnchanged": true
+    },
+    {
+      "id": "modal-action",
+      "expected": [
+        "action",
+        "modality"
+      ],
+      "predicted": [
+        "action",
+        "modality"
+      ],
+      "signals": [
+        {
+          "kind": "modality",
+          "message": "Modal wording detected: may",
+          "language": "en",
+          "analyzer": {
+            "id": "planfs-english-token-rules-experimental",
+            "version": "0.1.0"
+          },
+          "provenance": "nlp-inferred",
+          "range": {
+            "start": {
+              "offset": 36,
+              "line": 3,
+              "column": 13
+            },
+            "end": {
+              "offset": 39,
+              "line": 3,
+              "column": 16
+            }
+          },
+          "evidence": [
+            {
+              "text": "may",
+              "range": {
+                "start": {
+                  "offset": 36,
+                  "line": 3,
+                  "column": 13
+                },
+                "end": {
+                  "offset": 39,
+                  "line": 3,
+                  "column": 16
+                }
+              }
+            }
+          ],
+          "confidence": 0.98,
+          "authoritative": false,
+          "data": {
+            "criterionId": "criterion:0:0",
+            "evidenceBasis": "Exact modal token"
+          }
+        },
+        {
+          "kind": "action",
+          "message": "Possible observable action detected: retry",
+          "language": "en",
+          "analyzer": {
+            "id": "planfs-english-token-rules-experimental",
+            "version": "0.1.0"
+          },
+          "provenance": "nlp-inferred",
+          "range": {
+            "start": {
+              "offset": 40,
+              "line": 3,
+              "column": 17
+            },
+            "end": {
+              "offset": 45,
+              "line": 3,
+              "column": 22
+            }
+          },
+          "evidence": [
+            {
+              "text": "retry",
+              "range": {
+                "start": {
+                  "offset": 40,
+                  "line": 3,
+                  "column": 17
+                },
+                "end": {
+                  "offset": 45,
+                  "line": 3,
+                  "column": 22
+                }
+              }
+            }
+          ],
+          "confidence": 0.7,
+          "authoritative": false,
+          "data": {
+            "criterionId": "criterion:0:0",
+            "evidenceBasis": "Experimental bounded action lexicon"
+          }
+        }
+      ],
+      "authoritativeUnchanged": true
+    },
+    {
+      "id": "negative-frontmatter",
+      "expected": [
+        "action",
+        "negation"
+      ],
+      "predicted": [
+        "action",
+        "negation"
+      ],
+      "signals": [
+        {
+          "kind": "negation",
+          "message": "Negation detected: not",
+          "language": "en",
+          "analyzer": {
+            "id": "planfs-english-token-rules-experimental",
+            "version": "0.1.0"
+          },
+          "provenance": "nlp-inferred",
+          "range": {
+            "start": {
+              "offset": 33,
+              "line": 3,
+              "column": 10
+            },
+            "end": {
+              "offset": 36,
+              "line": 3,
+              "column": 13
+            }
+          },
+          "evidence": [
+            {
+              "text": "not",
+              "range": {
+                "start": {
+                  "offset": 33,
+                  "line": 3,
+                  "column": 10
+                },
+                "end": {
+                  "offset": 36,
+                  "line": 3,
+                  "column": 13
+                }
+              }
+            }
+          ],
+          "confidence": 0.98,
+          "authoritative": false,
+          "data": {
+            "criterionId": "criterion:0:0",
+            "evidenceBasis": "Exact negation token"
+          }
+        },
+        {
+          "kind": "action",
+          "message": "Possible observable action detected: modify",
+          "language": "en",
+          "analyzer": {
+            "id": "planfs-english-token-rules-experimental",
+            "version": "0.1.0"
+          },
+          "provenance": "nlp-inferred",
+          "range": {
+            "start": {
+              "offset": 37,
+              "line": 3,
+              "column": 14
+            },
+            "end": {
+              "offset": 43,
+              "line": 3,
+              "column": 20
+            }
+          },
+          "evidence": [
+            {
+              "text": "modify",
+              "range": {
+                "start": {
+                  "offset": 37,
+                  "line": 3,
+                  "column": 14
+                },
+                "end": {
+                  "offset": 43,
+                  "line": 3,
+                  "column": 20
+                }
+              }
+            }
+          ],
+          "confidence": 0.7,
+          "authoritative": false,
+          "data": {
+            "criterionId": "criterion:0:0",
+            "evidenceBasis": "Experimental bounded action lexicon"
+          }
+        }
+      ],
+      "authoritativeUnchanged": true
+    },
+    {
+      "id": "conditional-token",
+      "expected": [
+        "action",
+        "condition"
+      ],
+      "predicted": [
+        "action",
+        "condition"
+      ],
+      "signals": [
+        {
+          "kind": "condition",
+          "message": "Conditional wording detected: When",
+          "language": "en",
+          "analyzer": {
+            "id": "planfs-english-token-rules-experimental",
+            "version": "0.1.0"
+          },
+          "provenance": "nlp-inferred",
+          "range": {
+            "start": {
+              "offset": 30,
+              "line": 3,
+              "column": 7
+            },
+            "end": {
+              "offset": 34,
+              "line": 3,
+              "column": 11
+            }
+          },
+          "evidence": [
+            {
+              "text": "When",
+              "range": {
+                "start": {
+                  "offset": 30,
+                  "line": 3,
+                  "column": 7
+                },
+                "end": {
+                  "offset": 34,
+                  "line": 3,
+                  "column": 11
+                }
+              }
+            }
+          ],
+          "confidence": 0.95,
+          "authoritative": false,
+          "data": {
+            "criterionId": "criterion:0:0",
+            "evidenceBasis": "Bounded condition introducer"
+          }
+        },
+        {
+          "kind": "action",
+          "message": "Possible observable action detected: issue",
+          "language": "en",
+          "analyzer": {
+            "id": "planfs-english-token-rules-experimental",
+            "version": "0.1.0"
+          },
+          "provenance": "nlp-inferred",
+          "range": {
+            "start": {
+              "offset": 54,
+              "line": 3,
+              "column": 31
+            },
+            "end": {
+              "offset": 59,
+              "line": 3,
+              "column": 36
+            }
+          },
+          "evidence": [
+            {
+              "text": "issue",
+              "range": {
+                "start": {
+                  "offset": 54,
+                  "line": 3,
+                  "column": 31
+                },
+                "end": {
+                  "offset": 59,
+                  "line": 3,
+                  "column": 36
+                }
+              }
+            }
+          ],
+          "confidence": 0.7,
+          "authoritative": false,
+          "data": {
+            "criterionId": "criterion:0:0",
+            "evidenceBasis": "Experimental bounded action lexicon"
+          }
+        }
+      ],
+      "authoritativeUnchanged": true
+    },
+    {
+      "id": "compound-parse",
+      "expected": [
+        "action",
+        "compound"
+      ],
+      "predicted": [
+        "action",
+        "compound"
+      ],
+      "signals": [
+        {
+          "kind": "action",
+          "message": "Possible observable action detected: Parse",
+          "language": "en",
+          "analyzer": {
+            "id": "planfs-english-token-rules-experimental",
+            "version": "0.1.0"
+          },
+          "provenance": "nlp-inferred",
+          "range": {
+            "start": {
+              "offset": 30,
+              "line": 3,
+              "column": 7
+            },
+            "end": {
+              "offset": 35,
+              "line": 3,
+              "column": 12
+            }
+          },
+          "evidence": [
+            {
+              "text": "Parse",
+              "range": {
+                "start": {
+                  "offset": 30,
+                  "line": 3,
+                  "column": 7
+                },
+                "end": {
+                  "offset": 35,
+                  "line": 3,
+                  "column": 12
+                }
+              }
+            }
+          ],
+          "confidence": 0.7,
+          "authoritative": false,
+          "data": {
+            "criterionId": "criterion:0:0",
+            "evidenceBasis": "Experimental bounded action lexicon"
+          }
+        },
+        {
+          "kind": "action",
+          "message": "Possible observable action detected: validate",
+          "language": "en",
+          "analyzer": {
+            "id": "planfs-english-token-rules-experimental",
+            "version": "0.1.0"
+          },
+          "provenance": "nlp-inferred",
+          "range": {
+            "start": {
+              "offset": 40,
+              "line": 3,
+              "column": 17
+            },
+            "end": {
+              "offset": 48,
+              "line": 3,
+              "column": 25
+            }
+          },
+          "evidence": [
+            {
+              "text": "validate",
+              "range": {
+                "start": {
+                  "offset": 40,
+                  "line": 3,
+                  "column": 17
+                },
+                "end": {
+                  "offset": 48,
+                  "line": 3,
+                  "column": 25
+                }
+              }
+            }
+          ],
+          "confidence": 0.7,
+          "authoritative": false,
+          "data": {
+            "criterionId": "criterion:0:0",
+            "evidenceBasis": "Experimental bounded action lexicon"
+          }
+        },
+        {
+          "kind": "compound",
+          "message": "Criterion may contain multiple independent actions",
+          "language": "en",
+          "analyzer": {
+            "id": "planfs-english-token-rules-experimental",
+            "version": "0.1.0"
+          },
+          "provenance": "nlp-inferred",
+          "range": {
+            "start": {
+              "offset": 30,
+              "line": 3,
+              "column": 7
+            },
+            "end": {
+              "offset": 48,
+              "line": 3,
+              "column": 25
+            }
+          },
+          "evidence": [
+            {
+              "text": "Parse and validate",
+              "range": {
+                "start": {
+                  "offset": 30,
+                  "line": 3,
+                  "column": 7
+                },
+                "end": {
+                  "offset": 48,
+                  "line": 3,
+                  "column": 25
+                }
+              }
+            }
+          ],
+          "confidence": 0.6,
+          "authoritative": false,
+          "data": {
+            "criterionId": "criterion:0:0",
+            "evidenceBasis": "Experimental conjunction between action-lexicon terms"
+          }
+        }
+      ],
+      "authoritativeUnchanged": true
+    },
+    {
+      "id": "alternative-object",
+      "expected": [
+        "action"
+      ],
+      "predicted": [
+        "action"
+      ],
+      "signals": [
+        {
+          "kind": "action",
+          "message": "Possible observable action detected: Accept",
+          "language": "en",
+          "analyzer": {
+            "id": "planfs-english-token-rules-experimental",
+            "version": "0.1.0"
+          },
+          "provenance": "nlp-inferred",
+          "range": {
+            "start": {
+              "offset": 30,
+              "line": 3,
+              "column": 7
+            },
+            "end": {
+              "offset": 36,
+              "line": 3,
+              "column": 13
+            }
+          },
+          "evidence": [
+            {
+              "text": "Accept",
+              "range": {
+                "start": {
+                  "offset": 30,
+                  "line": 3,
+                  "column": 7
+                },
+                "end": {
+                  "offset": 36,
+                  "line": 3,
+                  "column": 13
+                }
+              }
+            }
+          ],
+          "confidence": 0.7,
+          "authoritative": false,
+          "data": {
+            "criterionId": "criterion:0:0",
+            "evidenceBasis": "Experimental bounded action lexicon"
+          }
+        }
+      ],
+      "authoritativeUnchanged": true
+    },
+    {
+      "id": "noun-conjunction",
+      "expected": [],
+      "predicted": [],
+      "signals": [],
+      "authoritativeUnchanged": true
+    },
+    {
+      "id": "measured-fast",
+      "expected": [
+        "action",
+        "date-duration"
+      ],
+      "predicted": [
+        "date-duration"
+      ],
+      "signals": [
+        {
+          "kind": "date-duration",
+          "message": "Date or duration wording detected: per second",
+          "language": "en",
+          "analyzer": {
+            "id": "planfs-english-token-rules-experimental",
+            "version": "0.1.0"
+          },
+          "provenance": "nlp-inferred",
+          "range": {
+            "start": {
+              "offset": 60,
+              "line": 3,
+              "column": 37
+            },
+            "end": {
+              "offset": 70,
+              "line": 3,
+              "column": 47
+            }
+          },
+          "evidence": [
+            {
+              "text": "per second",
+              "range": {
+                "start": {
+                  "offset": 60,
+                  "line": 3,
+                  "column": 37
+                },
+                "end": {
+                  "offset": 70,
+                  "line": 3,
+                  "column": 47
+                }
+              }
+            }
+          ],
+          "confidence": 0.95,
+          "authoritative": false,
+          "data": {
+            "criterionId": "criterion:0:0",
+            "evidenceBasis": "Explicit date or duration token"
+          }
+        }
+      ],
+      "authoritativeUnchanged": true
+    },
+    {
+      "id": "easy",
+      "expected": [
+        "action",
+        "vague"
+      ],
+      "predicted": [
+        "action",
+        "vague"
+      ],
+      "signals": [
+        {
+          "kind": "vague",
+          "message": "Potentially vague wording detected: easy",
+          "language": "en",
+          "analyzer": {
+            "id": "planfs-english-token-rules-experimental",
+            "version": "0.1.0"
+          },
+          "provenance": "nlp-inferred",
+          "range": {
+            "start": {
+              "offset": 49,
+              "line": 3,
+              "column": 26
+            },
+            "end": {
+              "offset": 53,
+              "line": 3,
+              "column": 30
+            }
+          },
+          "evidence": [
+            {
+              "text": "easy",
+              "range": {
+                "start": {
+                  "offset": 49,
+                  "line": 3,
+                  "column": 26
+                },
+                "end": {
+                  "offset": 53,
+                  "line": 3,
+                  "column": 30
+                }
+              }
+            }
+          ],
+          "confidence": 0.65,
+          "authoritative": false,
+          "data": {
+            "criterionId": "criterion:0:0",
+            "evidenceBasis": "Experimental vague-term lexicon"
+          }
+        },
+        {
+          "kind": "action",
+          "message": "Possible observable action detected: Make",
+          "language": "en",
+          "analyzer": {
+            "id": "planfs-english-token-rules-experimental",
+            "version": "0.1.0"
+          },
+          "provenance": "nlp-inferred",
+          "range": {
+            "start": {
+              "offset": 30,
+              "line": 3,
+              "column": 7
+            },
+            "end": {
+              "offset": 34,
+              "line": 3,
+              "column": 11
+            }
+          },
+          "evidence": [
+            {
+              "text": "Make",
+              "range": {
+                "start": {
+                  "offset": 30,
+                  "line": 3,
+                  "column": 7
+                },
+                "end": {
+                  "offset": 34,
+                  "line": 3,
+                  "column": 11
+                }
+              }
+            }
+          ],
+          "confidence": 0.7,
+          "authoritative": false,
+          "data": {
+            "criterionId": "criterion:0:0",
+            "evidenceBasis": "Experimental bounded action lexicon"
+          }
+        },
+        {
+          "kind": "action",
+          "message": "Possible observable action detected: use",
+          "language": "en",
+          "analyzer": {
+            "id": "planfs-english-token-rules-experimental",
+            "version": "0.1.0"
+          },
+          "provenance": "nlp-inferred",
+          "range": {
+            "start": {
+              "offset": 57,
+              "line": 3,
+              "column": 34
+            },
+            "end": {
+              "offset": 60,
+              "line": 3,
+              "column": 37
+            }
+          },
+          "evidence": [
+            {
+              "text": "use",
+              "range": {
+                "start": {
+                  "offset": 57,
+                  "line": 3,
+                  "column": 34
+                },
+                "end": {
+                  "offset": 60,
+                  "line": 3,
+                  "column": 37
+                }
+              }
+            }
+          ],
+          "confidence": 0.7,
+          "authoritative": false,
+          "data": {
+            "criterionId": "criterion:0:0",
+            "evidenceBasis": "Experimental bounded action lexicon"
+          }
+        }
+      ],
+      "authoritativeUnchanged": true
+    },
+    {
+      "id": "preserve",
+      "expected": [
+        "action"
+      ],
+      "predicted": [
+        "action"
+      ],
+      "signals": [
+        {
+          "kind": "action",
+          "message": "Possible observable action detected: Preserve",
+          "language": "en",
+          "analyzer": {
+            "id": "planfs-english-token-rules-experimental",
+            "version": "0.1.0"
+          },
+          "provenance": "nlp-inferred",
+          "range": {
+            "start": {
+              "offset": 30,
+              "line": 3,
+              "column": 7
+            },
+            "end": {
+              "offset": 38,
+              "line": 3,
+              "column": 15
+            }
+          },
+          "evidence": [
+            {
+              "text": "Preserve",
+              "range": {
+                "start": {
+                  "offset": 30,
+                  "line": 3,
+                  "column": 7
+                },
+                "end": {
+                  "offset": 38,
+                  "line": 3,
+                  "column": 15
+                }
+              }
+            }
+          ],
+          "confidence": 0.7,
+          "authoritative": false,
+          "data": {
+            "criterionId": "criterion:0:0",
+            "evidenceBasis": "Experimental bounded action lexicon"
+          }
+        }
+      ],
+      "authoritativeUnchanged": true
+    },
+    {
+      "id": "example-mention",
+      "expected": [],
+      "predicted": [],
+      "signals": [],
+      "authoritativeUnchanged": true
+    },
+    {
+      "id": "blocks",
+      "expected": [
+        "condition",
+        "relationship"
+      ],
+      "predicted": [
+        "condition",
+        "relationship"
+      ],
+      "signals": [
+        {
+          "kind": "condition",
+          "message": "Conditional wording detected: until",
+          "language": "en",
+          "analyzer": {
+            "id": "planfs-english-token-rules-experimental",
+            "version": "0.1.0"
+          },
+          "provenance": "nlp-inferred",
+          "range": {
+            "start": {
+              "offset": 51,
+              "line": 3,
+              "column": 28
+            },
+            "end": {
+              "offset": 56,
+              "line": 3,
+              "column": 33
+            }
+          },
+          "evidence": [
+            {
+              "text": "until",
+              "range": {
+                "start": {
+                  "offset": 51,
+                  "line": 3,
+                  "column": 28
+                },
+                "end": {
+                  "offset": 56,
+                  "line": 3,
+                  "column": 33
+                }
+              }
+            }
+          ],
+          "confidence": 0.95,
+          "authoritative": false,
+          "data": {
+            "criterionId": "criterion:0:0",
+            "evidenceBasis": "Bounded condition introducer"
+          }
+        },
+        {
+          "kind": "relationship",
+          "message": "Possible planning relationship mentioned in prose",
+          "language": "en",
+          "analyzer": {
+            "id": "planfs-english-token-rules-experimental",
+            "version": "0.1.0"
+          },
+          "provenance": "nlp-inferred",
+          "range": {
+            "start": {
+              "offset": 35,
+              "line": 3,
+              "column": 12
+            },
+            "end": {
+              "offset": 50,
+              "line": 3,
+              "column": 27
+            }
+          },
+          "evidence": [
+            {
+              "text": "blocks TASK-119",
+              "range": {
+                "start": {
+                  "offset": 35,
+                  "line": 3,
+                  "column": 12
+                },
+                "end": {
+                  "offset": 50,
+                  "line": 3,
+                  "column": 27
+                }
+              }
+            }
+          ],
+          "confidence": 0.9,
+          "authoritative": false,
+          "data": {
+            "criterionId": "criterion:0:0",
+            "evidenceBasis": "Exact PlanFS ID with bounded relationship phrase",
+            "targetId": "TASK-119"
+          }
+        }
+      ],
+      "authoritativeUnchanged": true
+    },
+    {
+      "id": "modal-negative",
+      "expected": [
+        "action",
+        "modality",
+        "negation"
+      ],
+      "predicted": [
+        "action",
+        "modality",
+        "negation"
+      ],
+      "signals": [
+        {
+          "kind": "modality",
+          "message": "Modal wording detected: must",
+          "language": "en",
+          "analyzer": {
+            "id": "planfs-english-token-rules-experimental",
+            "version": "0.1.0"
+          },
+          "provenance": "nlp-inferred",
+          "range": {
+            "start": {
+              "offset": 43,
+              "line": 3,
+              "column": 20
+            },
+            "end": {
+              "offset": 47,
+              "line": 3,
+              "column": 24
+            }
+          },
+          "evidence": [
+            {
+              "text": "must",
+              "range": {
+                "start": {
+                  "offset": 43,
+                  "line": 3,
+                  "column": 20
+                },
+                "end": {
+                  "offset": 47,
+                  "line": 3,
+                  "column": 24
+                }
+              }
+            }
+          ],
+          "confidence": 0.98,
+          "authoritative": false,
+          "data": {
+            "criterionId": "criterion:0:0",
+            "evidenceBasis": "Exact modal token"
+          }
+        },
+        {
+          "kind": "negation",
+          "message": "Negation detected: not",
+          "language": "en",
+          "analyzer": {
+            "id": "planfs-english-token-rules-experimental",
+            "version": "0.1.0"
+          },
+          "provenance": "nlp-inferred",
+          "range": {
+            "start": {
+              "offset": 48,
+              "line": 3,
+              "column": 25
+            },
+            "end": {
+              "offset": 51,
+              "line": 3,
+              "column": 28
+            }
+          },
+          "evidence": [
+            {
+              "text": "not",
+              "range": {
+                "start": {
+                  "offset": 48,
+                  "line": 3,
+                  "column": 25
+                },
+                "end": {
+                  "offset": 51,
+                  "line": 3,
+                  "column": 28
+                }
+              }
+            }
+          ],
+          "confidence": 0.98,
+          "authoritative": false,
+          "data": {
+            "criterionId": "criterion:0:0",
+            "evidenceBasis": "Exact negation token"
+          }
+        },
+        {
+          "kind": "action",
+          "message": "Possible observable action detected: send",
+          "language": "en",
+          "analyzer": {
+            "id": "planfs-english-token-rules-experimental",
+            "version": "0.1.0"
+          },
+          "provenance": "nlp-inferred",
+          "range": {
+            "start": {
+              "offset": 52,
+              "line": 3,
+              "column": 29
+            },
+            "end": {
+              "offset": 56,
+              "line": 3,
+              "column": 33
+            }
+          },
+          "evidence": [
+            {
+              "text": "send",
+              "range": {
+                "start": {
+                  "offset": 52,
+                  "line": 3,
+                  "column": 29
+                },
+                "end": {
+                  "offset": 56,
+                  "line": 3,
+                  "column": 33
+                }
+              }
+            }
+          ],
+          "confidence": 0.7,
+          "authoritative": false,
+          "data": {
+            "criterionId": "criterion:0:0",
+            "evidenceBasis": "Experimental bounded action lexicon"
+          }
+        }
+      ],
+      "authoritativeUnchanged": true
+    },
+    {
+      "id": "modal-duration",
+      "expected": [
+        "action",
+        "date-duration",
+        "modality"
+      ],
+      "predicted": [
+        "action",
+        "date-duration",
+        "modality"
+      ],
+      "signals": [
+        {
+          "kind": "modality",
+          "message": "Modal wording detected: should",
+          "language": "en",
+          "analyzer": {
+            "id": "planfs-english-token-rules-experimental",
+            "version": "0.1.0"
+          },
+          "provenance": "nlp-inferred",
+          "range": {
+            "start": {
+              "offset": 35,
+              "line": 3,
+              "column": 12
+            },
+            "end": {
+              "offset": 41,
+              "line": 3,
+              "column": 18
+            }
+          },
+          "evidence": [
+            {
+              "text": "should",
+              "range": {
+                "start": {
+                  "offset": 35,
+                  "line": 3,
+                  "column": 12
+                },
+                "end": {
+                  "offset": 41,
+                  "line": 3,
+                  "column": 18
+                }
+              }
+            }
+          ],
+          "confidence": 0.98,
+          "authoritative": false,
+          "data": {
+            "criterionId": "criterion:0:0",
+            "evidenceBasis": "Exact modal token"
+          }
+        },
+        {
+          "kind": "date-duration",
+          "message": "Date or duration wording detected: 5 seconds",
+          "language": "en",
+          "analyzer": {
+            "id": "planfs-english-token-rules-experimental",
+            "version": "0.1.0"
+          },
+          "provenance": "nlp-inferred",
+          "range": {
+            "start": {
+              "offset": 58,
+              "line": 3,
+              "column": 35
+            },
+            "end": {
+              "offset": 67,
+              "line": 3,
+              "column": 44
+            }
+          },
+          "evidence": [
+            {
+              "text": "5 seconds",
+              "range": {
+                "start": {
+                  "offset": 58,
+                  "line": 3,
+                  "column": 35
+                },
+                "end": {
+                  "offset": 67,
+                  "line": 3,
+                  "column": 44
+                }
+              }
+            }
+          ],
+          "confidence": 0.95,
+          "authoritative": false,
+          "data": {
+            "criterionId": "criterion:0:0",
+            "evidenceBasis": "Explicit date or duration token"
+          }
+        },
+        {
+          "kind": "action",
+          "message": "Possible observable action detected: complete",
+          "language": "en",
+          "analyzer": {
+            "id": "planfs-english-token-rules-experimental",
+            "version": "0.1.0"
+          },
+          "provenance": "nlp-inferred",
+          "range": {
+            "start": {
+              "offset": 42,
+              "line": 3,
+              "column": 19
+            },
+            "end": {
+              "offset": 50,
+              "line": 3,
+              "column": 27
+            }
+          },
+          "evidence": [
+            {
+              "text": "complete",
+              "range": {
+                "start": {
+                  "offset": 42,
+                  "line": 3,
+                  "column": 19
+                },
+                "end": {
+                  "offset": 50,
+                  "line": 3,
+                  "column": 27
+                }
+              }
+            }
+          ],
+          "confidence": 0.7,
+          "authoritative": false,
+          "data": {
+            "criterionId": "criterion:0:0",
+            "evidenceBasis": "Experimental bounded action lexicon"
+          }
+        }
+      ],
+      "authoritativeUnchanged": true
+    },
+    {
+      "id": "review",
+      "expected": [
+        "action"
+      ],
+      "predicted": [
+        "action"
+      ],
+      "signals": [
+        {
+          "kind": "action",
+          "message": "Possible observable action detected: Review",
+          "language": "en",
+          "analyzer": {
+            "id": "planfs-english-token-rules-experimental",
+            "version": "0.1.0"
+          },
+          "provenance": "nlp-inferred",
+          "range": {
+            "start": {
+              "offset": 30,
+              "line": 3,
+              "column": 7
+            },
+            "end": {
+              "offset": 36,
+              "line": 3,
+              "column": 13
+            }
+          },
+          "evidence": [
+            {
+              "text": "Review",
+              "range": {
+                "start": {
+                  "offset": 30,
+                  "line": 3,
+                  "column": 7
+                },
+                "end": {
+                  "offset": 36,
+                  "line": 3,
+                  "column": 13
+                }
+              }
+            }
+          ],
+          "confidence": 0.7,
+          "authoritative": false,
+          "data": {
+            "criterionId": "criterion:0:0",
+            "evidenceBasis": "Experimental bounded action lexicon"
+          }
+        }
+      ],
+      "authoritativeUnchanged": true
+    },
+    {
+      "id": "descriptive-note",
+      "expected": [],
+      "predicted": [],
+      "signals": [],
+      "authoritativeUnchanged": true
+    },
+    {
+      "id": "unless",
+      "expected": [
+        "action",
+        "condition"
+      ],
+      "predicted": [
+        "action",
+        "condition"
+      ],
+      "signals": [
+        {
+          "kind": "condition",
+          "message": "Conditional wording detected: Unless",
+          "language": "en",
+          "analyzer": {
+            "id": "planfs-english-token-rules-experimental",
+            "version": "0.1.0"
+          },
+          "provenance": "nlp-inferred",
+          "range": {
+            "start": {
+              "offset": 30,
+              "line": 3,
+              "column": 7
+            },
+            "end": {
+              "offset": 36,
+              "line": 3,
+              "column": 13
+            }
+          },
+          "evidence": [
+            {
+              "text": "Unless",
+              "range": {
+                "start": {
+                  "offset": 30,
+                  "line": 3,
+                  "column": 7
+                },
+                "end": {
+                  "offset": 36,
+                  "line": 3,
+                  "column": 13
+                }
+              }
+            }
+          ],
+          "confidence": 0.95,
+          "authoritative": false,
+          "data": {
+            "criterionId": "criterion:0:0",
+            "evidenceBasis": "Bounded condition introducer"
+          }
+        },
+        {
+          "kind": "action",
+          "message": "Possible observable action detected: continue",
+          "language": "en",
+          "analyzer": {
+            "id": "planfs-english-token-rules-experimental",
+            "version": "0.1.0"
+          },
+          "provenance": "nlp-inferred",
+          "range": {
+            "start": {
+              "offset": 55,
+              "line": 3,
+              "column": 32
+            },
+            "end": {
+              "offset": 63,
+              "line": 3,
+              "column": 40
+            }
+          },
+          "evidence": [
+            {
+              "text": "continue",
+              "range": {
+                "start": {
+                  "offset": 55,
+                  "line": 3,
+                  "column": 32
+                },
+                "end": {
+                  "offset": 63,
+                  "line": 3,
+                  "column": 40
+                }
+              }
+            }
+          ],
+          "confidence": 0.7,
+          "authoritative": false,
+          "data": {
+            "criterionId": "criterion:0:0",
+            "evidenceBasis": "Experimental bounded action lexicon"
+          }
+        }
+      ],
+      "authoritativeUnchanged": true
+    },
+    {
+      "id": "modal-passive",
+      "expected": [
+        "modality"
+      ],
+      "predicted": [
+        "modality"
+      ],
+      "signals": [
+        {
+          "kind": "modality",
+          "message": "Modal wording detected: may",
+          "language": "en",
+          "analyzer": {
+            "id": "planfs-english-token-rules-experimental",
+            "version": "0.1.0"
+          },
+          "provenance": "nlp-inferred",
+          "range": {
+            "start": {
+              "offset": 39,
+              "line": 3,
+              "column": 16
+            },
+            "end": {
+              "offset": 42,
+              "line": 3,
+              "column": 19
+            }
+          },
+          "evidence": [
+            {
+              "text": "may",
+              "range": {
+                "start": {
+                  "offset": 39,
+                  "line": 3,
+                  "column": 16
+                },
+                "end": {
+                  "offset": 42,
+                  "line": 3,
+                  "column": 19
+                }
+              }
+            }
+          ],
+          "confidence": 0.98,
+          "authoritative": false,
+          "data": {
+            "criterionId": "criterion:0:0",
+            "evidenceBasis": "Exact modal token"
+          }
+        }
+      ],
+      "authoritativeUnchanged": true
+    },
+    {
+      "id": "three-actions",
+      "expected": [
+        "action",
+        "compound"
+      ],
+      "predicted": [
+        "action",
+        "compound"
+      ],
+      "signals": [
+        {
+          "kind": "action",
+          "message": "Possible observable action detected: Update",
+          "language": "en",
+          "analyzer": {
+            "id": "planfs-english-token-rules-experimental",
+            "version": "0.1.0"
+          },
+          "provenance": "nlp-inferred",
+          "range": {
+            "start": {
+              "offset": 30,
+              "line": 3,
+              "column": 7
+            },
+            "end": {
+              "offset": 36,
+              "line": 3,
+              "column": 13
+            }
+          },
+          "evidence": [
+            {
+              "text": "Update",
+              "range": {
+                "start": {
+                  "offset": 30,
+                  "line": 3,
+                  "column": 7
+                },
+                "end": {
+                  "offset": 36,
+                  "line": 3,
+                  "column": 13
+                }
+              }
+            }
+          ],
+          "confidence": 0.7,
+          "authoritative": false,
+          "data": {
+            "criterionId": "criterion:0:0",
+            "evidenceBasis": "Experimental bounded action lexicon"
+          }
+        },
+        {
+          "kind": "action",
+          "message": "Possible observable action detected: persist",
+          "language": "en",
+          "analyzer": {
+            "id": "planfs-english-token-rules-experimental",
+            "version": "0.1.0"
+          },
+          "provenance": "nlp-inferred",
+          "range": {
+            "start": {
+              "offset": 48,
+              "line": 3,
+              "column": 25
+            },
+            "end": {
+              "offset": 55,
+              "line": 3,
+              "column": 32
+            }
+          },
+          "evidence": [
+            {
+              "text": "persist",
+              "range": {
+                "start": {
+                  "offset": 48,
+                  "line": 3,
+                  "column": 25
+                },
+                "end": {
+                  "offset": 55,
+                  "line": 3,
+                  "column": 32
+                }
+              }
+            }
+          ],
+          "confidence": 0.7,
+          "authoritative": false,
+          "data": {
+            "criterionId": "criterion:0:0",
+            "evidenceBasis": "Experimental bounded action lexicon"
+          }
+        },
+        {
+          "kind": "action",
+          "message": "Possible observable action detected: refresh",
+          "language": "en",
+          "analyzer": {
+            "id": "planfs-english-token-rules-experimental",
+            "version": "0.1.0"
+          },
+          "provenance": "nlp-inferred",
+          "range": {
+            "start": {
+              "offset": 72,
+              "line": 3,
+              "column": 49
+            },
+            "end": {
+              "offset": 79,
+              "line": 3,
+              "column": 56
+            }
+          },
+          "evidence": [
+            {
+              "text": "refresh",
+              "range": {
+                "start": {
+                  "offset": 72,
+                  "line": 3,
+                  "column": 49
+                },
+                "end": {
+                  "offset": 79,
+                  "line": 3,
+                  "column": 56
+                }
+              }
+            }
+          ],
+          "confidence": 0.7,
+          "authoritative": false,
+          "data": {
+            "criterionId": "criterion:0:0",
+            "evidenceBasis": "Experimental bounded action lexicon"
+          }
+        },
+        {
+          "kind": "compound",
+          "message": "Criterion may contain multiple independent actions",
+          "language": "en",
+          "analyzer": {
+            "id": "planfs-english-token-rules-experimental",
+            "version": "0.1.0"
+          },
+          "provenance": "nlp-inferred",
+          "range": {
+            "start": {
+              "offset": 48,
+              "line": 3,
+              "column": 25
+            },
+            "end": {
+              "offset": 79,
+              "line": 3,
+              "column": 56
+            }
+          },
+          "evidence": [
+            {
+              "text": "persist the status, and refresh",
+              "range": {
+                "start": {
+                  "offset": 48,
+                  "line": 3,
+                  "column": 25
+                },
+                "end": {
+                  "offset": 79,
+                  "line": 3,
+                  "column": 56
+                }
+              }
+            }
+          ],
+          "confidence": 0.6,
+          "authoritative": false,
+          "data": {
+            "criterionId": "criterion:0:0",
+            "evidenceBasis": "Experimental conjunction between action-lexicon terms"
+          }
+        }
+      ],
+      "authoritativeUnchanged": true
+    },
+    {
+      "id": "stable-vague",
+      "expected": [
+        "action",
+        "vague"
+      ],
+      "predicted": [
+        "action",
+        "vague"
+      ],
+      "signals": [
+        {
+          "kind": "vague",
+          "message": "Potentially vague wording detected: stable",
+          "language": "en",
+          "analyzer": {
+            "id": "planfs-english-token-rules-experimental",
+            "version": "0.1.0"
+          },
+          "provenance": "nlp-inferred",
+          "range": {
+            "start": {
+              "offset": 39,
+              "line": 3,
+              "column": 16
+            },
+            "end": {
+              "offset": 45,
+              "line": 3,
+              "column": 22
+            }
+          },
+          "evidence": [
+            {
+              "text": "stable",
+              "range": {
+                "start": {
+                  "offset": 39,
+                  "line": 3,
+                  "column": 16
+                },
+                "end": {
+                  "offset": 45,
+                  "line": 3,
+                  "column": 22
+                }
+              }
+            }
+          ],
+          "confidence": 0.65,
+          "authoritative": false,
+          "data": {
+            "criterionId": "criterion:0:0",
+            "evidenceBasis": "Experimental vague-term lexicon"
+          }
+        },
+        {
+          "kind": "action",
+          "message": "Possible observable action detected: Return",
+          "language": "en",
+          "analyzer": {
+            "id": "planfs-english-token-rules-experimental",
+            "version": "0.1.0"
+          },
+          "provenance": "nlp-inferred",
+          "range": {
+            "start": {
+              "offset": 30,
+              "line": 3,
+              "column": 7
+            },
+            "end": {
+              "offset": 36,
+              "line": 3,
+              "column": 13
+            }
+          },
+          "evidence": [
+            {
+              "text": "Return",
+              "range": {
+                "start": {
+                  "offset": 30,
+                  "line": 3,
+                  "column": 7
+                },
+                "end": {
+                  "offset": 36,
+                  "line": 3,
+                  "column": 13
+                }
+              }
+            }
+          ],
+          "confidence": 0.7,
+          "authoritative": false,
+          "data": {
+            "criterionId": "criterion:0:0",
+            "evidenceBasis": "Experimental bounded action lexicon"
+          }
+        }
+      ],
+      "authoritativeUnchanged": true
+    },
+    {
+      "id": "graph-description",
+      "expected": [],
+      "predicted": [],
+      "signals": [],
+      "authoritativeUnchanged": true
+    },
+    {
+      "id": "after-sequence",
+      "expected": [
+        "action",
+        "condition",
+        "relationship"
+      ],
+      "predicted": [
+        "action",
+        "condition",
+        "relationship"
+      ],
+      "signals": [
+        {
+          "kind": "condition",
+          "message": "Conditional wording detected: After",
+          "language": "en",
+          "analyzer": {
+            "id": "planfs-english-token-rules-experimental",
+            "version": "0.1.0"
+          },
+          "provenance": "nlp-inferred",
+          "range": {
+            "start": {
+              "offset": 30,
+              "line": 3,
+              "column": 7
+            },
+            "end": {
+              "offset": 35,
+              "line": 3,
+              "column": 12
+            }
+          },
+          "evidence": [
+            {
+              "text": "After",
+              "range": {
+                "start": {
+                  "offset": 30,
+                  "line": 3,
+                  "column": 7
+                },
+                "end": {
+                  "offset": 35,
+                  "line": 3,
+                  "column": 12
+                }
+              }
+            }
+          ],
+          "confidence": 0.95,
+          "authoritative": false,
+          "data": {
+            "criterionId": "criterion:0:0",
+            "evidenceBasis": "Bounded condition introducer"
+          }
+        },
+        {
+          "kind": "action",
+          "message": "Possible observable action detected: begin",
+          "language": "en",
+          "analyzer": {
+            "id": "planfs-english-token-rules-experimental",
+            "version": "0.1.0"
+          },
+          "provenance": "nlp-inferred",
+          "range": {
+            "start": {
+              "offset": 46,
+              "line": 3,
+              "column": 23
+            },
+            "end": {
+              "offset": 51,
+              "line": 3,
+              "column": 28
+            }
+          },
+          "evidence": [
+            {
+              "text": "begin",
+              "range": {
+                "start": {
+                  "offset": 46,
+                  "line": 3,
+                  "column": 23
+                },
+                "end": {
+                  "offset": 51,
+                  "line": 3,
+                  "column": 28
+                }
+              }
+            }
+          ],
+          "confidence": 0.7,
+          "authoritative": false,
+          "data": {
+            "criterionId": "criterion:0:0",
+            "evidenceBasis": "Experimental bounded action lexicon"
+          }
+        },
+        {
+          "kind": "relationship",
+          "message": "Possible planning relationship mentioned in prose",
+          "language": "en",
+          "analyzer": {
+            "id": "planfs-english-token-rules-experimental",
+            "version": "0.1.0"
+          },
+          "provenance": "nlp-inferred",
+          "range": {
+            "start": {
+              "offset": 30,
+              "line": 3,
+              "column": 7
+            },
+            "end": {
+              "offset": 44,
+              "line": 3,
+              "column": 21
+            }
+          },
+          "evidence": [
+            {
+              "text": "After TASK-111",
+              "range": {
+                "start": {
+                  "offset": 30,
+                  "line": 3,
+                  "column": 7
+                },
+                "end": {
+                  "offset": 44,
+                  "line": 3,
+                  "column": 21
+                }
+              }
+            }
+          ],
+          "confidence": 0.9,
+          "authoritative": false,
+          "data": {
+            "criterionId": "criterion:0:0",
+            "evidenceBasis": "Exact PlanFS ID with bounded relationship phrase",
+            "targetId": "TASK-111"
+          }
+        },
+        {
+          "kind": "relationship",
+          "message": "Possible planning relationship mentioned in prose",
+          "language": "en",
+          "analyzer": {
+            "id": "planfs-english-token-rules-experimental",
+            "version": "0.1.0"
+          },
+          "provenance": "nlp-inferred",
+          "range": {
+            "start": {
+              "offset": 30,
+              "line": 3,
+              "column": 7
+            },
+            "end": {
+              "offset": 60,
+              "line": 3,
+              "column": 37
+            }
+          },
+          "evidence": [
+            {
+              "text": "After TASK-111, begin TASK-118",
+              "range": {
+                "start": {
+                  "offset": 30,
+                  "line": 3,
+                  "column": 7
+                },
+                "end": {
+                  "offset": 60,
+                  "line": 3,
+                  "column": 37
+                }
+              }
+            }
+          ],
+          "confidence": 0.9,
+          "authoritative": false,
+          "data": {
+            "criterionId": "criterion:0:0",
+            "evidenceBasis": "Exact PlanFS ID with bounded relationship phrase",
+            "targetId": "TASK-118"
+          }
+        }
+      ],
+      "authoritativeUnchanged": true
+    },
+    {
+      "id": "retention",
+      "expected": [
+        "action",
+        "date-duration"
+      ],
+      "predicted": [
+        "action",
+        "date-duration"
+      ],
+      "signals": [
+        {
+          "kind": "date-duration",
+          "message": "Date or duration wording detected: 24 hours",
+          "language": "en",
+          "analyzer": {
+            "id": "planfs-english-token-rules-experimental",
+            "version": "0.1.0"
+          },
+          "provenance": "nlp-inferred",
+          "range": {
+            "start": {
+              "offset": 50,
+              "line": 3,
+              "column": 27
+            },
+            "end": {
+              "offset": 58,
+              "line": 3,
+              "column": 35
+            }
+          },
+          "evidence": [
+            {
+              "text": "24 hours",
+              "range": {
+                "start": {
+                  "offset": 50,
+                  "line": 3,
+                  "column": 27
+                },
+                "end": {
+                  "offset": 58,
+                  "line": 3,
+                  "column": 35
+                }
+              }
+            }
+          ],
+          "confidence": 0.95,
+          "authoritative": false,
+          "data": {
+            "criterionId": "criterion:0:0",
+            "evidenceBasis": "Explicit date or duration token"
+          }
+        },
+        {
+          "kind": "action",
+          "message": "Possible observable action detected: Store",
+          "language": "en",
+          "analyzer": {
+            "id": "planfs-english-token-rules-experimental",
+            "version": "0.1.0"
+          },
+          "provenance": "nlp-inferred",
+          "range": {
+            "start": {
+              "offset": 30,
+              "line": 3,
+              "column": 7
+            },
+            "end": {
+              "offset": 35,
+              "line": 3,
+              "column": 12
+            }
+          },
+          "evidence": [
+            {
+              "text": "Store",
+              "range": {
+                "start": {
+                  "offset": 30,
+                  "line": 3,
+                  "column": 7
+                },
+                "end": {
+                  "offset": 35,
+                  "line": 3,
+                  "column": 12
+                }
+              }
+            }
+          ],
+          "confidence": 0.7,
+          "authoritative": false,
+          "data": {
+            "criterionId": "criterion:0:0",
+            "evidenceBasis": "Experimental bounded action lexicon"
+          }
+        }
+      ],
+      "authoritativeUnchanged": true
+    },
+    {
+      "id": "relative-date",
+      "expected": [
+        "date-duration"
+      ],
+      "predicted": [
+        "action",
+        "date-duration"
+      ],
+      "signals": [
+        {
+          "kind": "date-duration",
+          "message": "Date or duration wording detected: tomorrow",
+          "language": "en",
+          "analyzer": {
+            "id": "planfs-english-token-rules-experimental",
+            "version": "0.1.0"
+          },
+          "provenance": "nlp-inferred",
+          "range": {
+            "start": {
+              "offset": 48,
+              "line": 3,
+              "column": 25
+            },
+            "end": {
+              "offset": 56,
+              "line": 3,
+              "column": 33
+            }
+          },
+          "evidence": [
+            {
+              "text": "tomorrow",
+              "range": {
+                "start": {
+                  "offset": 48,
+                  "line": 3,
+                  "column": 25
+                },
+                "end": {
+                  "offset": 56,
+                  "line": 3,
+                  "column": 33
+                }
+              }
+            }
+          ],
+          "confidence": 0.95,
+          "authoritative": false,
+          "data": {
+            "criterionId": "criterion:0:0",
+            "evidenceBasis": "Explicit date or duration token"
+          }
+        },
+        {
+          "kind": "action",
+          "message": "Possible observable action detected: report",
+          "language": "en",
+          "analyzer": {
+            "id": "planfs-english-token-rules-experimental",
+            "version": "0.1.0"
+          },
+          "provenance": "nlp-inferred",
+          "range": {
+            "start": {
+              "offset": 34,
+              "line": 3,
+              "column": 11
+            },
+            "end": {
+              "offset": 40,
+              "line": 3,
+              "column": 17
+            }
+          },
+          "evidence": [
+            {
+              "text": "report",
+              "range": {
+                "start": {
+                  "offset": 34,
+                  "line": 3,
+                  "column": 11
+                },
+                "end": {
+                  "offset": 40,
+                  "line": 3,
+                  "column": 17
+                }
+              }
+            }
+          ],
+          "confidence": 0.7,
+          "authoritative": false,
+          "data": {
+            "criterionId": "criterion:0:0",
+            "evidenceBasis": "Experimental bounded action lexicon"
+          }
+        }
+      ],
+      "authoritativeUnchanged": true
+    },
+    {
+      "id": "negative-compound",
+      "expected": [
+        "action",
+        "negation"
+      ],
+      "predicted": [
+        "action",
+        "negation"
+      ],
+      "signals": [
+        {
+          "kind": "negation",
+          "message": "Negation detected: not",
+          "language": "en",
+          "analyzer": {
+            "id": "planfs-english-token-rules-experimental",
+            "version": "0.1.0"
+          },
+          "provenance": "nlp-inferred",
+          "range": {
+            "start": {
+              "offset": 33,
+              "line": 3,
+              "column": 10
+            },
+            "end": {
+              "offset": 36,
+              "line": 3,
+              "column": 13
+            }
+          },
+          "evidence": [
+            {
+              "text": "not",
+              "range": {
+                "start": {
+                  "offset": 33,
+                  "line": 3,
+                  "column": 10
+                },
+                "end": {
+                  "offset": 36,
+                  "line": 3,
+                  "column": 13
+                }
+              }
+            }
+          ],
+          "confidence": 0.98,
+          "authoritative": false,
+          "data": {
+            "criterionId": "criterion:0:0",
+            "evidenceBasis": "Exact negation token"
+          }
+        },
+        {
+          "kind": "action",
+          "message": "Possible observable action detected: infer",
+          "language": "en",
+          "analyzer": {
+            "id": "planfs-english-token-rules-experimental",
+            "version": "0.1.0"
+          },
+          "provenance": "nlp-inferred",
+          "range": {
+            "start": {
+              "offset": 37,
+              "line": 3,
+              "column": 14
+            },
+            "end": {
+              "offset": 42,
+              "line": 3,
+              "column": 19
+            }
+          },
+          "evidence": [
+            {
+              "text": "infer",
+              "range": {
+                "start": {
+                  "offset": 37,
+                  "line": 3,
+                  "column": 14
+                },
+                "end": {
+                  "offset": 42,
+                  "line": 3,
+                  "column": 19
+                }
+              }
+            }
+          ],
+          "confidence": 0.7,
+          "authoritative": false,
+          "data": {
+            "criterionId": "criterion:0:0",
+            "evidenceBasis": "Experimental bounded action lexicon"
+          }
+        }
+      ],
+      "authoritativeUnchanged": true
+    },
+    {
+      "id": "observable-passive",
+      "expected": [
+        "action"
+      ],
+      "predicted": [],
+      "signals": [],
+      "authoritativeUnchanged": true
+    },
+    {
+      "id": "quick-with-threshold",
+      "expected": [
+        "action",
+        "date-duration"
+      ],
+      "predicted": [
+        "action",
+        "date-duration"
+      ],
+      "signals": [
+        {
+          "kind": "date-duration",
+          "message": "Date or duration wording detected: 50 ms",
+          "language": "en",
+          "analyzer": {
+            "id": "planfs-english-token-rules-experimental",
+            "version": "0.1.0"
+          },
+          "provenance": "nlp-inferred",
+          "range": {
+            "start": {
+              "offset": 48,
+              "line": 3,
+              "column": 25
+            },
+            "end": {
+              "offset": 53,
+              "line": 3,
+              "column": 30
+            }
+          },
+          "evidence": [
+            {
+              "text": "50 ms",
+              "range": {
+                "start": {
+                  "offset": 48,
+                  "line": 3,
+                  "column": 25
+                },
+                "end": {
+                  "offset": 53,
+                  "line": 3,
+                  "column": 30
+                }
+              }
+            }
+          ],
+          "confidence": 0.95,
+          "authoritative": false,
+          "data": {
+            "criterionId": "criterion:0:0",
+            "evidenceBasis": "Explicit date or duration token"
+          }
+        },
+        {
+          "kind": "action",
+          "message": "Possible observable action detected: Complete",
+          "language": "en",
+          "analyzer": {
+            "id": "planfs-english-token-rules-experimental",
+            "version": "0.1.0"
+          },
+          "provenance": "nlp-inferred",
+          "range": {
+            "start": {
+              "offset": 30,
+              "line": 3,
+              "column": 7
+            },
+            "end": {
+              "offset": 38,
+              "line": 3,
+              "column": 15
+            }
+          },
+          "evidence": [
+            {
+              "text": "Complete",
+              "range": {
+                "start": {
+                  "offset": 30,
+                  "line": 3,
+                  "column": 7
+                },
+                "end": {
+                  "offset": 38,
+                  "line": 3,
+                  "column": 15
+                }
+              }
+            }
+          ],
+          "confidence": 0.7,
+          "authoritative": false,
+          "data": {
+            "criterionId": "criterion:0:0",
+            "evidenceBasis": "Experimental bounded action lexicon"
+          }
+        }
+      ],
+      "authoritativeUnchanged": true
+    },
+    {
+      "id": "quick-without-threshold",
+      "expected": [
+        "action",
+        "vague"
+      ],
+      "predicted": [
+        "action",
+        "vague"
+      ],
+      "signals": [
+        {
+          "kind": "vague",
+          "message": "Potentially vague wording detected: quickly",
+          "language": "en",
+          "analyzer": {
+            "id": "planfs-english-token-rules-experimental",
+            "version": "0.1.0"
+          },
+          "provenance": "nlp-inferred",
+          "range": {
+            "start": {
+              "offset": 39,
+              "line": 3,
+              "column": 16
+            },
+            "end": {
+              "offset": 46,
+              "line": 3,
+              "column": 23
+            }
+          },
+          "evidence": [
+            {
+              "text": "quickly",
+              "range": {
+                "start": {
+                  "offset": 39,
+                  "line": 3,
+                  "column": 16
+                },
+                "end": {
+                  "offset": 46,
+                  "line": 3,
+                  "column": 23
+                }
+              }
+            }
+          ],
+          "confidence": 0.65,
+          "authoritative": false,
+          "data": {
+            "criterionId": "criterion:0:0",
+            "evidenceBasis": "Experimental vague-term lexicon"
+          }
+        },
+        {
+          "kind": "action",
+          "message": "Possible observable action detected: Complete",
+          "language": "en",
+          "analyzer": {
+            "id": "planfs-english-token-rules-experimental",
+            "version": "0.1.0"
+          },
+          "provenance": "nlp-inferred",
+          "range": {
+            "start": {
+              "offset": 30,
+              "line": 3,
+              "column": 7
+            },
+            "end": {
+              "offset": 38,
+              "line": 3,
+              "column": 15
+            }
+          },
+          "evidence": [
+            {
+              "text": "Complete",
+              "range": {
+                "start": {
+                  "offset": 30,
+                  "line": 3,
+                  "column": 7
+                },
+                "end": {
+                  "offset": 38,
+                  "line": 3,
+                  "column": 15
+                }
+              }
+            }
+          ],
+          "confidence": 0.7,
+          "authoritative": false,
+          "data": {
+            "criterionId": "criterion:0:0",
+            "evidenceBasis": "Experimental bounded action lexicon"
+          }
+        }
+      ],
+      "authoritativeUnchanged": true
+    },
+    {
+      "id": "optional-context",
+      "expected": [
+        "action"
+      ],
+      "predicted": [],
+      "signals": [],
+      "authoritativeUnchanged": true
+    },
+    {
+      "id": "parent-suggestion",
+      "expected": [
+        "relationship"
+      ],
+      "predicted": [
+        "relationship"
+      ],
+      "signals": [
+        {
+          "kind": "relationship",
+          "message": "Possible planning relationship mentioned in prose",
+          "language": "en",
+          "analyzer": {
+            "id": "planfs-english-token-rules-experimental",
+            "version": "0.1.0"
+          },
+          "provenance": "nlp-inferred",
+          "range": {
+            "start": {
+              "offset": 35,
+              "line": 3,
+              "column": 12
+            },
+            "end": {
+              "offset": 81,
+              "line": 3,
+              "column": 58
+            }
+          },
+          "evidence": [
+            {
+              "text": "belongs under EPIC-semantic-planning-documents",
+              "range": {
+                "start": {
+                  "offset": 35,
+                  "line": 3,
+                  "column": 12
+                },
+                "end": {
+                  "offset": 81,
+                  "line": 3,
+                  "column": 58
+                }
+              }
+            }
+          ],
+          "confidence": 0.9,
+          "authoritative": false,
+          "data": {
+            "criterionId": "criterion:0:0",
+            "evidenceBasis": "Exact PlanFS ID with bounded relationship phrase",
+            "targetId": "EPIC-semantic-planning-documents"
+          }
+        }
+      ],
+      "authoritativeUnchanged": true
+    },
+    {
+      "id": "excluded-inline-code",
+      "expected": [
+        "action"
+      ],
+      "predicted": [
+        "action"
+      ],
+      "signals": [
+        {
+          "kind": "action",
+          "message": "Possible observable action detected: Render",
+          "language": "en",
+          "analyzer": {
+            "id": "planfs-english-token-rules-experimental",
+            "version": "0.1.0"
+          },
+          "provenance": "nlp-inferred",
+          "range": {
+            "start": {
+              "offset": 30,
+              "line": 3,
+              "column": 7
+            },
+            "end": {
+              "offset": 36,
+              "line": 3,
+              "column": 13
+            }
+          },
+          "evidence": [
+            {
+              "text": "Render",
+              "range": {
+                "start": {
+                  "offset": 30,
+                  "line": 3,
+                  "column": 7
+                },
+                "end": {
+                  "offset": 36,
+                  "line": 3,
+                  "column": 13
+                }
+              }
+            }
+          ],
+          "confidence": 0.7,
+          "authoritative": false,
+          "data": {
+            "criterionId": "criterion:0:0",
+            "evidenceBasis": "Experimental bounded action lexicon"
+          }
+        }
+      ],
+      "authoritativeUnchanged": true
+    },
+    {
+      "id": "excluded-link-url",
+      "expected": [],
+      "predicted": [],
+      "signals": [],
+      "authoritativeUnchanged": true
+    },
+    {
+      "id": "eligible-link-label",
+      "expected": [
+        "action",
+        "condition",
+        "relationship"
+      ],
+      "predicted": [
+        "action",
+        "condition",
+        "relationship"
+      ],
+      "signals": [
+        {
+          "kind": "condition",
+          "message": "Conditional wording detected: after",
+          "language": "en",
+          "analyzer": {
+            "id": "planfs-english-token-rules-experimental",
+            "version": "0.1.0"
+          },
+          "provenance": "nlp-inferred",
+          "range": {
+            "start": {
+              "offset": 70,
+              "line": 3,
+              "column": 47
+            },
+            "end": {
+              "offset": 75,
+              "line": 3,
+              "column": 52
+            }
+          },
+          "evidence": [
+            {
+              "text": "after",
+              "range": {
+                "start": {
+                  "offset": 70,
+                  "line": 3,
+                  "column": 47
+                },
+                "end": {
+                  "offset": 75,
+                  "line": 3,
+                  "column": 52
+                }
+              }
+            }
+          ],
+          "confidence": 0.95,
+          "authoritative": false,
+          "data": {
+            "criterionId": "criterion:0:0",
+            "evidenceBasis": "Bounded condition introducer"
+          }
+        },
+        {
+          "kind": "action",
+          "message": "Possible observable action detected: Review",
+          "language": "en",
+          "analyzer": {
+            "id": "planfs-english-token-rules-experimental",
+            "version": "0.1.0"
+          },
+          "provenance": "nlp-inferred",
+          "range": {
+            "start": {
+              "offset": 30,
+              "line": 3,
+              "column": 7
+            },
+            "end": {
+              "offset": 36,
+              "line": 3,
+              "column": 13
+            }
+          },
+          "evidence": [
+            {
+              "text": "Review",
+              "range": {
+                "start": {
+                  "offset": 30,
+                  "line": 3,
+                  "column": 7
+                },
+                "end": {
+                  "offset": 36,
+                  "line": 3,
+                  "column": 13
+                }
+              }
+            }
+          ],
+          "confidence": 0.7,
+          "authoritative": false,
+          "data": {
+            "criterionId": "criterion:0:0",
+            "evidenceBasis": "Experimental bounded action lexicon"
+          }
+        },
+        {
+          "kind": "relationship",
+          "message": "Possible planning relationship mentioned in prose",
+          "language": "en",
+          "analyzer": {
+            "id": "planfs-english-token-rules-experimental",
+            "version": "0.1.0"
+          },
+          "provenance": "nlp-inferred",
+          "range": {
+            "start": {
+              "offset": 38,
+              "line": 3,
+              "column": 15
+            },
+            "end": {
+              "offset": 75,
+              "line": 3,
+              "column": 52
+            }
+          },
+          "evidence": [
+            {
+              "text": "TASK-118](../tasks/TASK-118.md) after",
+              "range": {
+                "start": {
+                  "offset": 38,
+                  "line": 3,
+                  "column": 15
+                },
+                "end": {
+                  "offset": 75,
+                  "line": 3,
+                  "column": 52
+                }
+              }
+            }
+          ],
+          "confidence": 0.9,
+          "authoritative": false,
+          "data": {
+            "criterionId": "criterion:0:0",
+            "evidenceBasis": "Exact PlanFS ID with bounded relationship phrase",
+            "targetId": "TASK-118"
+          }
+        },
+        {
+          "kind": "relationship",
+          "message": "Possible planning relationship mentioned in prose",
+          "language": "en",
+          "analyzer": {
+            "id": "planfs-english-token-rules-experimental",
+            "version": "0.1.0"
+          },
+          "provenance": "nlp-inferred",
+          "range": {
+            "start": {
+              "offset": 70,
+              "line": 3,
+              "column": 47
+            },
+            "end": {
+              "offset": 84,
+              "line": 3,
+              "column": 61
+            }
+          },
+          "evidence": [
+            {
+              "text": "after TASK-117",
+              "range": {
+                "start": {
+                  "offset": 70,
+                  "line": 3,
+                  "column": 47
+                },
+                "end": {
+                  "offset": 84,
+                  "line": 3,
+                  "column": 61
+                }
+              }
+            }
+          ],
+          "confidence": 0.9,
+          "authoritative": false,
+          "data": {
+            "criterionId": "criterion:0:0",
+            "evidenceBasis": "Exact PlanFS ID with bounded relationship phrase",
+            "targetId": "TASK-117"
+          }
+        }
+      ],
+      "authoritativeUnchanged": true
+    },
+    {
+      "id": "excluded-autolink",
+      "expected": [],
+      "predicted": [],
+      "signals": [],
+      "authoritativeUnchanged": true
+    },
+    {
+      "id": "excluded-raw-html",
+      "expected": [
+        "action"
+      ],
+      "predicted": [
+        "action"
+      ],
+      "signals": [
+        {
+          "kind": "action",
+          "message": "Possible observable action detected: Render",
+          "language": "en",
+          "analyzer": {
+            "id": "planfs-english-token-rules-experimental",
+            "version": "0.1.0"
+          },
+          "provenance": "nlp-inferred",
+          "range": {
+            "start": {
+              "offset": 71,
+              "line": 3,
+              "column": 48
+            },
+            "end": {
+              "offset": 77,
+              "line": 3,
+              "column": 54
+            }
+          },
+          "evidence": [
+            {
+              "text": "Render",
+              "range": {
+                "start": {
+                  "offset": 71,
+                  "line": 3,
+                  "column": 48
+                },
+                "end": {
+                  "offset": 77,
+                  "line": 3,
+                  "column": 54
+                }
+              }
+            }
+          ],
+          "confidence": 0.7,
+          "authoritative": false,
+          "data": {
+            "criterionId": "criterion:0:0",
+            "evidenceBasis": "Experimental bounded action lexicon"
+          }
+        }
+      ],
+      "authoritativeUnchanged": true
+    },
+    {
+      "id": "excluded-fenced-code",
+      "expected": [
+        "action"
+      ],
+      "predicted": [
+        "action"
+      ],
+      "signals": [
+        {
+          "kind": "action",
+          "message": "Possible observable action detected: Preserve",
+          "language": "en",
+          "analyzer": {
+            "id": "planfs-english-token-rules-experimental",
+            "version": "0.1.0"
+          },
+          "provenance": "nlp-inferred",
+          "range": {
+            "start": {
+              "offset": 30,
+              "line": 3,
+              "column": 7
+            },
+            "end": {
+              "offset": 38,
+              "line": 3,
+              "column": 15
+            }
+          },
+          "evidence": [
+            {
+              "text": "Preserve",
+              "range": {
+                "start": {
+                  "offset": 30,
+                  "line": 3,
+                  "column": 7
+                },
+                "end": {
+                  "offset": 38,
+                  "line": 3,
+                  "column": 15
+                }
+              }
+            }
+          ],
+          "confidence": 0.7,
+          "authoritative": false,
+          "data": {
+            "criterionId": "criterion:0:0",
+            "evidenceBasis": "Experimental bounded action lexicon"
+          }
+        }
+      ],
+      "authoritativeUnchanged": true
+    },
+    {
+      "id": "nested-does-not-double-count",
+      "expected": [
+        "action",
+        "modality",
+        "negation"
+      ],
+      "predicted": [
+        "action",
+        "modality",
+        "negation"
+      ],
+      "signals": [
+        {
+          "kind": "action",
+          "message": "Possible observable action detected: Preserve",
+          "language": "en",
+          "analyzer": {
+            "id": "planfs-english-token-rules-experimental",
+            "version": "0.1.0"
+          },
+          "provenance": "nlp-inferred",
+          "range": {
+            "start": {
+              "offset": 30,
+              "line": 3,
+              "column": 7
+            },
+            "end": {
+              "offset": 38,
+              "line": 3,
+              "column": 15
+            }
+          },
+          "evidence": [
+            {
+              "text": "Preserve",
+              "range": {
+                "start": {
+                  "offset": 30,
+                  "line": 3,
+                  "column": 7
+                },
+                "end": {
+                  "offset": 38,
+                  "line": 3,
+                  "column": 15
+                }
+              }
+            }
+          ],
+          "confidence": 0.7,
+          "authoritative": false,
+          "data": {
+            "criterionId": "criterion:0:0",
+            "evidenceBasis": "Experimental bounded action lexicon"
+          }
+        },
+        {
+          "kind": "modality",
+          "message": "Modal wording detected: Must",
+          "language": "en",
+          "analyzer": {
+            "id": "planfs-english-token-rules-experimental",
+            "version": "0.1.0"
+          },
+          "provenance": "nlp-inferred",
+          "range": {
+            "start": {
+              "offset": 59,
+              "line": 4,
+              "column": 9
+            },
+            "end": {
+              "offset": 63,
+              "line": 4,
+              "column": 13
+            }
+          },
+          "evidence": [
+            {
+              "text": "Must",
+              "range": {
+                "start": {
+                  "offset": 59,
+                  "line": 4,
+                  "column": 9
+                },
+                "end": {
+                  "offset": 63,
+                  "line": 4,
+                  "column": 13
+                }
+              }
+            }
+          ],
+          "confidence": 0.98,
+          "authoritative": false,
+          "data": {
+            "criterionId": "criterion:0:1",
+            "evidenceBasis": "Exact modal token"
+          }
+        },
+        {
+          "kind": "negation",
+          "message": "Negation detected: not",
+          "language": "en",
+          "analyzer": {
+            "id": "planfs-english-token-rules-experimental",
+            "version": "0.1.0"
+          },
+          "provenance": "nlp-inferred",
+          "range": {
+            "start": {
+              "offset": 64,
+              "line": 4,
+              "column": 14
+            },
+            "end": {
+              "offset": 67,
+              "line": 4,
+              "column": 17
+            }
+          },
+          "evidence": [
+            {
+              "text": "not",
+              "range": {
+                "start": {
+                  "offset": 64,
+                  "line": 4,
+                  "column": 14
+                },
+                "end": {
+                  "offset": 67,
+                  "line": 4,
+                  "column": 17
+                }
+              }
+            }
+          ],
+          "confidence": 0.98,
+          "authoritative": false,
+          "data": {
+            "criterionId": "criterion:0:1",
+            "evidenceBasis": "Exact negation token"
+          }
+        },
+        {
+          "kind": "action",
+          "message": "Possible observable action detected: send",
+          "language": "en",
+          "analyzer": {
+            "id": "planfs-english-token-rules-experimental",
+            "version": "0.1.0"
+          },
+          "provenance": "nlp-inferred",
+          "range": {
+            "start": {
+              "offset": 68,
+              "line": 4,
+              "column": 18
+            },
+            "end": {
+              "offset": 72,
+              "line": 4,
+              "column": 22
+            }
+          },
+          "evidence": [
+            {
+              "text": "send",
+              "range": {
+                "start": {
+                  "offset": 68,
+                  "line": 4,
+                  "column": 18
+                },
+                "end": {
+                  "offset": 72,
+                  "line": 4,
+                  "column": 22
+                }
+              }
+            }
+          ],
+          "confidence": 0.7,
+          "authoritative": false,
+          "data": {
+            "criterionId": "criterion:0:1",
+            "evidenceBasis": "Experimental bounded action lexicon"
+          }
+        }
+      ],
+      "authoritativeUnchanged": true
+    }
+  ]
+}
