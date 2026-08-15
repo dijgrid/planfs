@@ -112,3 +112,9 @@ planfs inspect TASK-113 --view acceptance-criteria --format json --no-nlp
 ```
 
 Editors should consume `planfs-core` directly when embedded in PlanFS itself; the CLI examples define the same serialized contract for external integrations.
+
+## VS Code presentation
+
+The structured editor consumes the same core inspection result instead of reparsing headings. It presents authoritative frontmatter relationships separately from advisory body mentions, preserves checked, unchecked, and ordinary-list criteria, and renders findings, questions, known sections, custom sections, and diagnostics in source order with navigation back to Markdown.
+
+Supported local English analysis runs automatically for the active ticket by default. It remains advisory and workspace-configurable: users can inspect evidence, preview a safe metadata suggestion without applying it, dismiss or restore individual suggestions, or disable local analysis while deterministic structural diagnostics remain visible. Refresh recomputes the derived inspection without replacing unsaved metadata drafts or mutating the planning file.

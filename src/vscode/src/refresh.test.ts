@@ -1453,7 +1453,8 @@ describe('VS Code view refresh workspace selection', () => {
     expect(editorPanel.webview.html).toContain('Additional metadata');
     expect(editorPanel.webview.html).toContain('planningModel');
     expect(editorPanel.webview.html).toContain('custom');
-    expect(editorPanel.webview.html).toContain('Additional Markdown');
+    expect(editorPanel.webview.html).toContain('Semantic inspection');
+    expect(editorPanel.webview.html).toContain('Shared PlanFS content profile');
     expect(editorPanel.webview.html).toContain('Epic body.');
     expect(editorPanel.webview.html).toContain('Extra epic note.');
     expect(editorPanel.webview.html).toContain('Acceptance Criteria');
@@ -1520,7 +1521,7 @@ describe('VS Code view refresh workspace selection', () => {
 
     const editorPanel = jest.mocked(vscode.window.createWebviewPanel).mock.results[0].value;
     expect(editorPanel.webview.html).not.toContain('Markdown Body');
-    expect(editorPanel.webview.html).toContain('Markdown Sections');
+    expect(editorPanel.webview.html).toContain('Semantic Markdown');
     expect(editorPanel.webview.html).toContain('Archive Task');
     expect(editorPanel.webview.html).toContain('class="card full compactMeta"');
     expect(editorPanel.webview.html).toContain('class="compactField" data-field="id"');
@@ -1536,14 +1537,17 @@ describe('VS Code view refresh workspace selection', () => {
     expect(editorPanel.webview.html).toContain('Additional metadata');
     expect(editorPanel.webview.html).toContain('externalKey');
     expect(editorPanel.webview.html).toContain('JIRA-456');
-    expect(editorPanel.webview.html).toContain('Additional Markdown');
+    expect(editorPanel.webview.html).toContain('Semantic inspection');
     expect(editorPanel.webview.html).toContain('Body intro.');
     expect(editorPanel.webview.html).toContain('Extra note preserved for readers.');
     expect(editorPanel.webview.html).toContain('Acceptance Criteria');
     expect(editorPanel.webview.html).toContain('Keep the body in Markdown');
     expect(editorPanel.webview.html).toContain('Questions');
     expect(editorPanel.webview.html).toContain('Findings');
-    expect(editorPanel.webview.html).toContain('Findings are read-only here');
+    expect(editorPanel.webview.html).toContain('Authoritative relationships');
+    expect(editorPanel.webview.html).toContain('Advisory suggestions');
+    expect(editorPanel.webview.html).toContain('renderSemantic(state.semantic)');
+    expect(editorPanel.webview.html).toContain('ordinary list item');
     expect(editorPanel.webview.html).toContain('A plain bullet');
     expect(editorPanel.webview.html).toContain('Open Markdown');
 
@@ -1565,6 +1569,135 @@ describe('VS Code view refresh workspace selection', () => {
     expect(repository.tasks.get('TASK-020')?.body).toContain('Extra note preserved for readers.');
     expect(repository.tasks.get('TASK-020')?.body).toContain('### Nested evidence');
     expect(repository.tasks.get('TASK-020')?.body).toContain('```text\nproof\n```');
+  });
+
+  it('renders and controls shared semantic inspection without mutating Markdown', async () => {
+    selectPlanFSWorkspaceFolder(firstFolder);
+    const body = [
+      'Inspect semantic UI.',
+      '',
+      '## Acceptance Criteria',
+      '',
+      '- [x] Show completed criteria.',
+      '- [ ] This should finish after TASK-999.',
+      '- Preserve an ordinary criterion.',
+      '',
+      '## Findings',
+      '',
+      '- The shared parser preserves evidence.',
+      '',
+      '## Questions',
+      '',
+      '- Should this remain advisory?',
+      '',
+      '## Experiment Notes',
+      '',
+      'Custom content remains visible with raw <script>markup</script>.'
+    ].join('\n');
+    await saveEntity(firstRoot, {
+      ...createTaskTemplate('TASK-semantic', 'Semantic editor task'),
+      dependsOn: ['TASK-001'],
+      body
+    });
+    const before = await fs.readFile(
+      path.join(firstRoot, '.planfs', 'tasks', 'TASK-semantic.md'),
+      'utf-8'
+    );
+    const preferences = new PlanFSUiPreferences(new TestMemento());
+    const editor = new EntityEditorProvider(vscode.Uri.file('/extension'), preferences);
+
+    await editor.open('TASK-semantic');
+
+    const editorPanel = jest.mocked(vscode.window.createWebviewPanel).mock.results[0].value;
+    expect(editorPanel.webview.html).toContain('"analysisEnabled":true');
+    expect(editorPanel.webview.html).toContain('"checked":true');
+    expect(editorPanel.webview.html).toContain('"checked":false');
+    expect(editorPanel.webview.html).toContain('"checked":null');
+    expect(editorPanel.webview.html).toContain('The shared parser preserves evidence.');
+    expect(editorPanel.webview.html).toContain('Should this remain advisory?');
+    expect(editorPanel.webview.html).toContain('Experiment Notes');
+    expect(editorPanel.webview.html).toContain('\\u003cscript>markup\\u003c/script>');
+    expect(editorPanel.webview.html).not.toContain('<script>markup</script>');
+    expect(editorPanel.webview.html).toContain('analysis.relationship.metadata-missing');
+    expect(editorPanel.webview.html).toContain('TASK-999');
+    expect(editorPanel.webview.html).toContain('data-preview-suggestion');
+    expect(editorPanel.webview.html).toContain('data-dismiss-suggestion');
+    expect(editorPanel.webview.html).toContain('data-source-start');
+    expect(editorPanel.webview.html).toContain('Non-authoritative prose mention');
+
+    selectPlanFSWorkspaceFolder(secondFolder);
+    await editorPanel.webview.postMessage({
+      type: 'openSemanticSource',
+      start: body.indexOf('The shared parser'),
+      end: body.indexOf('The shared parser') + 'The shared parser'.length
+    });
+    expect(vscode.workspace.openTextDocument).toHaveBeenLastCalledWith(
+      path.join(firstRoot, '.planfs', 'tasks', 'TASK-semantic.md')
+    );
+    expect(vscode.window.showTextDocument).toHaveBeenLastCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        preview: false,
+        selection: expect.objectContaining({
+          start: expect.objectContaining({ line: expect.any(Number), character: expect.any(Number) })
+        })
+      })
+    );
+
+    const suggestionKey = 'TASK-semantic:analysis.relationship.metadata-missing:TASK-999';
+    jest.mocked(vscode.window.showInformationMessage).mockResolvedValueOnce('Open source' as never);
+    await editorPanel.webview.postMessage({
+      type: 'previewSemanticSuggestion',
+      key: suggestionKey
+    });
+    expect(vscode.window.showInformationMessage).toHaveBeenCalledWith(
+      expect.stringContaining('Preview only — dependsOn: TASK-999'),
+      { modal: true },
+      'Open source'
+    );
+
+    await editorPanel.webview.postMessage({
+      type: 'dismissSemanticSuggestion',
+      key: suggestionKey
+    });
+    expect(editorPanel.webview.postedMessages).toContainEqual(expect.objectContaining({
+      type: 'updateSemantic',
+      semantic: expect.objectContaining({ suppressedCount: 1 })
+    }));
+    const dismissedUpdate = [...editorPanel.webview.postedMessages]
+      .reverse()
+      .find(message => (message as { type?: string }).type === 'updateSemantic') as {
+        semantic: { suggestions: Array<{ key: string }> };
+      };
+    expect(dismissedUpdate.semantic.suggestions.map(suggestion => suggestion.key)).not.toContain(
+      suggestionKey
+    );
+
+    await editorPanel.webview.postMessage({ type: 'restoreSemanticSuggestions' });
+    expect(editorPanel.webview.postedMessages).toContainEqual(expect.objectContaining({
+      type: 'updateSemantic',
+      semantic: expect.objectContaining({
+        suggestions: expect.arrayContaining([expect.objectContaining({ key: suggestionKey })]),
+        suppressedCount: 0
+      })
+    }));
+
+    await editorPanel.webview.postMessage({
+      type: 'toggleSemanticAnalysis',
+      enabled: false
+    });
+    expect(editorPanel.webview.postedMessages).toContainEqual(expect.objectContaining({
+      type: 'updateSemantic',
+      semantic: expect.objectContaining({
+        analysisEnabled: false,
+        suggestions: [],
+        inspection: expect.objectContaining({ analysis: null })
+      })
+    }));
+    expect(await fs.readFile(
+      path.join(firstRoot, '.planfs', 'tasks', 'TASK-semantic.md'),
+      'utf-8'
+    )).toBe(before);
   });
 
   it('keeps editor documents stable on refresh and refuses stale structured saves', async () => {

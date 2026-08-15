@@ -130,6 +130,14 @@ interface SemanticFinding {
   provenance: "canonical" | "alias" | "rule-inferred";
 }
 
+interface SemanticQuestion {
+  markdown: string;
+  text: string;
+  range: SourceRange;
+  sectionIndex: number;
+  provenance: "canonical" | "alias" | "rule-inferred";
+}
+
 interface SemanticDecisionStatement {
   markdown: string;
   text: string;
@@ -181,6 +189,7 @@ interface SemanticDocument {
   knownSections: KnownSectionView;
   criteria: SemanticCriterion[];
   findings: SemanticFinding[];
+  questions: SemanticQuestion[];
   decisions: SemanticDecisionStatement[];
   references: SemanticReference[];
   mentions: EntityMention[];
@@ -241,7 +250,7 @@ A canonical match has `canonical` provenance; an exact documented alias has `ali
 - Paragraphs, tables, and code blocks in the section remain section content but are not criteria. Non-list substantive content emits `content.acceptance-criteria.unstructured` at automation-ready conformance.
 - Task-list-looking text inside code, raw HTML, or inline code is never a criterion.
 
-Findings are list items or standalone prose blocks in a recognized `findings` section. Decision statements are substantive blocks in a recognized `decisions` section, and for a decision entity also in the singular `decision` section. References are Markdown links, autolinks, and bare entity IDs anywhere outside opaque content; references inside a recognized `references` section inherit that section's canonical-or-alias provenance, while references elsewhere use `rule-inferred`. These normalized arrays retain section and range provenance; their source sections remain available in full.
+Findings and questions are list items or standalone prose blocks in recognized `findings` and `questions` sections. Decision statements are substantive blocks in a recognized `decisions` section, and for a decision entity also in the singular `decision` section. References are Markdown links, autolinks, and bare entity IDs anywhere outside opaque content; references inside a recognized `references` section inherit that section's canonical-or-alias provenance, while references elsewhere use `rule-inferred`. These normalized arrays retain section and range provenance; their source sections remain available in full.
 
 ### 4.4 Duplicates, empty and unknown sections
 

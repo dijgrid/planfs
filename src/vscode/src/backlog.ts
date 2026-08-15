@@ -10,6 +10,7 @@ import {
   listBacklogTasks,
   loadRepository,
   loadSavedFilters,
+  parseSemanticDocument,
   parseTaskUpdatePatch,
   RefinementState,
   reviewBacklog,
@@ -28,7 +29,6 @@ import {
   renderHelpButton,
   renderHelpPanel
 } from './help';
-import { extractMarkdownSections, MarkdownSection } from './markdownSections';
 import { PlanFSUiPreferences, UI_PREFERENCES } from './preferences';
 import { getPlanFSWorkspaceFolder } from './workspace';
 
@@ -172,7 +172,7 @@ export class BacklogProvider {
       dueDate: task.dueDate,
       updatedAt: task.updatedAt,
       body: task.body,
-      sections: extractMarkdownSections(task.body, ['Acceptance Criteria', 'Questions', 'Findings']),
+      sections: backlogSemanticSections(task),
       needsReview: reviewIds.has(task.id)
     }));
 
@@ -352,7 +352,7 @@ interface BacklogHtmlPayload {
     dueDate?: string;
     updatedAt?: string;
     body: string;
-    sections: MarkdownSection[];
+    sections: BacklogSemanticSection[];
     needsReview: boolean;
   }>;
   options: {
@@ -378,6 +378,41 @@ interface BacklogHtmlPayload {
     backlogPanelsSwapped: boolean;
   };
   helpTopics: HelpTopic[];
+}
+
+interface BacklogSemanticSection {
+  title: string;
+  items: Array<{
+    checked: true | false | null;
+    text: string;
+  }>;
+}
+
+function backlogSemanticSections(task: { body: string; filePath: string }): BacklogSemanticSection[] {
+  const document = parseSemanticDocument('task', task.body, { filePath: task.filePath });
+  const sections: BacklogSemanticSection[] = [];
+  if ((document.knownSections.acceptanceCriteria ?? []).length > 0) {
+    sections.push({
+      title: 'Acceptance Criteria',
+      items: document.criteria.map(criterion => ({
+        checked: criterion.checked,
+        text: criterion.text
+      }))
+    });
+  }
+  if ((document.knownSections.questions ?? []).length > 0) {
+    sections.push({
+      title: 'Questions',
+      items: document.questions.map(question => ({ checked: null, text: question.text }))
+    });
+  }
+  if ((document.knownSections.findings ?? []).length > 0) {
+    sections.push({
+      title: 'Findings',
+      items: document.findings.map(finding => ({ checked: null, text: finding.text }))
+    });
+  }
+  return sections;
 }
 
 function renderBacklogHtml(payload: BacklogHtmlPayload): string {
@@ -639,8 +674,9 @@ function renderBacklogHtml(payload: BacklogHtmlPayload): string {
         return '<div class="sections"><p class="empty">No Acceptance Criteria, Questions, or Findings sections found. Use Open Markdown for full body editing.</p></div>';
       }
       return '<div class="sections">' + task.sections.map(section => '<section class="sectionCard"><h3>' + escapeHtml(section.title) + '</h3>' +
-        section.paragraphs.map(paragraph => '<p class="meta">' + escapeHtml(paragraph) + '</p>').join('') +
-        (section.items.length ? section.items.map(item => '<div class="sectionItem ' + (item.checked ? 'done' : '') + '"><input type="checkbox" disabled' + (item.checked ? ' checked' : '') + '><span class="sectionText">' + escapeHtml(item.text) + '</span></div>').join('') : '') +
+        (section.items.length ? section.items.map(item => '<div class="sectionItem ' + (item.checked === true ? 'done' : '') + '">' +
+          (item.checked === null ? '<span aria-label="ordinary list item">[-]</span>' : '<input type="checkbox" disabled' + (item.checked ? ' checked' : '') + '>') +
+          '<span class="sectionText">' + escapeHtml(item.text) + '</span></div>').join('') : '<p class="meta">Section is empty.</p>') +
         '</section>').join('') + '</div>';
     }
 

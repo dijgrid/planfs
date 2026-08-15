@@ -78,6 +78,14 @@ export interface SemanticFinding {
   provenance: Exclude<SemanticProvenance, 'nlp-inferred'>;
 }
 
+export interface SemanticQuestion {
+  markdown: string;
+  text: string;
+  range: SourceRange;
+  sectionIndex: number;
+  provenance: Exclude<SemanticProvenance, 'nlp-inferred'>;
+}
+
 export interface SemanticDecisionStatement {
   markdown: string;
   text: string;
@@ -178,6 +186,7 @@ export interface SemanticDocument {
   knownSections: KnownSectionView;
   criteria: SemanticCriterion[];
   findings: SemanticFinding[];
+  questions: SemanticQuestion[];
   decisions: SemanticDecisionStatement[];
   references: SemanticReference[];
   mentions: EntityMention[];

@@ -34,6 +34,16 @@ export const UI_PREFERENCES = {
     key: 'board.milestoneFocus',
     defaultValue: '',
     scope: 'workspace' as UiPreferenceScope
+  },
+  semanticAnalysisEnabled: {
+    key: 'semantic.analysis.enabled',
+    defaultValue: true,
+    scope: 'workspace' as UiPreferenceScope
+  },
+  semanticSuggestionSuppressions: {
+    key: 'semantic.suggestions.suppressed',
+    defaultValue: [] as string[],
+    scope: 'workspace' as UiPreferenceScope
   }
 } as const;
 

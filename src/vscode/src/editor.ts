@@ -10,14 +10,20 @@ import {
   Decision,
   getRepositoryDevelopers,
   getMilestoneRollup,
+  inspectSemanticEntity,
   loadRepository,
   Milestone,
   MilestoneRollup,
   Repository,
   reviewBacklog,
+  readFile,
   saveEntity,
   Task,
   validateEntity
+} from 'planfs-core';
+import type {
+  SemanticAdvisoryConclusion,
+  SemanticInspectionResult
 } from 'planfs-core';
 import {
   createHelpTopics,
@@ -28,7 +34,7 @@ import {
   renderHelpButton,
   renderHelpPanel
 } from './help';
-import { extractMarkdownBody, MarkdownSection } from './markdownSections';
+import { PlanFSUiPreferences, UI_PREFERENCES } from './preferences';
 import { escapeHtml, getNonce, renderMessageDocument } from './webview';
 import { getPlanFSWorkspaceFolder } from './workspace';
 
@@ -45,7 +51,21 @@ interface EditorPayload {
   epicBoard?: EpicBoardColumn[];
   backlogReadiness?: BacklogReadinessInfo;
   milestoneRollup?: MilestoneRollup;
+  semantic: SemanticEditorPayload;
   helpTopics: HelpTopic[];
+}
+
+interface SemanticEditorSuggestion {
+  key: string;
+  conclusion: SemanticAdvisoryConclusion;
+  evidence: string[];
+}
+
+interface SemanticEditorPayload {
+  inspection: SemanticInspectionResult;
+  analysisEnabled: boolean;
+  suggestions: SemanticEditorSuggestion[];
+  suppressedCount: number;
 }
 
 type EditableEntity = Task | Epic | Milestone | Decision;
@@ -80,7 +100,10 @@ export class EntityEditorProvider {
   private panels = new Map<string, vscode.WebviewPanel>();
   private sessions = new Map<string, EditorSession>();
 
-  constructor(private readonly extensionUri: vscode.Uri) {}
+  constructor(
+    private readonly extensionUri: vscode.Uri,
+    private readonly uiPreferences?: PlanFSUiPreferences
+  ) {}
 
   async open(entityId?: string): Promise<void> {
     const workspaceFolder = getPlanFSWorkspaceFolder();
@@ -128,7 +151,35 @@ export class EntityEditorProvider {
         }
 
         if (message?.type === 'openRaw') {
-          await openRawFile(String(entity.id));
+          await this.openSource(String(entity.id));
+        }
+
+        if (message?.type === 'openSemanticSource') {
+          await this.openSource(String(entity.id), {
+            start: Number(message.start),
+            end: Number(message.end)
+          });
+        }
+
+        if (message?.type === 'toggleSemanticAnalysis') {
+          await this.toggleSemanticAnalysis(String(entity.id), Boolean(message.enabled), panel);
+        }
+
+        if (message?.type === 'dismissSemanticSuggestion') {
+          await this.setSemanticSuggestionSuppressed(
+            String(entity.id),
+            String(message.key),
+            true,
+            panel
+          );
+        }
+
+        if (message?.type === 'restoreSemanticSuggestions') {
+          await this.restoreSemanticSuggestions(String(entity.id), panel);
+        }
+
+        if (message?.type === 'previewSemanticSuggestion') {
+          await this.previewSemanticSuggestion(String(entity.id), String(message.key));
         }
 
         if (message?.type === 'draftState') {
@@ -158,7 +209,10 @@ export class EntityEditorProvider {
 
         await handleHelpMessage(this.extensionUri, message);
       });
-      panel.webview.html = renderEditor(panel.webview, await createPayload(repository, entity, this.extensionUri));
+      panel.webview.html = renderEditor(
+        panel.webview,
+        await createPayload(repository, entity, this.extensionUri, this.uiPreferences, workspaceFolder)
+      );
     } catch (error) {
       vscode.window.showErrorMessage(
         `Failed to open PlanFS editor: ${error instanceof Error ? error.message : String(error)}`
@@ -256,7 +310,10 @@ export class EntityEditorProvider {
         updatedSession.loadedUpdatedAt = saved.updatedAt;
         updatedSession.dirty = false;
       }
-      await panel.webview.postMessage({ type: 'saved', payload: await createPayload(refreshed, saved, this.extensionUri) });
+      await panel.webview.postMessage({
+        type: 'saved',
+        payload: await createPayload(refreshed, saved, this.extensionUri, this.uiPreferences, workspaceFolder)
+      });
       vscode.window.showInformationMessage(`Saved ${entity.id}`);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -273,7 +330,12 @@ export class EntityEditorProvider {
   ): Promise<void> {
     const session = this.sessions.get(entityId);
     if (session) session.loadedUpdatedAt = entity.updatedAt;
-    await panel.webview.postMessage({ type: 'updateEditor', payload: await createPayload(repository, entity, this.extensionUri) });
+    const workspaceFolder = this.workspaceFolderForSession(entityId) ?? getPlanFSWorkspaceFolder();
+    if (!workspaceFolder) return;
+    await panel.webview.postMessage({
+      type: 'updateEditor',
+      payload: await createPayload(repository, entity, this.extensionUri, this.uiPreferences, workspaceFolder)
+    });
   }
 
   private async reload(entityId: string, panel: vscode.WebviewPanel): Promise<void> {
@@ -325,7 +387,10 @@ export class EntityEditorProvider {
       }
       await saveEntity(workspaceFolder.uri.fsPath, task);
       const refreshed = await loadRepository(workspaceFolder.uri.fsPath);
-      panel.webview.html = renderEditor(panel.webview, await createPayload(refreshed, milestone, this.extensionUri));
+      panel.webview.html = renderEditor(
+        panel.webview,
+        await createPayload(refreshed, milestone, this.extensionUri, this.uiPreferences, workspaceFolder)
+      );
       vscode.window.showInformationMessage(`${assigned ? 'Added' : 'Removed'} ${task.id} ${assigned ? 'to' : 'from'} ${milestoneId}`);
     } catch (error) {
       vscode.window.showErrorMessage(`Failed to update milestone tasks: ${error instanceof Error ? error.message : String(error)}`);
@@ -391,6 +456,124 @@ export class EntityEditorProvider {
     }
   }
 
+  private workspaceFolderForSession(entityId: string): vscode.WorkspaceFolder | undefined {
+    const session = this.sessions.get(entityId);
+    return session
+      ? vscode.workspace.workspaceFolders?.find(folder => folder.uri.toString() === session.workspaceUri)
+      : undefined;
+  }
+
+  private async semanticPayload(entityId: string): Promise<SemanticEditorPayload | undefined> {
+    const workspaceFolder = this.workspaceFolderForSession(entityId);
+    if (!workspaceFolder) return undefined;
+    const repository = await loadRepository(workspaceFolder.uri.fsPath);
+    const entity = findEditableEntity(repository, entityId);
+    if (!entity) return undefined;
+    return createSemanticEditorPayload(entity, this.uiPreferences, workspaceFolder);
+  }
+
+  private async postSemanticPayload(entityId: string, panel: vscode.WebviewPanel): Promise<void> {
+    const semantic = await this.semanticPayload(entityId);
+    if (semantic) await panel.webview.postMessage({ type: 'updateSemantic', semantic });
+  }
+
+  private async toggleSemanticAnalysis(
+    entityId: string,
+    enabled: boolean,
+    panel: vscode.WebviewPanel
+  ): Promise<void> {
+    const workspaceFolder = this.workspaceFolderForSession(entityId);
+    if (!workspaceFolder || !this.uiPreferences) return;
+    await this.uiPreferences.set(UI_PREFERENCES.semanticAnalysisEnabled, enabled, workspaceFolder);
+    await this.postSemanticPayload(entityId, panel);
+  }
+
+  private async setSemanticSuggestionSuppressed(
+    entityId: string,
+    key: string,
+    suppressed: boolean,
+    panel: vscode.WebviewPanel
+  ): Promise<void> {
+    const workspaceFolder = this.workspaceFolderForSession(entityId);
+    if (!workspaceFolder || !this.uiPreferences || !key.startsWith(`${entityId}:`)) return;
+    const current = this.uiPreferences.get(
+      UI_PREFERENCES.semanticSuggestionSuppressions,
+      workspaceFolder
+    );
+    const next = new Set(current);
+    if (suppressed) next.add(key); else next.delete(key);
+    await this.uiPreferences.set(
+      UI_PREFERENCES.semanticSuggestionSuppressions,
+      [...next].sort(),
+      workspaceFolder
+    );
+    await this.postSemanticPayload(entityId, panel);
+  }
+
+  private async restoreSemanticSuggestions(
+    entityId: string,
+    panel: vscode.WebviewPanel
+  ): Promise<void> {
+    const workspaceFolder = this.workspaceFolderForSession(entityId);
+    if (!workspaceFolder || !this.uiPreferences) return;
+    const current = this.uiPreferences.get(
+      UI_PREFERENCES.semanticSuggestionSuppressions,
+      workspaceFolder
+    );
+    await this.uiPreferences.set(
+      UI_PREFERENCES.semanticSuggestionSuppressions,
+      current.filter(key => !key.startsWith(`${entityId}:`)),
+      workspaceFolder
+    );
+    await this.postSemanticPayload(entityId, panel);
+  }
+
+  private async previewSemanticSuggestion(entityId: string, key: string): Promise<void> {
+    const semantic = await this.semanticPayload(entityId);
+    const suggestion = semantic?.suggestions.find(candidate => candidate.key === key);
+    if (!suggestion || !suggestion.conclusion.repair.previewable) return;
+    const field = suggestion.conclusion.data.suggestedField;
+    const targetId = suggestion.conclusion.data.targetId;
+    const preview = field && targetId
+      ? `Preview only — ${field}: ${targetId}. Review existing frontmatter values before applying.`
+      : `Preview only — ${suggestion.conclusion.repair.summary}`;
+    const action = await vscode.window.showInformationMessage(
+      `${preview} PlanFS has not changed the file.`,
+      { modal: true },
+      'Open source'
+    );
+    if (action === 'Open source') {
+      await this.openSource(entityId, {
+        start: suggestion.conclusion.range.start.offset,
+        end: suggestion.conclusion.range.end.offset
+      });
+    }
+  }
+
+  private async openSource(
+    entityId: string,
+    range?: { start: number; end: number }
+  ): Promise<void> {
+    const workspaceFolder = this.workspaceFolderForSession(entityId);
+    if (!workspaceFolder) return;
+    const repository = await loadRepository(workspaceFolder.uri.fsPath);
+    const entity = findEntity(repository, entityId);
+    if (!entity) return;
+    const document = await vscode.workspace.openTextDocument(entity.filePath);
+    if (!range || !Number.isFinite(range.start) || !Number.isFinite(range.end)) {
+      await vscode.window.showTextDocument(document, { preview: false });
+      return;
+    }
+    const content = await readFile(entity.filePath);
+    const bodyStart = locateBodyStart(content, entity.body);
+    const start = positionAt(content, bodyStart + range.start);
+    const end = positionAt(content, bodyStart + Math.max(range.start, range.end));
+    await vscode.window.showTextDocument(document, {
+      preview: false,
+      selection: new vscode.Range(start, end)
+    });
+  }
+
 }
 
 async function pickArchiveDisposition(entityId: string): Promise<'cancelled' | 'duplicate' | 'deferred' | 'superseded' | undefined> {
@@ -403,22 +586,6 @@ async function pickArchiveDisposition(entityId: string): Promise<'cancelled' | '
 
 function renderMessage(message: string): string {
   return renderMessageDocument('PlanFS Entity Editor', message);
-}
-
-async function openRawFile(entityId: string): Promise<void> {
-  const workspaceFolder = getPlanFSWorkspaceFolder();
-  if (!workspaceFolder) {
-    return;
-  }
-
-  const repository = await loadRepository(workspaceFolder.uri.fsPath);
-  const entity = findEntity(repository, entityId);
-  if (!entity) {
-    return;
-  }
-
-  const document = await vscode.workspace.openTextDocument(entity.filePath);
-  await vscode.window.showTextDocument(document, { preview: false });
 }
 
 async function pickEditableEntity(
@@ -464,7 +631,9 @@ function findEditableEntity(
 async function createPayload(
   repository: Repository,
   entity: EditableEntity,
-  extensionUri: vscode.Uri
+  extensionUri: vscode.Uri,
+  uiPreferences: PlanFSUiPreferences | undefined,
+  workspaceFolder: vscode.WorkspaceFolder
 ): Promise<EditorPayload> {
   const tags = new Set<string>();
   for (const task of repository.tasks.values()) {
@@ -502,6 +671,7 @@ async function createPayload(
       tags: Array.from(tags).sort(),
       developers: developers.map(developer => developer.label)
     },
+    semantic: await createSemanticEditorPayload(entity, uiPreferences, workspaceFolder),
     helpTopics: createHelpTopics(extensionUri, ['editor'])
   };
 
@@ -518,6 +688,70 @@ async function createPayload(
   }
 
   return payload;
+}
+
+async function createSemanticEditorPayload(
+  entity: EditableEntity,
+  uiPreferences: PlanFSUiPreferences | undefined,
+  workspaceFolder: vscode.WorkspaceFolder
+): Promise<SemanticEditorPayload> {
+  const analysisEnabled = uiPreferences?.get(
+    UI_PREFERENCES.semanticAnalysisEnabled,
+    workspaceFolder
+  ) ?? true;
+  const suppressed = new Set(uiPreferences?.get(
+    UI_PREFERENCES.semanticSuggestionSuppressions,
+    workspaceFolder
+  ) ?? []);
+  const inspection = await inspectSemanticEntity(entity, {
+    tier: 'automation-ready',
+    analysis: analysisEnabled,
+    language: 'en'
+  });
+  const suggestions = inspection.advisory.conclusions.map(conclusion => {
+    const key = semanticSuggestionKey(entity.id, conclusion);
+    const evidence = inspection.analysis?.signals
+      .filter(signal => conclusion.signalKinds.includes(signal.kind) && signalMatchesConclusion(signal, conclusion))
+      .flatMap(signal => signal.evidence.map(item => item.text)) ?? [];
+    return { key, conclusion, evidence: [...new Set(evidence)] };
+  });
+  return {
+    inspection,
+    analysisEnabled,
+    suggestions: suggestions.filter(suggestion => !suppressed.has(suggestion.key)),
+    suppressedCount: suggestions.filter(suggestion => suppressed.has(suggestion.key)).length
+  };
+}
+
+function semanticSuggestionKey(entityId: string, conclusion: SemanticAdvisoryConclusion): string {
+  const identity = conclusion.data.targetId ?? conclusion.data.criterionId ?? conclusion.range.start.offset;
+  return `${entityId}:${conclusion.code}:${String(identity)}`;
+}
+
+function signalMatchesConclusion(
+  signal: { data: Record<string, string | number | boolean | null> },
+  conclusion: SemanticAdvisoryConclusion
+): boolean {
+  if (conclusion.data.targetId) return signal.data.targetId === conclusion.data.targetId;
+  if (conclusion.data.criterionId) return signal.data.criterionId === conclusion.data.criterionId;
+  return false;
+}
+
+function locateBodyStart(content: string, body: string): number {
+  if (!body) return content.length;
+  const firstDelimiterEnd = content.indexOf('\n---', 3);
+  const searchStart = firstDelimiterEnd >= 0 ? firstDelimiterEnd + 4 : 0;
+  const bodyStart = content.indexOf(body, searchStart);
+  return bodyStart >= 0 ? bodyStart : searchStart;
+}
+
+function positionAt(content: string, offset: number): vscode.Position {
+  const bounded = Math.max(0, Math.min(offset, content.length));
+  const prefix = content.slice(0, bounded);
+  const lastNewline = prefix.lastIndexOf('\n');
+  const line = prefix.split('\n').length - 1;
+  const character = bounded - (lastNewline + 1);
+  return new vscode.Position(line, character);
 }
 
 function createBacklogReadinessInfo(
@@ -589,6 +823,9 @@ function removeEmptyFields<T extends EditableEntity>(entity: T): T {
 
 function renderEditor(webview: vscode.Webview, payload: EditorPayload): string {
   const nonce = getNonce();
+  const serializedEntity = escapeScriptJson(JSON.stringify(payload.entity));
+  const serializedHelpTopics = escapeScriptJson(JSON.stringify(payload.helpTopics));
+  const serializedSemantic = escapeScriptJson(JSON.stringify(payload.semantic));
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -837,6 +1074,119 @@ function renderEditor(webview: vscode.Webview, payload: EditorPayload): string {
       gap: 8px;
     }
 
+    .semanticHeader,
+    .semanticRow,
+    .semanticActions,
+    .semanticProgress {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .semanticHeader {
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .semanticGroup {
+      display: grid;
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .semanticGroup h3 {
+      margin: 0;
+      font-size: 13px;
+    }
+
+    .semanticItem {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      gap: 9px;
+      align-items: start;
+      padding: 8px 9px;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      background: var(--vscode-input-background);
+    }
+
+    .semanticItem.checked .semanticText {
+      color: var(--muted);
+      text-decoration: line-through;
+    }
+
+    .semanticItem.uncheckable {
+      border-style: dashed;
+    }
+
+    .semanticMark {
+      min-width: 22px;
+      color: var(--muted);
+      font-family: var(--vscode-editor-font-family);
+      font-weight: 700;
+    }
+
+    .semanticText {
+      min-width: 0;
+      line-height: 1.4;
+      overflow-wrap: anywhere;
+    }
+
+    .semanticMeta,
+    .semanticEvidence {
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.4;
+    }
+
+    .semanticEvidence {
+      grid-column: 2 / -1;
+    }
+
+    .semanticLink {
+      padding: 3px 6px;
+      color: var(--vscode-textLink-foreground);
+      background: transparent;
+      border-color: transparent;
+    }
+
+    .semanticBadge {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 6px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      color: var(--muted);
+      font-size: 10px;
+    }
+
+    .semanticDiagnostic.warning,
+    .semanticSuggestion {
+      border-color: var(--vscode-inputValidation-warningBorder, var(--border));
+    }
+
+    .semanticDiagnostic.error {
+      border-color: var(--vscode-inputValidation-errorBorder, var(--border));
+    }
+
+    .semanticDiagnostic.info {
+      border-color: var(--vscode-inputValidation-infoBorder, var(--border));
+    }
+
+    .relationshipGrid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+      gap: 7px;
+    }
+
+    .relationshipBox {
+      padding: 7px 8px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: var(--vscode-input-background);
+    }
+
     .metadataList {
       display: grid;
       gap: 8px;
@@ -1001,8 +1351,11 @@ function renderEditor(webview: vscode.Webview, payload: EditorPayload): string {
   ${renderHelpPanel()}
   <script nonce="${nonce}">
     const vscode = acquireVsCodeApi();
-    let initial = ${JSON.stringify(payload.entity)};
-    const state = { helpTopics: ${JSON.stringify(payload.helpTopics)} };
+    let initial = ${serializedEntity};
+    const state = {
+      helpTopics: ${serializedHelpTopics},
+      semantic: ${serializedSemantic}
+    };
     const form = document.getElementById('form');
     const errors = document.getElementById('errors');
 
@@ -1046,6 +1399,10 @@ function renderEditor(webview: vscode.Webview, payload: EditorPayload): string {
         applyPayload(event.data.payload);
         if (event.data?.type === 'saved') renderErrors([]);
       }
+      if (event.data?.type === 'updateSemantic') {
+        state.semantic = event.data.semantic;
+        renderSemantic(state.semantic);
+      }
       if (event.data?.type === 'conflict') {
         renderConflict(event.data);
       }
@@ -1070,6 +1427,10 @@ function renderEditor(webview: vscode.Webview, payload: EditorPayload): string {
       document.querySelectorAll('[data-dependency]').forEach(input => {
         input.checked = Array.isArray(initial.dependsOn) && initial.dependsOn.includes(input.value);
       });
+      if (payload.semantic) {
+        state.semantic = payload.semantic;
+        renderSemantic(state.semantic);
+      }
       vscode.postMessage({ type: 'draftState', dirty: false });
     }
 
@@ -1153,6 +1514,151 @@ function renderEditor(webview: vscode.Webview, payload: EditorPayload): string {
       errors.innerHTML = '<strong>Save blocked</strong><ul>' + messages.map(message => '<li>' + escapeHtml(message) + '</li>').join('') + '</ul>';
     }
 
+    function renderSemantic(semantic) {
+      const container = document.getElementById('semanticContent');
+      if (!container || !semantic?.inspection) return;
+      const inspection = semantic.inspection;
+      const documentView = inspection.semantic;
+      const criteria = documentView.criteria || [];
+      const checked = criteria.filter(item => item.checked === true).length;
+      const checkable = criteria.filter(item => item.checked !== null).length;
+      const relationships = inspection.authoritative.relationships;
+      const questions = documentView.questions || [];
+      const findings = documentView.findings || [];
+      const mentions = inspection.advisory.mentions || [];
+      const suggestions = semantic.suggestions || [];
+      const analysis = inspection.analysis;
+
+      container.innerHTML =
+        '<div class="semanticHeader"><div><strong>Semantic inspection</strong>' +
+          '<div class="semanticMeta">Shared PlanFS content profile · read-only view</div></div>' +
+          '<div class="semanticActions"><button type="button" id="toggleSemanticAnalysis" class="secondary">' +
+            (semantic.analysisEnabled ? 'Disable local analysis' : 'Enable local analysis') + '</button>' +
+            (semantic.suppressedCount ? '<button type="button" id="restoreSemanticSuggestions" class="secondary">Restore ' + semantic.suppressedCount + ' dismissed</button>' : '') +
+          '</div></div>' +
+        '<div class="semanticGroup"><h3>Authoritative relationships</h3><div class="relationshipGrid">' +
+          relationshipBox('Depends on', relationships.dependsOn) +
+          relationshipBox('Epic', relationships.epic) +
+          relationshipBox('Milestone', relationships.milestone) +
+          relationshipBox('Supersedes', relationships.supersedes) +
+          relationshipBox('Superseded by', relationships.supersededBy) +
+        '</div></div>' +
+        '<div class="semanticGroup"><div class="semanticRow"><h3>Acceptance criteria</h3>' +
+          '<span class="semanticBadge">' + checked + ' / ' + checkable + ' checked' +
+          (criteria.length !== checkable ? ' · ' + (criteria.length - checkable) + ' ordinary' : '') + '</span></div>' +
+          (criteria.length ? criteria.map(renderCriterion).join('') : emptySemantic('No acceptance criteria found.')) +
+        '</div>' +
+        renderEntryGroup('Findings', findings, 'finding', 'No findings recorded.') +
+        renderEntryGroup('Questions', questions, 'question', 'No questions recorded.') +
+        '<div class="semanticGroup"><h3>Ordered sections</h3>' +
+          (documentView.sections.length ? documentView.sections.map(renderSectionSummary).join('') : emptySemantic('No level-two sections found.')) +
+        '</div>' +
+        '<div class="semanticGroup"><div class="semanticRow"><h3>Advisory suggestions</h3>' +
+          (analysis ? '<span class="semanticBadge">' + escapeHtml(analysis.analyzer.id + '@' + analysis.analyzer.version + ' · ' + analysis.language) + '</span>' : '') +
+          '</div>' +
+          (!semantic.analysisEnabled ? emptySemantic('Local analysis is disabled for this workspace.') :
+            suggestions.length ? suggestions.map(renderSuggestion).join('') : emptySemantic('No actionable suggestions.')) +
+        '</div>' +
+        '<div class="semanticGroup"><h3>Advisory body mentions</h3>' +
+          (mentions.length ? mentions.map(renderMention).join('') : emptySemantic('No entity-ID mentions found in prose.')) +
+        '</div>' +
+        '<div class="semanticGroup"><h3>Semantic diagnostics</h3>' +
+          (inspection.diagnostics.length ? inspection.diagnostics.map(renderSemanticDiagnostic).join('') : emptySemantic('No semantic diagnostics.')) +
+        '</div>';
+
+      container.querySelectorAll('[data-source-start]').forEach(button => {
+        button.addEventListener('click', () => vscode.postMessage({
+          type: 'openSemanticSource',
+          start: Number(button.dataset.sourceStart),
+          end: Number(button.dataset.sourceEnd)
+        }));
+      });
+      container.querySelectorAll('[data-dismiss-suggestion]').forEach(button => {
+        button.addEventListener('click', () => vscode.postMessage({
+          type: 'dismissSemanticSuggestion',
+          key: button.dataset.dismissSuggestion
+        }));
+      });
+      container.querySelectorAll('[data-preview-suggestion]').forEach(button => {
+        button.addEventListener('click', () => vscode.postMessage({
+          type: 'previewSemanticSuggestion',
+          key: button.dataset.previewSuggestion
+        }));
+      });
+      document.getElementById('toggleSemanticAnalysis')?.addEventListener('click', () => {
+        vscode.postMessage({ type: 'toggleSemanticAnalysis', enabled: !semantic.analysisEnabled });
+      });
+      document.getElementById('restoreSemanticSuggestions')?.addEventListener('click', () => {
+        vscode.postMessage({ type: 'restoreSemanticSuggestions' });
+      });
+    }
+
+    function renderCriterion(criterion) {
+      const stateClass = criterion.checked === true ? 'checked' : criterion.checked === false ? 'unchecked' : 'uncheckable';
+      const mark = criterion.checked === true ? '[x]' : criterion.checked === false ? '[ ]' : '[-]';
+      const stateLabel = criterion.checked === null ? 'ordinary list item' : criterion.checked ? 'checked' : 'unchecked';
+      return '<div class="semanticItem ' + stateClass + '"><span class="semanticMark" aria-label="' + stateLabel + '">' + mark + '</span>' +
+        '<div><div class="semanticText">' + escapeHtml(criterion.text) + '</div><div class="semanticMeta">' + escapeHtml(criterion.provenance) + ' · ' + stateLabel + '</div></div>' +
+        sourceButton(criterion.range) + '</div>';
+    }
+
+    function renderEntryGroup(title, entries, kind, emptyMessage) {
+      return '<div class="semanticGroup"><h3>' + title + '</h3>' +
+        (entries.length ? entries.map(entry => '<div class="semanticItem"><span class="semanticMark">' + (kind === 'question' ? '?' : '•') + '</span>' +
+          '<div><div class="semanticText">' + escapeHtml(entry.text) + '</div><div class="semanticMeta">' + escapeHtml(entry.provenance) + '</div></div>' +
+          sourceButton(entry.range) + '</div>').join('') : emptySemantic(emptyMessage)) + '</div>';
+    }
+
+    function renderSectionSummary(section) {
+      return '<div class="semanticItem"><span class="semanticMark">' + (section.index + 1) + '</span><div>' +
+        '<div class="semanticText">' + escapeHtml(section.heading) + ' <span class="semanticBadge">' + escapeHtml(section.key || 'custom') + '</span></div>' +
+        '<div class="semanticMeta">' + escapeHtml(section.provenance + ' · ' + section.contentShape) + '</div>' +
+        (section.text ? '<div class="semanticMeta">' + escapeHtml(section.text) + '</div>' : '') + '</div>' +
+        sourceButton(section.headingRange) + '</div>';
+    }
+
+    function renderSuggestion(suggestion) {
+      const conclusion = suggestion.conclusion;
+      const evidence = suggestion.evidence.length
+        ? '<div class="semanticEvidence">Evidence: ' + suggestion.evidence.map(escapeHtml).join(' · ') + '</div>'
+        : '';
+      const preview = conclusion.repair.previewable
+        ? '<button type="button" class="semanticLink" data-preview-suggestion="' + escapeHtml(suggestion.key) + '">Preview change</button>'
+        : '';
+      return '<div class="semanticItem semanticSuggestion"><span class="semanticMark">~</span><div>' +
+        '<div class="semanticText">' + escapeHtml(conclusion.message) + '</div>' +
+        '<div class="semanticMeta">Advisory · ' + escapeHtml(conclusion.provenance) + ' · ' + escapeHtml(conclusion.repair.summary) + '</div></div>' +
+        '<div class="semanticActions">' + sourceButton(conclusion.range) + preview +
+          '<button type="button" class="semanticLink" data-dismiss-suggestion="' + escapeHtml(suggestion.key) + '">Dismiss</button></div>' + evidence + '</div>';
+    }
+
+    function renderMention(mention) {
+      return '<div class="semanticItem"><span class="semanticMark">~</span><div><div class="semanticText">' + escapeHtml(mention.id) + '</div>' +
+        '<div class="semanticMeta">Non-authoritative prose mention · ' + escapeHtml(mention.form) + ' · ' + escapeHtml(mention.provenance) + '</div></div>' +
+        sourceButton(mention.range) + '</div>';
+    }
+
+    function renderSemanticDiagnostic(diagnostic) {
+      const range = diagnostic.range;
+      return '<div class="semanticItem semanticDiagnostic ' + escapeHtml(diagnostic.severity) + '"><span class="semanticMark">!</span><div>' +
+        '<div class="semanticText">' + escapeHtml(diagnostic.message) + '</div>' +
+        '<div class="semanticMeta">' + escapeHtml(diagnostic.code + ' · ' + diagnostic.provenance + ' · ' + diagnostic.repair.summary) + '</div></div>' +
+        (range ? sourceButton(range) : '') + '</div>';
+    }
+
+    function relationshipBox(label, value) {
+      const display = Array.isArray(value) ? (value.join(', ') || 'None') : (value || 'None');
+      return '<div class="relationshipBox"><div class="semanticMeta">' + label + '</div><div class="semanticText">' + escapeHtml(display) + '</div></div>';
+    }
+
+    function sourceButton(range) {
+      return '<button type="button" class="semanticLink" data-source-start="' + range.start.offset + '" data-source-end="' + range.end.offset + '">Open source</button>';
+    }
+
+    function emptySemantic(message) {
+      return '<p class="subtle">' + escapeHtml(message) + '</p>';
+    }
+
     function escapeHtml(value) {
       return String(value)
         .replaceAll('&', '&amp;')
@@ -1161,6 +1667,7 @@ function renderEditor(webview: vscode.Webview, payload: EditorPayload): string {
         .replaceAll('"', '&quot;')
         .replaceAll("'", '&#39;');
     }
+    renderSemantic(state.semantic);
     ${HELP_SCRIPT}
   </script>
 </body>
@@ -1196,7 +1703,7 @@ function renderEntityFields(payload: EditorPayload): string {
       dependencyChecks(task, payload.options.tasks),
       textarea('Links JSON', 'links', formatJson(task.links), 'full'),
       renderAdditionalMetadata(task),
-      renderBodySections(task.body)
+      renderSemanticSections('Semantic Markdown')
     ].join('');
   }
 
@@ -1218,7 +1725,7 @@ function renderEntityFields(payload: EditorPayload): string {
       textarea('Links JSON', 'links', formatJson(epic.links), 'full'),
       renderAdditionalMetadata(epic),
       renderEpicBoard(payload),
-      renderBodySections(epic.body, 'Epic Planning Notes')
+      renderSemanticSections('Epic Planning Notes')
     ].join('');
   }
 
@@ -1231,7 +1738,7 @@ function renderEntityFields(payload: EditorPayload): string {
       textarea('Context', 'context', decision.context ?? '', 'full'), textarea('Decision', 'decision', decision.decision ?? '', 'full'),
       textarea('Consequences', 'consequences', decision.consequences ?? '', 'full'),
       input('Supersedes', 'supersedes', decision.supersedes ?? ''), input('Superseded By', 'supersededBy', decision.supersededBy ?? ''),
-      renderAdditionalMetadata(decision), renderBodySections(decision.body, 'Decision Notes')
+      renderAdditionalMetadata(decision), renderSemanticSections('Decision Notes')
     ].join('');
   }
 
@@ -1250,7 +1757,7 @@ function renderEntityFields(payload: EditorPayload): string {
     textarea('Links JSON', 'links', formatJson(milestone.links), 'full'),
     renderAdditionalMetadata(milestone),
     renderMilestoneRollup(payload),
-    renderBodySections(milestone.body)
+    renderSemanticSections('Semantic Markdown')
   ].join('');
 }
 
@@ -1483,118 +1990,12 @@ function formatMetadataValue(value: unknown): string {
   return JSON.stringify(value, null, 2) ?? '';
 }
 
-function renderBodySections(body: string, heading = 'Markdown Sections'): string {
-  const { sections, additionalMarkdown } = extractMarkdownBody(body, ['Acceptance Criteria', 'Questions', 'Findings']);
-
+function renderSemanticSections(heading: string): string {
   return [
     '<section class="card full">',
     '<h2>' + escapeHtml(heading) + '</h2>',
-    '<p class="subtle">Use Open Markdown for full body editing. Known planning sections and additional Markdown are shown here for quick review.</p>',
-    additionalMarkdown
-      ? '<section class="markdownFallback"><h2>Additional Markdown</h2>' + renderMarkdownPreview(additionalMarkdown) + '</section>'
-      : '<p class="subtle">No additional Markdown body content found outside known planning sections.</p>',
-    sections.length === 0
-      ? '<p class="subtle">No Acceptance Criteria, Questions, or Findings sections found.</p>'
-      : '<div class="sectionList">' + sections.map(renderMarkdownSection).join('') + '</div>',
-    '</section>'
-  ].join('');
-}
-
-function renderMarkdownPreview(markdown: string): string {
-  const lines = markdown.split(/\r?\n/);
-  const html: string[] = [];
-  let list: string[] = [];
-  let inCode = false;
-  let codeLines: string[] = [];
-
-  for (const line of lines) {
-    if (/^\s*```/.test(line)) {
-      if (inCode) {
-        html.push('<pre><code>' + escapeHtml(codeLines.join('\n')) + '</code></pre>');
-        codeLines = [];
-        inCode = false;
-      } else {
-        flushList();
-        inCode = true;
-      }
-      continue;
-    }
-
-    if (inCode) {
-      codeLines.push(line);
-      continue;
-    }
-
-    const heading = /^(#{1,6})\s+(.+?)\s*#*\s*$/.exec(line);
-    if (heading) {
-      flushList();
-      const level = Math.min(6, heading[1].length + 2);
-      html.push('<h' + level + '>' + escapeHtml(heading[2]) + '</h' + level + '>');
-      continue;
-    }
-
-    const checklist = /^\s*[-*]\s+\[([ xX])\]\s+(.*)$/.exec(line);
-    if (checklist) {
-      list.push('<li><input type="checkbox" disabled' + (checklist[1].toLowerCase() === 'x' ? ' checked' : '') + '> ' + escapeHtml(checklist[2].trim()) + '</li>');
-      continue;
-    }
-
-    const bullet = /^\s*[-*]\s+(.*)$/.exec(line);
-    if (bullet) {
-      list.push('<li>' + escapeHtml(bullet[1].trim()) + '</li>');
-      continue;
-    }
-
-    if (!line.trim()) {
-      flushList();
-      continue;
-    }
-
-    flushList();
-    if (line.trim().startsWith('>')) {
-      html.push('<blockquote>' + escapeHtml(line.trim().replace(/^>\s?/, '')) + '</blockquote>');
-    } else {
-      html.push('<p>' + escapeHtml(line.trim()) + '</p>');
-    }
-  }
-
-  if (inCode) {
-    html.push('<pre><code>' + escapeHtml(codeLines.join('\n')) + '</code></pre>');
-  }
-  flushList();
-
-  return html.join('');
-
-  function flushList(): void {
-    if (list.length === 0) {
-      return;
-    }
-    html.push('<ul>' + list.join('') + '</ul>');
-    list = [];
-  }
-}
-
-function renderMarkdownSection(section: MarkdownSection): string {
-  const checklist = section.items.length > 0
-    ? section.items.map(item => [
-      '<div class="sectionItem' + (item.checked ? ' done' : '') + '">',
-      '<input type="checkbox" disabled' + (item.checked ? ' checked' : '') + '>',
-      '<span class="sectionText">' + escapeHtml(item.text) + '</span>',
-      '</div>'
-    ].join('')).join('')
-    : '';
-  const paragraphs = section.paragraphs
-    .map(paragraph => '<p class="subtle">' + escapeHtml(paragraph) + '</p>')
-    .join('');
-
-  return [
-    '<section>',
-    '<h2>' + escapeHtml(section.title) + '</h2>',
-    section.title === 'Findings'
-      ? '<p class="subtle">Findings are read-only here. Use Open Markdown to add or edit evidence.</p>'
-      : '',
-    paragraphs,
-    checklist || (paragraphs ? '' : '<p class="subtle">Section is empty.</p>'),
+    '<p class="subtle">Semantic content is derived from the human-owned Markdown file. Use Open Markdown to edit it.</p>',
+    '<div id="semanticContent" aria-live="polite"></div>',
     '</section>'
   ].join('');
 }
@@ -1620,6 +2021,10 @@ function formatJson(value: unknown): string {
     return '';
   }
   return JSON.stringify(value, null, 2);
+}
+
+function escapeScriptJson(json: string): string {
+  return json.replace(/</g, '\\u003c');
 }
 
 function toDateInput(value?: string): string {

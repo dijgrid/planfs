@@ -246,6 +246,10 @@ function actionableConclusions(
     const targetId = typeof signal.data.targetId === 'string' ? signal.data.targetId : null;
     if (!targetId || representedIds.has(targetId) || seenRelationshipTargets.has(targetId)) continue;
     seenRelationshipTargets.add(targetId);
+    const relationshipPhrase = typeof signal.data.relationshipPhrase === 'string'
+      ? signal.data.relationshipPhrase
+      : '';
+    const suggestedField = suggestedRelationshipField(targetId, relationshipPhrase);
     conclusions.push({
       code: 'analysis.relationship.metadata-missing',
       message: `${targetId} is mentioned as a possible planning relationship but is not represented in authoritative metadata.`,
@@ -256,9 +260,9 @@ function actionableConclusions(
       repair: {
         summary: 'Review the prose and preview an appropriate frontmatter relationship update if intended.',
         kind: 'edit-frontmatter',
-        previewable: true
+        previewable: suggestedField !== null
       },
-      data: { targetId }
+      data: { targetId, relationshipPhrase, suggestedField }
     });
   }
 
@@ -293,6 +297,15 @@ function actionableConclusions(
   return conclusions.sort((left, right) => (
     left.range.start.offset - right.range.start.offset || left.code.localeCompare(right.code)
   ));
+}
+
+function suggestedRelationshipField(targetId: string, phrase: string): string | null {
+  if (/^TASK-/.test(targetId) && /^(after|blocked by|depends? on|depended on)$/.test(phrase)) {
+    return 'dependsOn';
+  }
+  if (/^EPIC-/.test(targetId) && /^(belongs under|parent)$/.test(phrase)) return 'epic';
+  if (/^MILESTONE-/.test(targetId) && /^(belongs under|parent)$/.test(phrase)) return 'milestone';
+  return null;
 }
 
 function isAmbiguousWordingSignal(

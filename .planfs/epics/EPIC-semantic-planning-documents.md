@@ -8,7 +8,7 @@ description: Make PlanFS Markdown entities semantically inspectable, verifiable,
   and safely normalizable.
 targetDate: 2026-12-15
 createdAt: 2026-08-15T00:02:13.299Z
-updatedAt: 2026-08-15T00:02:13.299Z
+updatedAt: 2026-08-15T18:31:05.501Z
 ---
 
 Make PlanFS planning artifacts useful as both human-authored documents and stable semantic inputs for automated processes. Core will interpret explicit Markdown structure conservatively, preserve raw content and source locations, and expose provenance when meaning comes from an alias or a limited inference rather than a canonical construct.
@@ -47,6 +47,10 @@ Dependencies, parent relationships, status, and other planning metadata remain a
 - TASK-117: Evaluate non-LLM NLP libraries for semantic ticket analysis
 - TASK-118: Prototype advisory NLP signals for ticket quality and relationships
 - TASK-119: Integrate advisory non-LLM NLP analysis into PlanFS core and CLI
+
+## Follow-on Epics
+
+- EPIC-multilingual-semantic-analysis: Multilingual Semantic Analysis (`on-hold`; deferred beyond v1.4)
 
 ## Non-Goals
 

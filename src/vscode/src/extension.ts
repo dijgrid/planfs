@@ -35,7 +35,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   archiveProvider = new ArchiveProvider(context.extensionUri);
   boardProvider = new BoardProvider(context.extensionUri, uiPreferences);
   insightsProvider = new InsightsProvider(context.extensionUri);
-  editorProvider = new EntityEditorProvider(context.extensionUri);
+  editorProvider = new EntityEditorProvider(context.extensionUri, uiPreferences);
   vscode.window.registerTreeDataProvider('planfs-explorer', explorerProvider);
   context.subscriptions.push(vscode.window.registerFileDecorationProvider(new PlanFSDecorationProvider()));
 

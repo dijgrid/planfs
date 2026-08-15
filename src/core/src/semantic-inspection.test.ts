@@ -85,7 +85,14 @@ describe('semantic entity inspection', () => {
     expect(inspection.advisory.conclusions.filter(conclusion => (
       conclusion.code === 'analysis.relationship.metadata-missing'
     ))).toEqual([
-      expect.objectContaining({ data: { targetId: 'TASK-999' }, authoritative: false })
+      expect.objectContaining({
+        data: expect.objectContaining({
+          targetId: 'TASK-999',
+          relationshipPhrase: 'after',
+          suggestedField: 'dependsOn'
+        }),
+        authoritative: false
+      })
     ]);
     expect(inspection.advisory.conclusions.some(conclusion => (
       conclusion.data.targetId === 'TASK-112'

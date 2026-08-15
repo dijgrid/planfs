@@ -17,7 +17,8 @@ Your plan stays under `.planfs/`, so it can branch, diff, review, and merge with
 ### Edit planning files without giving up Markdown
 
 - **Structured editors** — Edit common task, epic, and milestone metadata with validation and assisted PlanFS references.
-- **Readable task context** — Review acceptance criteria, questions, and other common Markdown sections directly in planning views.
+- **Semantic task context** — Review acceptance-criteria progress, findings, questions, custom sections, and source-located diagnostics directly in the structured editor.
+- **Local advisory suggestions** — PlanFS analyzes supported ticket wording locally when you view it, explains evidence, and offers preview-only relationship guidance without silently changing metadata. Analysis can be disabled per workspace.
 - **Direct Markdown access** — Open the source file whenever you want full control over its narrative content.
 - **Safe creation and archiving** — Create tasks, epics, and milestones or archive completed planning items from VS Code.
 
@@ -92,6 +93,8 @@ Explain the work here.
 ```
 
 The extension uses these files as its source of truth. It does not require a hosted PlanFS service or copy the plan into an opaque local database.
+
+The structured editor derives its semantic view from the same `planfs-core` API used by the CLI. Checked, unchecked, and ordinary list criteria remain distinct; findings and questions retain source navigation; unknown sections stay visible. Prose mentions are advisory and are shown separately from authoritative frontmatter relationships. Suggestions can be dismissed or restored, and any metadata guidance is preview-only.
 
 ## Documentation and Support
 

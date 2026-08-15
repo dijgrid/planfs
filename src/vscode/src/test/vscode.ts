@@ -67,6 +67,20 @@ export const ViewColumn = {
   One: 1
 } as const;
 
+export class Position {
+  constructor(
+    public readonly line: number,
+    public readonly character: number
+  ) {}
+}
+
+export class Range {
+  constructor(
+    public readonly start: Position,
+    public readonly end: Position
+  ) {}
+}
+
 class MockWebview {
   html = '';
   readonly cspSource = 'vscode-webview:';

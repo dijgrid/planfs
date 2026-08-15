@@ -11,7 +11,26 @@ export async function run(): Promise<void> {
     if (!commands.includes(command)) throw new Error(`PlanFS command was not registered: ${command}`);
   }
   await fs.access(path.join(workspace, '.planfs', 'tasks'));
+  await fs.writeFile(path.join(workspace, '.planfs', 'tasks', 'TASK-SMOKE.md'), [
+    '---',
+    'id: TASK-SMOKE',
+    'title: Semantic inspection smoke test',
+    'status: todo',
+    '---',
+    '',
+    'Exercise the semantic editor.',
+    '',
+    '## Acceptance Criteria',
+    '',
+    '- [ ] The structured editor opens semantic content.',
+    '',
+    '## Acceptance Criteria',
+    '',
+    '- Duplicate sections exercise located semantic diagnostics.',
+    ''
+  ].join('\n'), 'utf-8');
   await vscode.commands.executeCommand('planfs.openBoard');
   await vscode.commands.executeCommand('planfs.openBacklog');
   await vscode.commands.executeCommand('planfs.openInsights');
+  await vscode.commands.executeCommand('planfs.openEditor', 'TASK-SMOKE');
 }

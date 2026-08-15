@@ -73,6 +73,8 @@ const semantic = parseSemanticDocument('task', task.body, {
 
 console.log(semantic.preamble.text);
 console.log(semantic.criteria);
+console.log(semantic.findings);
+console.log(semantic.questions);
 console.log(semantic.mentions); // advisory; never authoritative metadata
 ```
 

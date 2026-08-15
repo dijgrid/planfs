@@ -13,6 +13,7 @@ import {
   SemanticDiagnostic,
   SemanticDocument,
   SemanticFinding,
+  SemanticQuestion,
   SemanticProvenance,
   SemanticReference,
   SemanticSubsection,
@@ -106,6 +107,11 @@ export function parseSemanticDocument(
       rawMarkdown,
       locator
     );
+    const questions = extractEntries<SemanticQuestion>(
+      sectionWork.filter(work => work.section.key === 'questions'),
+      rawMarkdown,
+      locator
+    );
     const decisions = extractEntries<SemanticDecisionStatement>(
       sectionWork.filter(work => work.section.key === 'decisions' || (
         entityType === 'decision' && work.section.key === 'decision'
@@ -156,6 +162,7 @@ export function parseSemanticDocument(
       knownSections,
       criteria,
       findings,
+      questions,
       decisions,
       references,
       mentions,
@@ -451,7 +458,7 @@ function extractCriteria(
   return criteria;
 }
 
-function extractEntries<T extends SemanticFinding | SemanticDecisionStatement>(
+function extractEntries<T extends SemanticFinding | SemanticQuestion | SemanticDecisionStatement>(
   work: SectionWork[],
   source: string,
   locator: SourceLocator
@@ -703,6 +710,7 @@ function fallbackDocument(
     knownSections: {},
     criteria: [],
     findings: [],
+    questions: [],
     decisions: [],
     references: [],
     mentions: [],

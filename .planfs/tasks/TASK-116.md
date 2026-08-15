@@ -19,7 +19,7 @@ dueDate: 2026-12-15
 refinementState: ready
 backlogOrder: 70
 createdAt: 2026-08-15T00:02:14.143Z
-updatedAt: 2026-08-15T00:02:14.143Z
+updatedAt: 2026-08-15T18:37:44.274Z
 ---
 
 Harden semantic document behavior against real repository variation and publish the compatibility and automation guidance needed to ship PlanFS 1.4.0 confidently.
@@ -34,6 +34,7 @@ Harden semantic document behavior against real repository variation and publish 
 - Document NLP enablement, supported language and analyzer limitations, local model packaging, caching, provenance, advisory semantics, and deterministic fallback behavior.
 - Define stable workspace and user settings for automatic interactive analysis, explicit validation enablement, language selection or detection, and complete disablement.
 - Harden suppression and dismissal behavior so repeated advisory findings remain quiet without altering source Markdown or authoritative metadata.
+- Add a safe explicit Apply workflow for supported metadata suggestions. The control must be paired with an explanation widget showing why the suggestion exists, its source evidence, the exact field/value change, and that the user—not the analyzer—is authorizing an authoritative metadata edit.
 - Measure incremental analysis latency and cache behavior for viewed and changed tickets, with graceful fallback when a language or analyzer is unsupported.
 - Run the full release verification suite and validate the repository's own planning artifacts under the intended baseline and automation-ready profiles.
 
@@ -48,6 +49,7 @@ Harden semantic document behavior against real repository variation and publish 
 - [ ] NLP documentation identifies promoted signals, known limitations, enablement controls, local-processing guarantees, and behavior when analysis is unavailable
 - [ ] Interactive analysis defaults, opt-out controls, validation opt-in behavior, and language fallback are documented and covered by tests
 - [ ] Advisory suppression is stable, reversible, scoped, and never encoded as an inferred authoritative relationship
+- [ ] Any Apply control is limited to safely mapped suggestions, explains its evidence and exact metadata change before confirmation, uses normal validation and stale-write protection, and never mutates source from an unsupported or ambiguous signal
 - [ ] Incremental local analysis and cache performance meet an agreed editor-interaction threshold on the representative corpus
 - [ ] The pre-v1.4 canonical task corpus remains semantically readable, with intentional updates documented as the corpus grows
 - [ ] Release notes identify semantic inspection as additive and formatting as opt-in

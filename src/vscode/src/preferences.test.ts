@@ -63,6 +63,27 @@ describe('PlanFSUiPreferences', () => {
     expect(preferences.get(UI_PREFERENCES.backlogPanelsSwapped, secondFolder)).toBe(false);
   });
 
+  it('stores semantic analysis and suggestion preferences per workspace', async () => {
+    const preferences = new PlanFSUiPreferences(new TestMemento());
+    const firstFolder = workspaceFolder('/tmp/planfs-a');
+    const secondFolder = workspaceFolder('/tmp/planfs-b');
+
+    expect(preferences.get(UI_PREFERENCES.semanticAnalysisEnabled, firstFolder)).toBe(true);
+    await preferences.set(UI_PREFERENCES.semanticAnalysisEnabled, false, firstFolder);
+    await preferences.set(
+      UI_PREFERENCES.semanticSuggestionSuppressions,
+      ['TASK-001:analysis.relationship.metadata-missing:TASK-999'],
+      firstFolder
+    );
+
+    expect(preferences.get(UI_PREFERENCES.semanticAnalysisEnabled, firstFolder)).toBe(false);
+    expect(preferences.get(UI_PREFERENCES.semanticSuggestionSuppressions, firstFolder)).toEqual([
+      'TASK-001:analysis.relationship.metadata-missing:TASK-999'
+    ]);
+    expect(preferences.get(UI_PREFERENCES.semanticAnalysisEnabled, secondFolder)).toBe(true);
+    expect(preferences.get(UI_PREFERENCES.semanticSuggestionSuppressions, secondFolder)).toEqual([]);
+  });
+
   it('clears stored preferences back to their fallback value', async () => {
     const preferences = new PlanFSUiPreferences(new TestMemento());
     const folder = workspaceFolder('/tmp/planfs-a');

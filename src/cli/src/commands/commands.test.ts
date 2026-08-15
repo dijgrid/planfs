@@ -191,7 +191,7 @@ describe('CLI commands', () => {
     expect(full.data.advisory.conclusions).toEqual(expect.arrayContaining([
       expect.objectContaining({
         code: 'analysis.relationship.metadata-missing',
-        data: { targetId: 'TASK-999' },
+        data: expect.objectContaining({ targetId: 'TASK-999', suggestedField: 'dependsOn' }),
         authoritative: false
       })
     ]));

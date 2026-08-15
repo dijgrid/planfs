@@ -1,7 +1,7 @@
 ---
 id: TASK-115
 title: Surface semantic ticket content and diagnostics in VS Code
-status: todo
+status: done
 priority: medium
 assignee: justin
 epic: EPIC-semantic-planning-documents
@@ -17,7 +17,7 @@ dueDate: 2026-12-09
 refinementState: ready
 backlogOrder: 60
 createdAt: 2026-08-15T00:02:14.023Z
-updatedAt: 2026-08-15T00:02:14.023Z
+updatedAt: 2026-08-15T18:40:54.803Z
 ---
 
 Use the shared semantic document APIs to make important ticket content easier to inspect in VS Code. Surface acceptance-criteria progress, known sections, and located conformance diagnostics without hiding or replacing the underlying Markdown document.
@@ -38,21 +38,36 @@ Use the shared semantic document APIs to make important ticket content easier to
 
 ## Acceptance Criteria
 
-- [ ] Users can inspect acceptance criteria and completion counts without manually scanning the Markdown body
-- [ ] Checked, unchecked, and ordinary-list criteria are visually distinguishable
-- [ ] Findings and questions are displayed as readable, visually distinct lists with source navigation
-- [ ] Users can navigate from known sections and diagnostics to the relevant Markdown source range
-- [ ] Unknown custom sections remain visible and accessible
-- [ ] Dependencies are presented as authoritative metadata while prose mentions are clearly non-authoritative
-- [ ] NLP-assisted diagnostics are visually distinguishable, explain their evidence, and can be disabled independently
-- [ ] Supported local analysis runs automatically for viewed or changed tickets without blocking the editor or modifying files
-- [ ] The normal view shows deduplicated actionable suggestions instead of an undifferentiated list of raw NLP signals
-- [ ] Users can preview any suggested metadata change and can dismiss or suppress advisory suggestions without silently changing frontmatter
-- [ ] The extension consumes shared core semantic and diagnostic types instead of duplicating heading parsing
-- [ ] Malformed bodies remain openable and show partial content plus actionable diagnostics
-- [ ] Repository refreshes preserve valid semantic-view state and unsaved editor drafts
-- [ ] Multi-root workspaces resolve semantic data and diagnostics against the selected repository
-- [ ] Extension-host smoke coverage exercises at least one semantic inspection and diagnostic workflow
+- [x] Users can inspect acceptance criteria and completion counts without manually scanning the Markdown body
+- [x] Checked, unchecked, and ordinary-list criteria are visually distinguishable
+- [x] Findings and questions are displayed as readable, visually distinct lists with source navigation
+- [x] Users can navigate from known sections and diagnostics to the relevant Markdown source range
+- [x] Unknown custom sections remain visible and accessible
+- [x] Dependencies are presented as authoritative metadata while prose mentions are clearly non-authoritative
+- [x] NLP-assisted diagnostics are visually distinguishable, explain their evidence, and can be disabled independently
+- [x] Supported local analysis runs automatically for viewed or changed tickets without blocking the editor or modifying files
+- [x] The normal view shows deduplicated actionable suggestions instead of an undifferentiated list of raw NLP signals
+- [x] Users can preview any suggested metadata change and can dismiss or suppress advisory suggestions without silently changing frontmatter
+- [x] The extension consumes shared core semantic and diagnostic types instead of duplicating heading parsing
+- [x] Malformed bodies remain openable and show partial content plus actionable diagnostics
+- [x] Repository refreshes preserve valid semantic-view state and unsaved editor drafts
+- [x] Multi-root workspaces resolve semantic data and diagnostics against the selected repository
+- [x] Extension-host smoke coverage exercises at least one semantic inspection and diagnostic workflow
+
+## Decisions
+
+- Use the shared core inspection contract for both the structured editor and backlog summaries; remove the extension-only heading parser.
+- Run supported local English analysis automatically per workspace, while keeping structural inspection available when analysis is disabled.
+- Keep advisory relationship actions preview-only in this task. Dismissal is workspace-scoped, ticket-specific, and reversible.
+- Bind source navigation and preferences to the editor session's repository so changing the selected workspace cannot retarget an open ticket.
+- Support multiple languages in a deferred follow-on epic, `EPIC-multilingual-semantic-analysis`; v1.4 retains its proven English-only analyzer scope.
+- A future explicit Apply control is desirable only when paired with an explanation widget that presents the evidence, rationale, exact metadata change, and authoritative/advisory boundary before confirmation; TASK-116 owns this follow-up.
+
+## Findings
+
+- Questions needed a first-class core projection, parallel to findings, so all PlanFS surfaces can render them without reparsing Markdown.
+- Safe preview fields can be offered only for relationship phrases with an unambiguous frontmatter mapping; other signals remain advisory without a metadata preview.
+- Semantic payloads must escape raw HTML before embedding JSON in a webview script while preserving the original Markdown in the core result.
 
 ## Non-Goals
 

@@ -20,6 +20,10 @@ describe('semantic Markdown parsing', () => {
       '',
       '- The loader currently trims leading whitespace.',
       '',
+      '## Questions',
+      '',
+      '- Should aliases remain visible?',
+      '',
       '## Decisions',
       '',
       'Use one structural parser.',
@@ -37,6 +41,7 @@ describe('semantic Markdown parsing', () => {
     expect(document.sections.map(section => section.key)).toEqual([
       'acceptanceCriteria',
       'findings',
+      'questions',
       'decisions',
       'references'
     ]);
@@ -55,6 +60,7 @@ describe('semantic Markdown parsing', () => {
     expect(document.sections[0]?.subsections).toHaveLength(1);
     expect(document.sections[0]?.subsections[0]?.heading).toBe('Edge Cases');
     expect(document.findings[0]?.text).toBe('The loader currently trims leading whitespace.');
+    expect(document.questions[0]?.text).toBe('Should aliases remain visible?');
     expect(document.decisions[0]?.text).toBe('Use one structural parser.');
     expect(document.references.map(reference => reference.kind)).toEqual([
       'link',
