@@ -29,6 +29,9 @@ Use the shared semantic document APIs to make important ticket content easier to
 - Display or navigate to recognized and custom sections while preserving their source order.
 - Present semantic diagnostics with severity, repair guidance, and navigation to the relevant body range.
 - Present enabled NLP-assisted quality signals as advisory analysis with distinct provenance rather than structural errors.
+- Run supported local analysis automatically for the ticket being viewed or changed, subject to workspace settings and language support, rather than requiring a separate opt-in action for routine use.
+- Prefer actionable, deduplicated suggestions such as previewing a missing metadata relationship or locating ambiguous criterion wording; suppress signals already represented by authoritative metadata.
+- Let users inspect evidence, navigate to the source range, dismiss or suppress an advisory suggestion, and disable local analysis without hiding deterministic semantic diagnostics.
 - Clearly label authoritative dependencies separately from non-authoritative body mentions.
 - Reuse `planfs-core` parsing and validation; extension code must remain a thin presentation layer.
 - Preserve drafts, workspace scoping, and incremental refresh behavior established in v1.3.
@@ -42,6 +45,9 @@ Use the shared semantic document APIs to make important ticket content easier to
 - [ ] Unknown custom sections remain visible and accessible
 - [ ] Dependencies are presented as authoritative metadata while prose mentions are clearly non-authoritative
 - [ ] NLP-assisted diagnostics are visually distinguishable, explain their evidence, and can be disabled independently
+- [ ] Supported local analysis runs automatically for viewed or changed tickets without blocking the editor or modifying files
+- [ ] The normal view shows deduplicated actionable suggestions instead of an undifferentiated list of raw NLP signals
+- [ ] Users can preview any suggested metadata change and can dismiss or suppress advisory suggestions without silently changing frontmatter
 - [ ] The extension consumes shared core semantic and diagnostic types instead of duplicating heading parsing
 - [ ] Malformed bodies remain openable and show partial content plus actionable diagnostics
 - [ ] Repository refreshes preserve valid semantic-view state and unsaved editor drafts
@@ -52,4 +58,5 @@ Use the shared semantic document APIs to make important ticket content easier to
 
 - Replacing the Markdown editor with a fully structured document editor
 - Automatically changing task status when criteria are checked
+- Automatically applying metadata changes inferred from prose
 - Adding extension-only content-profile behavior

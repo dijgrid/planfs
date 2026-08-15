@@ -32,6 +32,9 @@ Harden semantic document behavior against real repository variation and publish 
 - Test large-repository performance and avoid reparsing unchanged bodies unnecessarily.
 - Document CLI JSON contracts and examples for agents, CI checks, release reports, acceptance-criteria inspection, and editor integrations.
 - Document NLP enablement, supported language and analyzer limitations, local model packaging, caching, provenance, advisory semantics, and deterministic fallback behavior.
+- Define stable workspace and user settings for automatic interactive analysis, explicit validation enablement, language selection or detection, and complete disablement.
+- Harden suppression and dismissal behavior so repeated advisory findings remain quiet without altering source Markdown or authoritative metadata.
+- Measure incremental analysis latency and cache behavior for viewed and changed tickets, with graceful fallback when a language or analyzer is unsupported.
 - Run the full release verification suite and validate the repository's own planning artifacts under the intended baseline and automation-ready profiles.
 
 ## Acceptance Criteria
@@ -43,6 +46,9 @@ Harden semantic document behavior against real repository variation and publish 
 - [ ] Parser and validation performance are measured on a large synthetic or fixture repository with an agreed regression threshold
 - [ ] Automation examples retrieve acceptance criteria, distinguish dependencies from mentions, enforce a selected profile, and preview formatting
 - [ ] NLP documentation identifies promoted signals, known limitations, enablement controls, local-processing guarantees, and behavior when analysis is unavailable
+- [ ] Interactive analysis defaults, opt-out controls, validation opt-in behavior, and language fallback are documented and covered by tests
+- [ ] Advisory suppression is stable, reversible, scoped, and never encoded as an inferred authoritative relationship
+- [ ] Incremental local analysis and cache performance meet an agreed editor-interaction threshold on the representative corpus
 - [ ] The pre-v1.4 canonical task corpus remains semantically readable, with intentional updates documented as the corpus grows
 - [ ] Release notes identify semantic inspection as additive and formatting as opt-in
 - [ ] Lint, workspace builds, workspace tests, CLI validation, and relevant CLI smoke checks pass

@@ -7,6 +7,7 @@ import { createCommand } from './create';
 import { backlogCommand } from './backlog';
 import { gitCommand } from './git';
 import { initCommand } from './init';
+import { inspectCommand } from './inspect';
 import { listCommand } from './list';
 import { nextCommand } from './next';
 import { pullRequestCommand } from './pr';
@@ -131,6 +132,115 @@ describe('CLI commands', () => {
       signals: [],
       diagnostics: [{ code: 'analysis.language.unsupported', severity: 'info' }]
     });
+  });
+
+  it('inspects semantic content with default local analysis and focused stable JSON views', async () => {
+    await initCommand(rootPath, { format: 'json' });
+    const taskPath = path.join(rootPath, '.planfs', 'tasks', 'TASK-001.md');
+    await fs.writeFile(taskPath, [
+      '---',
+      'id: TASK-001',
+      'title: Semantic inspection',
+      'status: todo',
+      'dependsOn:',
+      '  - TASK-100',
+      '---',
+      '',
+      'Inspect normalized content.',
+      '',
+      '## Acceptance Criteria',
+      '',
+      '- [x] Preserve completed criteria.',
+      '- [ ] This should complete after TASK-999.',
+      '- Ordinary criterion.',
+      '',
+      '## Findings',
+      '',
+      '- The source stays human-owned.',
+      '',
+      '## Custom Notes',
+      '',
+      'Unknown content remains visible.',
+      ''
+    ].join('\n'), 'utf-8');
+    const before = await fs.readFile(taskPath, 'utf-8');
+
+    await expect(inspectCommand(rootPath, 'TASK-001', { format: 'json' })).resolves.toBe(0);
+    const full = JSON.parse(logSpy.mock.calls[logSpy.mock.calls.length - 1]?.[0] as string);
+    expect(Object.keys(full)).toEqual([
+      'inspectionVersion', 'view', 'entity', 'data', 'diagnostics'
+    ]);
+    expect(full).toMatchObject({
+      inspectionVersion: '1.0.0',
+      view: 'all',
+      entity: { id: 'TASK-001', type: 'task' },
+      data: {
+        authoritative: {
+          relationships: { dependsOn: ['TASK-100'] }
+        },
+        analysis: {
+          analyzer: { id: 'planfs-local-english-rules', version: '1.0.0' },
+          language: 'en'
+        }
+      }
+    });
+    expect(full.data.semantic.criteria.map((criterion: { checked: boolean | null }) => (
+      criterion.checked
+    ))).toEqual([true, false, null]);
+    expect(full.data.semantic.sections.some((section: { key: string | null }) => section.key === null)).toBe(true);
+    expect(full.data.advisory.conclusions).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        code: 'analysis.relationship.metadata-missing',
+        data: { targetId: 'TASK-999' },
+        authoritative: false
+      })
+    ]));
+
+    await expect(inspectCommand(rootPath, 'TASK-001', {
+      format: 'json',
+      view: 'relationships',
+      nlp: false
+    })).resolves.toBe(0);
+    const relationships = JSON.parse(
+      logSpy.mock.calls[logSpy.mock.calls.length - 1]?.[0] as string
+    );
+    expect(relationships).toMatchObject({
+      view: 'relationships',
+      data: {
+        authoritativeRelationships: { dependsOn: ['TASK-100'] },
+        relationshipSignals: []
+      }
+    });
+    expect(await fs.readFile(taskPath, 'utf-8')).toBe(before);
+  });
+
+  it('prints concise actionable semantic inspection without dumping raw analyzer signals', async () => {
+    await initCommand(rootPath, { format: 'json' });
+    await fs.writeFile(path.join(rootPath, '.planfs', 'tasks', 'TASK-001.md'), [
+      '---',
+      'id: TASK-001',
+      'title: Concise inspection',
+      'status: todo',
+      '---',
+      '',
+      'Summary.',
+      '',
+      '## Acceptance Criteria',
+      '',
+      '- [ ] This should finish after TASK-999.',
+      ''
+    ].join('\n'), 'utf-8');
+
+    await expect(inspectCommand(rootPath, 'TASK-001', {})).resolves.toBe(0);
+
+    expect(logSpy).toHaveBeenCalledWith('\nAdvisory suggestions:');
+    expect(logSpy).toHaveBeenCalledWith(expect.stringContaining(
+      'TASK-999 is mentioned as a possible planning relationship'
+    ));
+    expect(logSpy).not.toHaveBeenCalledWith(expect.stringContaining('relationship-mention at'));
+    expect(logSpy).toHaveBeenCalledWith(
+      '  Suggestions are advisory; no Markdown or metadata was changed.'
+    );
   });
 
   it('initializes repository structure idempotently', async () => {
@@ -287,6 +397,116 @@ describe('CLI commands', () => {
         errors: []
       }
     });
+    expect(output).not.toHaveProperty('semantic');
+  });
+
+  it('emits explicit semantic, lifecycle, and local-analysis validation output', async () => {
+    await initCommand(rootPath, { format: 'json' });
+    await fs.writeFile(path.join(rootPath, '.planfs', 'tasks', 'TASK-001.md'), [
+      '---',
+      'id: TASK-001',
+      'title: Semantic validation',
+      'status: done',
+      'refinementState: ready',
+      '---',
+      '',
+      'Description.',
+      '',
+      '## Success Criteria',
+      '',
+      '- Complete this after TASK-119.',
+      ''
+    ].join('\n'), 'utf-8');
+
+    await expect(validateCommand(rootPath, {
+      format: 'json',
+      semantic: 'automation-ready',
+      lifecycle: true,
+      nlp: true,
+      language: 'en'
+    })).resolves.toBe(0);
+    const output = JSON.parse(
+      logSpy.mock.calls[logSpy.mock.calls.length - 1]?.[0] as string
+    );
+
+    expect(output.result).toMatchObject({ valid: true, errors: [] });
+    expect(output.semantic).toMatchObject({
+      tier: 'automation-ready',
+      lifecycle: true,
+      analysisEnabled: true,
+      valid: true
+    });
+    expect(output.semantic.diagnostics).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        code: 'content.section.alias',
+        entityId: 'TASK-001',
+        sectionKey: 'acceptanceCriteria'
+      }),
+      expect.objectContaining({
+        code: 'content.criterion.missing-check-state',
+        severity: 'warning'
+      }),
+      expect.objectContaining({
+        code: 'content.lifecycle.incomplete-criteria',
+        conformance: 'lifecycle'
+      })
+    ]));
+    expect(output.semantic.entities[0].analysis.signals).toEqual(expect.arrayContaining([
+      expect.objectContaining({ kind: 'relationship-mention', authoritative: false })
+    ]));
+
+    await expect(validateCommand(rootPath, {
+      format: 'json',
+      semantic: 'automation-ready',
+      lifecycle: true,
+      strict: true
+    })).resolves.toBe(1);
+
+    await expect(validateCommand(rootPath, {
+      semantic: 'automation-ready',
+      lifecycle: true,
+      format: 'text',
+      verbose: true
+    })).resolves.toBe(0);
+    expect(logSpy.mock.calls.some(call => String(call[0]).startsWith('\nSemantic content (automation-ready, lifecycle):'))).toBe(true);
+    expect(logSpy.mock.calls.some(call => String(call[0]).includes('Repair:'))).toBe(true);
+  });
+
+  it('supports strict semantic policy and coexists with malformed frontmatter diagnostics', async () => {
+    await initCommand(rootPath, { format: 'json' });
+    await fs.writeFile(path.join(rootPath, '.planfs', 'tasks', 'TASK-001.md'), [
+      '---',
+      'id: TASK-001',
+      'title: Broken frontmatter',
+      'status: todo',
+      'bad: [yaml',
+      '---',
+      '',
+      '## Acceptance Criteria',
+      '',
+      '- Ordinary criterion.',
+      ''
+    ].join('\n'), 'utf-8');
+
+    await expect(validateCommand(rootPath, {
+      format: 'json',
+      semantic: 'automation-ready',
+      criterionCheckState: 'error'
+    })).resolves.toBe(1);
+    const output = JSON.parse(
+      logSpy.mock.calls[logSpy.mock.calls.length - 1]?.[0] as string
+    );
+
+    expect(output.result.errors).toEqual(expect.arrayContaining([
+      expect.objectContaining({ severity: 'error', message: expect.stringContaining('YAML') })
+    ]));
+    expect(output.semantic.diagnostics).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        code: 'content.criterion.missing-check-state',
+        severity: 'error',
+        entityId: 'TASK-001'
+      })
+    ]));
   });
 
   it('validates commit message task references', async () => {

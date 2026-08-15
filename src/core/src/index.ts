@@ -25,3 +25,5 @@ export * from './semantic-types';
 export * from './semantic-profiles';
 export * from './semantic';
 export * from './semantic-analyzer';
+export * from './semantic-validator';
+export * from './semantic-inspection';

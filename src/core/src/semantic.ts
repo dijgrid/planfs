@@ -668,9 +668,10 @@ function collectOpaqueRanges(
 function determineContentShape(nodes: MarkdownSyntaxNode[], markdown: string): ContentShape {
   if (markdown.trim().length === 0) return 'empty';
   const hasTask = nodes.some(node => descendantsIncluding(node, child => child.name === 'Task').length > 0);
-  if (hasTask) return 'task-list';
   const hasList = nodes.some(node => ['BulletList', 'OrderedList'].includes(node.name));
   const hasProse = nodes.some(node => ['Paragraph', 'Blockquote'].includes(node.name));
+  if (hasTask && hasProse) return 'mixed';
+  if (hasTask) return 'task-list';
   const hasReference = nodes.some(node => (
     descendantsIncluding(node, child => ['Link', 'Autolink', 'URL'].includes(child.name)).length > 0
   ));

@@ -1,6 +1,6 @@
 # Local Advisory Semantic Analysis
 
-PlanFS v1.4 provides an optional local analyzer over semantic task criteria. It is disabled by default. Structural Markdown parsing, repository loading, and ordinary validation never require it.
+PlanFS v1.4 provides an optional local analyzer over semantic task criteria. Structural Markdown parsing, repository loading, and ordinary validation never require it. The low-level core helper and validation integration are disabled by default; the interactive semantic inspection command runs it by default and provides `--no-nlp`.
 
 ## Enablement
 
@@ -21,6 +21,8 @@ CLI callers use:
 ```sh
 planfs show TASK-119 --nlp
 planfs show TASK-119 --nlp --language en --format json
+planfs inspect TASK-119
+planfs inspect TASK-119 --no-nlp
 ```
 
 Without `--nlp`, `show --format json` retains its existing entity JSON shape. With analysis enabled, the top-level stable shape is:

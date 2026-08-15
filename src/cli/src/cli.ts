@@ -12,6 +12,7 @@ import { initCommand } from './commands/init';
 import { listCommand } from './commands/list';
 import { nextCommand } from './commands/next';
 import { showCommand } from './commands/show';
+import { inspectCommand } from './commands/inspect';
 import { createCommand } from './commands/create';
 import { backlogCommand, BacklogAction } from './commands/backlog';
 import { archiveCommand, ArchiveAction } from './commands/archive';
@@ -187,6 +188,32 @@ export async function main(): Promise<void> {
             default: false,
             description: 'Fail when validation warnings are present'
           })
+          .option('semantic', {
+            type: 'string',
+            choices: ['baseline', 'automation-ready'],
+            description: 'Explicitly validate a semantic Markdown content tier'
+          })
+          .option('lifecycle', {
+            type: 'boolean',
+            default: false,
+            description: 'Add read-only lifecycle-sensitive semantic policy checks'
+          })
+          .option('criterion-check-state', {
+            type: 'string',
+            choices: ['ignore', 'info', 'warning', 'error'],
+            default: 'warning',
+            description: 'Severity for ordinary criteria without [ ] or [x] markers'
+          })
+          .option('nlp', {
+            type: 'boolean',
+            default: false,
+            description: 'Include optional local advisory prose analysis'
+          })
+          .option('language', {
+            type: 'string',
+            default: 'en',
+            description: 'Language for optional advisory prose analysis'
+          })
           .option('format', {
             type: 'string',
             choices: ['text', 'json'],
@@ -197,9 +224,14 @@ export async function main(): Promise<void> {
         const exitCode = await validateCommand(process.cwd(), {
           verbose: args.verbose as boolean,
           strict: args.strict as boolean,
-          format: args.format as 'text' | 'json'
+          format: args.format as 'text' | 'json',
+          semantic: args.semantic as 'baseline' | 'automation-ready' | undefined,
+          lifecycle: args.lifecycle as boolean,
+          criterionCheckState: args.criterionCheckState as 'ignore' | 'info' | 'warning' | 'error',
+          nlp: args.nlp as boolean,
+          language: args.language as string
         });
-        process.exit(exitCode);
+        process.exitCode = exitCode;
       }
     )
     .command(
@@ -612,6 +644,53 @@ export async function main(): Promise<void> {
           language: args.language as string
         });
         process.exit(exitCode);
+      }
+    )
+    .command(
+      'inspect <id>',
+      'Inspect normalized semantic content and advisory suggestions',
+      (y) =>
+        y
+          .positional('id', {
+            describe: 'Entity ID to inspect'
+          })
+          .option('format', {
+            type: 'string',
+            choices: ['pretty', 'json'],
+            default: 'pretty'
+          })
+          .option('view', {
+            type: 'string',
+            choices: [
+              'all',
+              'acceptance-criteria',
+              'findings',
+              'sections',
+              'mentions',
+              'relationships',
+              'raw'
+            ],
+            default: 'all',
+            description: 'Select a focused semantic view'
+          })
+          .option('nlp', {
+            type: 'boolean',
+            default: true,
+            description: 'Run local advisory analysis (disable with --no-nlp)'
+          })
+          .option('language', {
+            type: 'string',
+            default: 'en',
+            description: 'Language for local advisory analysis'
+          }),
+      async (args) => {
+        const exitCode = await inspectCommand(process.cwd(), args.id as string, {
+          format: args.format as 'pretty' | 'json',
+          view: args.view as 'all' | 'acceptance-criteria' | 'findings' | 'sections' | 'mentions' | 'relationships' | 'raw',
+          nlp: args.nlp as boolean,
+          language: args.language as string
+        });
+        process.exitCode = exitCode;
       }
     )
     .command(

@@ -46,7 +46,13 @@ Validate the repository for errors:
 ```bash
 planfs validate
 planfs validate --verbose
+planfs validate --semantic baseline
+planfs validate --semantic automation-ready --lifecycle
+planfs validate --semantic automation-ready --criterion-check-state error --format json
+planfs validate --semantic automation-ready --nlp --language en
 ```
+
+Semantic validation is opt-in and remains separate from existing YAML and repository-integrity checks. `baseline` checks loss-preserving Markdown interpretation; `automation-ready` applies entity content profiles; `--lifecycle` adds read-only status-sensitive policy. Ordinary criteria can be ignored or reported at `info`, `warning`, or `error` severity. `--strict` fails on repository or semantic warnings. Enabled semantic JSON appears under a separate `semantic` key, leaving default JSON unchanged.
 
 ### List
 
@@ -117,6 +123,22 @@ planfs show TASK-001 --nlp --language en --format json
 `--nlp` explicitly enables local, advisory English prose analysis. It reports promoted modality, negation, condition, date/duration, and possible relationship-mention signals with source locations. Analysis never edits the file or treats prose as authoritative metadata. It makes no network calls and downloads no model. Other languages return an advisory unsupported-language diagnostic without hiding the entity or failing the command.
 
 Without `--nlp`, JSON output retains the existing entity shape. With `--nlp`, JSON is `{ "entity": ..., "analysis": ... }`; every signal is marked `nlp-inferred` and `authoritative: false`.
+
+### Semantic Inspection
+
+Inspect normalized Markdown content, authoritative relationships, diagnostics, and advisory suggestions through one stable surface:
+
+```bash
+planfs inspect TASK-001
+planfs inspect TASK-001 --format json
+planfs inspect TASK-001 --view acceptance-criteria --format json
+planfs inspect TASK-001 --view relationships
+planfs inspect TASK-001 --view raw --no-nlp
+```
+
+Semantic inspection runs the bundled local analyzer by default and can be made structural-only with `--no-nlp`. Normal text output shows deduplicated actionable suggestions; full JSON preserves analyzer identity, language, evidence, confidence, provenance, raw signals, exact source ranges, and raw Markdown. Analysis remains advisory and never modifies frontmatter. This does not change `validate`: analysis during validation is still explicitly enabled with `--nlp`.
+
+Focused views are `all`, `acceptance-criteria`, `findings`, `sections`, `mentions`, `relationships`, and `raw`. See [Semantic Entity Inspection](../../docs/SEMANTIC_INSPECTION.md) for the stable envelope and integration examples.
 
 ### Create
 

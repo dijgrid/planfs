@@ -6,14 +6,26 @@
 import {
   loadRepository,
   validateRepositoryState,
-  getAllEntities
+  getAllEntities,
+  validateSemanticRepository
 } from 'planfs-core';
-import type { ValidationResult } from 'planfs-core';
+import type {
+  CriterionCheckStatePolicy,
+  SemanticRepositoryValidationResult,
+  SemanticValidationDiagnostic,
+  SemanticValidationTier,
+  ValidationResult
+} from 'planfs-core';
 
 export interface ValidateOptions {
   verbose?: boolean;
   strict?: boolean;
   format?: 'text' | 'json';
+  semantic?: SemanticValidationTier;
+  lifecycle?: boolean;
+  criterionCheckState?: CriterionCheckStatePolicy;
+  nlp?: boolean;
+  language?: string;
 }
 
 interface ValidateSummary {
@@ -30,6 +42,7 @@ interface ValidateOutput {
   severityCounts: { errors: number; warnings: number };
   categoryCounts: Record<string, number>;
   result: ValidationResult;
+  semantic?: SemanticRepositoryValidationResult;
 }
 
 export async function validateCommand(
@@ -64,6 +77,18 @@ export async function validateCommand(
     }
 
     const result = validateRepositoryState(repo);
+    const semanticTier = options.semantic ?? (
+      options.lifecycle === true || options.nlp === true ? 'automation-ready' : undefined
+    );
+    const semantic = semanticTier
+      ? await validateSemanticRepository(repo, {
+        tier: semanticTier,
+        lifecycle: options.lifecycle,
+        criterionCheckState: options.criterionCheckState,
+        analysis: options.nlp,
+        language: options.language
+      })
+      : undefined;
     const errors = result.errors.filter(e => e.severity === 'error');
     const warnings = result.errors.filter(e => e.severity === 'warning');
     const severityCounts = { errors: errors.length, warnings: warnings.length };
@@ -73,21 +98,27 @@ export async function validateCommand(
       return counts;
     }, {});
 
+    const semanticWarnings = semantic?.diagnostics.filter(diagnostic => diagnostic.severity === 'warning') ?? [];
+    const semanticErrors = semantic?.diagnostics.filter(diagnostic => diagnostic.severity === 'error') ?? [];
+    const overallValid = result.valid && semanticErrors.length === 0;
+    const strictFailure = options.strict === true && (warnings.length > 0 || semanticWarnings.length > 0);
+
     if (format === 'json') {
       writeJson({
-        valid: result.valid,
+        valid: overallValid,
         summary,
         severityCounts,
         categoryCounts,
-        result
+        result,
+        ...(semantic ? { semantic } : {})
       });
-      return result.valid && (!options.strict || warnings.length === 0) ? 0 : 1;
+      return overallValid && !strictFailure ? 0 : 1;
     }
 
-    if (!result.valid) {
+    if (!overallValid) {
       console.log('✗ Validation failed with errors:\n');
     }
-    if (result.valid) console.log('✓ Repository is valid!');
+    if (overallValid) console.log('✓ Repository is valid!');
     console.log(`Warnings: ${warnings.length} | Errors: ${errors.length}`);
 
     if (errors.length > 0) {
@@ -98,10 +129,11 @@ export async function validateCommand(
       console.log(`\nWarnings (${warnings.length}):`);
       for (const warning of warnings) printDiagnostic('⚠', warning, options.verbose);
     }
-    if (options.strict && warnings.length > 0 && errors.length === 0) {
+    if (semantic) printSemanticValidation(semantic, options.verbose);
+    if (strictFailure && errors.length === 0 && semanticErrors.length === 0) {
       console.log('✗ Strict validation failed because warnings are present.');
     }
-    return errors.length > 0 || (options.strict && warnings.length > 0) ? 1 : 0;
+    return errors.length > 0 || semanticErrors.length > 0 || strictFailure ? 1 : 0;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
 
@@ -143,4 +175,32 @@ function printDiagnostic(symbol: string, diagnostic: ValidationResult['errors'][
 
 function writeJson(output: ValidateOutput): void {
   console.log(JSON.stringify(output, null, 2));
+}
+
+function printSemanticValidation(
+  semantic: SemanticRepositoryValidationResult,
+  verbose?: boolean
+): void {
+  console.log(`\nSemantic content (${semantic.tier}${semantic.lifecycle ? ', lifecycle' : ''}${semantic.analysisEnabled ? ', local analysis' : ''}):`);
+  console.log(
+    `  Info: ${semantic.severityCounts.info} | Warnings: ${semantic.severityCounts.warning} | Errors: ${semantic.severityCounts.error}`
+  );
+  if (semantic.diagnostics.length === 0) {
+    console.log('  ✓ No semantic content diagnostics.');
+    return;
+  }
+  for (const diagnostic of semantic.diagnostics) printSemanticDiagnostic(diagnostic, verbose);
+}
+
+function printSemanticDiagnostic(
+  diagnostic: SemanticValidationDiagnostic,
+  verbose?: boolean
+): void {
+  const symbol = diagnostic.severity === 'error' ? '✗' : diagnostic.severity === 'warning' ? '⚠' : 'ℹ';
+  const location = diagnostic.range
+    ? `:${diagnostic.range.start.line}:${diagnostic.range.start.column}`
+    : '';
+  console.log(`  ${symbol} [${diagnostic.entityId}] ${diagnostic.code}: ${diagnostic.message}`);
+  console.log(`    ${diagnostic.filePath}${location}`);
+  if (verbose) console.log(`    Repair: ${diagnostic.repair.summary}`);
 }
