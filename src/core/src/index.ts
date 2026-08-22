@@ -8,6 +8,8 @@ export * from './files';
 export * from './loader';
 export * from './validator';
 export * from './repository';
+export * from './entity-content';
+export * from './entity-factory';
 export * from './references';
 export * from './graph';
 export * from './git';

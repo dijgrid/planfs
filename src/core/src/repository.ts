@@ -4,7 +4,6 @@
  */
 
 import * as path from 'path';
-import { stringify as stringifyYaml } from 'yaml';
 import {
   discoverFiles,
   discoverArchiveFiles,
@@ -28,6 +27,19 @@ import {
   ValidationResult
 } from './types';
 import { getPlanfsFormat } from './format';
+import { generateEntityContent } from './entity-content';
+
+export { generateEntityContent } from './entity-content';
+export {
+  createDecisionTemplate,
+  createEpicTemplate,
+  createMilestoneTemplate,
+  createTaskTemplate,
+  getNextDecisionId,
+  getNextEpicId,
+  getNextMilestoneId,
+  getNextTaskId
+} from './entity-factory';
 
 /**
  * Load a PlanFS repository
@@ -186,71 +198,6 @@ function assertSafeSaveIdentity(entity: Entity): void {
       `Refusing to save ${entity.id}: entity id does not match existing file name ${existingId}. Repair the id field or rename the file before saving.`
     );
   }
-}
-
-/**
- * Generate file content from an entity
- */
-export function generateEntityContent(entity: Entity): string {
-  const metadata: Record<string, unknown> = { ...entity.metadata };
-
-  metadata.id = entity.id;
-  metadata.title = entity.title || '';
-  metadata.status = entity.status || '';
-  if (entity.archive) metadata.archive = entity.archive;
-
-  // Add type-specific metadata
-  switch (entity.type) {
-    case 'task': {
-      const task = entity as Task;
-      if (task.priority) metadata.priority = task.priority;
-      if (task.assignee) metadata.assignee = task.assignee;
-      if (task.epic) metadata.epic = task.epic;
-      if (task.milestone) metadata.milestone = task.milestone;
-      if (task.dependsOn) metadata.dependsOn = task.dependsOn;
-      if (task.tags) metadata.tags = task.tags;
-      if (task.dueDate) metadata.dueDate = task.dueDate;
-      if (task.estimate) metadata.estimate = task.estimate;
-      if (task.refinementState) metadata.refinementState = task.refinementState;
-      if (task.backlogOrder !== undefined) metadata.backlogOrder = task.backlogOrder;
-      if (task.links) metadata.links = task.links;
-      break;
-    }
-    case 'epic': {
-      const epic = entity as Epic;
-      if (epic.priority) metadata.priority = epic.priority;
-      if (epic.owner) metadata.owner = epic.owner;
-      if (epic.description) metadata.description = epic.description;
-      if (epic.targetDate) metadata.targetDate = epic.targetDate;
-      if (epic.tags) metadata.tags = epic.tags;
-      if (epic.links) metadata.links = epic.links;
-      break;
-    }
-    case 'milestone': {
-      const milestone = entity as Milestone;
-      metadata.targetDate = milestone.targetDate;
-      if (milestone.description) metadata.description = milestone.description;
-      if (milestone.owner) metadata.owner = milestone.owner;
-      if (milestone.links) metadata.links = milestone.links;
-      break;
-    }
-    case 'decision': {
-      const decision = entity as Decision;
-      if (decision.date) metadata.date = decision.date;
-      if (decision.context) metadata.context = decision.context;
-      if (decision.decision) metadata.decision = decision.decision;
-      if (decision.consequences) metadata.consequences = decision.consequences;
-      if (decision.author) metadata.author = decision.author;
-      if (decision.supersedes) metadata.supersedes = decision.supersedes;
-      if (decision.supersededBy) metadata.supersededBy = decision.supersededBy;
-      break;
-    }
-  }
-
-  if (entity.createdAt) metadata.createdAt = entity.createdAt;
-  if (entity.updatedAt) metadata.updatedAt = entity.updatedAt;
-
-  return `---\n${stringifyYaml(metadata).trimEnd()}\n---\n\n${entity.body}`;
 }
 
 export interface ArchiveEntityOptions {
@@ -426,130 +373,4 @@ export async function initializeRepository(
   rootPath: string
 ): Promise<PlanfsInitializationResult> {
   return ensurePlanfsStructure(rootPath);
-}
-
-/**
- * Get next task ID
- */
-export function getNextTaskId(repository: Repository): string {
-  let maxNum = 0;
-  for (const id of repository.tasks.keys()) {
-    if (id.startsWith('TASK-')) {
-      const num = parseInt(id.substring(5), 10);
-      if (!isNaN(num) && num > maxNum) {
-        maxNum = num;
-      }
-    }
-  }
-  return `TASK-${String(maxNum + 1).padStart(3, '0')}`;
-}
-
-/**
- * Get an available epic ID from a title
- */
-export function getNextEpicId(repository: Repository, title: string): string {
-  return getAvailableSlugId('EPIC', title, repository.epics);
-}
-
-/**
- * Get an available milestone ID from a title
- */
-export function getNextMilestoneId(
-  repository: Repository,
-  title: string
-): string {
-  return getAvailableSlugId('MILESTONE', title, repository.milestones);
-}
-
-export function getNextDecisionId(repository: Repository, title: string): string {
-  return getAvailableSlugId('DECISION', title, repository.decisions);
-}
-
-/**
- * Create a new task template
- */
-export function createTaskTemplate(id: string, title: string): Task {
-  const now = new Date().toISOString();
-  return {
-    id,
-    type: 'task',
-    title,
-    status: 'todo',
-    filePath: '',
-    metadata: {},
-    body: '',
-    createdAt: now,
-    updatedAt: now
-  };
-}
-
-/**
- * Create a new epic template
- */
-export function createEpicTemplate(id: string, title: string): Epic {
-  const now = new Date().toISOString();
-  return {
-    id,
-    type: 'epic',
-    title,
-    status: 'active',
-    filePath: '',
-    metadata: {},
-    body: '',
-    createdAt: now,
-    updatedAt: now
-  };
-}
-
-/**
- * Create a new milestone template
- */
-export function createMilestoneTemplate(
-  id: string,
-  title: string,
-  targetDate: string
-): Milestone {
-  const now = new Date().toISOString();
-  return {
-    id,
-    type: 'milestone',
-    title,
-    status: 'active',
-    targetDate,
-    filePath: '',
-    metadata: {},
-    body: '',
-    createdAt: now,
-    updatedAt: now
-  };
-}
-
-export function createDecisionTemplate(id: string, title: string): Decision {
-  const now = new Date().toISOString();
-  return { id, type: 'decision', title, status: 'proposed', filePath: '', metadata: {}, body: '', createdAt: now, updatedAt: now };
-}
-
-function getAvailableSlugId<T extends Entity>(
-  prefix: string,
-  title: string,
-  existing: Map<string, T>
-): string {
-  const base = `${prefix}-${slugify(title)}`;
-  let candidate = base;
-  let suffix = 2;
-
-  while (existing.has(candidate)) {
-    candidate = `${base}-${suffix}`;
-    suffix += 1;
-  }
-
-  return candidate;
-}
-
-function slugify(value: string): string {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '') || 'untitled';
 }
