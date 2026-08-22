@@ -7,7 +7,7 @@ export async function run(): Promise<void> {
   if (!workspace) throw new Error('PlanFS smoke workspace was not provided');
   await vscode.commands.executeCommand('planfs.initializeRepository');
   const commands = await vscode.commands.getCommands(true);
-  for (const command of ['planfs.initializeRepository', 'planfs.openBoard', 'planfs.openBacklog', 'planfs.openInsights', 'planfs.openEditor']) {
+  for (const command of ['planfs.initializeRepository', 'planfs.openBoard', 'planfs.openBacklog', 'planfs.openInsights', 'planfs.openItem']) {
     if (!commands.includes(command)) throw new Error(`PlanFS command was not registered: ${command}`);
   }
   await fs.access(path.join(workspace, '.planfs', 'tasks'));
@@ -32,5 +32,5 @@ export async function run(): Promise<void> {
   await vscode.commands.executeCommand('planfs.openBoard');
   await vscode.commands.executeCommand('planfs.openBacklog');
   await vscode.commands.executeCommand('planfs.openInsights');
-  await vscode.commands.executeCommand('planfs.openEditor', 'TASK-SMOKE');
+  await vscode.commands.executeCommand('planfs.openItem', 'TASK-SMOKE');
 }

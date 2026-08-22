@@ -106,7 +106,7 @@ describe('VS Code lifecycle integration', () => {
       entityId: 'TASK-001'
     });
     expect(vscode.commands.executeCommand).toHaveBeenCalledWith(
-      'planfs.openEditor',
+      'planfs.openItem',
       { entity: { id: 'TASK-001' } }
     );
 

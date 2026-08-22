@@ -145,7 +145,7 @@ describe('VS Code view refresh workspace selection', () => {
       entityId: 'TASK-002'
     });
     expect(vscode.commands.executeCommand).toHaveBeenCalledWith(
-      'planfs.openEditor',
+      'planfs.openItem',
       { entity: { id: 'TASK-002' } }
     );
 
@@ -598,7 +598,7 @@ describe('VS Code view refresh workspace selection', () => {
     expect(quickItems[0].description).toContain('todo');
     expect(quickItems[0].description).toContain('due 2026-09-01');
     expect(quickItems[0].command).toEqual({
-      command: 'planfs.openEditor',
+      command: 'planfs.openItem',
       title: 'Open',
       arguments: [quickItems[0]]
     });
@@ -654,7 +654,7 @@ describe('VS Code view refresh workspace selection', () => {
     expect(currentItems[0].description).toContain('review');
     expect(currentItems[0].description).toContain('critical');
     expect(currentItems[0].command).toEqual({
-      command: 'planfs.openEditor',
+      command: 'planfs.openItem',
       title: 'Open',
       arguments: [currentItems[0]]
     });
@@ -716,7 +716,7 @@ describe('VS Code view refresh workspace selection', () => {
     expect(backlogItems[0].tooltip).toContain('Missing body');
     expect(backlogItems[0].tooltip).toContain('Missing priority');
     expect(backlogItems[0].command).toEqual({
-      command: 'planfs.openEditor',
+      command: 'planfs.openItem',
       title: 'Open',
       arguments: [backlogItems[0]]
     });

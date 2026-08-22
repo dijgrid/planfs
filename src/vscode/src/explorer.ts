@@ -360,7 +360,7 @@ export class TreeItem extends vscode.TreeItem {
     if (this.entity) {
       this.contextValue = this.entity.type;
       this.command = {
-        command: 'planfs.openEditor',
+        command: 'planfs.openItem',
         title: 'Open',
         arguments: [this]
       };

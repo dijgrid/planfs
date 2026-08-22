@@ -5,8 +5,9 @@
 import * as vscode from 'vscode';
 import { TreeItem } from '../explorer';
 
-export async function openTaskCommand(item: TreeItem): Promise<void> {
-  if (!item.entity) {
+export async function openTaskCommand(item: TreeItem | undefined): Promise<void> {
+  if (!item?.entity) {
+    vscode.window.showErrorMessage('Open Markdown is available from a task in the PlanFS Explorer.');
     return;
   }
 

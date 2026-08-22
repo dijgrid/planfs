@@ -51,6 +51,7 @@
     "onCommand:planfs.createMilestone",
     "onCommand:planfs.createDecision",
     "onCommand:planfs.openTask",
+    "onCommand:planfs.openItem",
     "onCommand:planfs.archiveItem",
     "onCommand:planfs.openEditor",
     "onCommand:planfs.applySavedFilter",
@@ -103,15 +104,15 @@
       },
       {
         "command": "planfs.openTask",
-        "title": "PlanFS: Open Task"
+        "title": "PlanFS: Open Markdown"
       },
       {
         "command": "planfs.archiveItem",
         "title": "PlanFS: Archive Item"
       },
       {
-        "command": "planfs.openEditor",
-        "title": "PlanFS: Open Structured Editor"
+        "command": "planfs.openItem",
+        "title": "PlanFS: Open Item"
       },
       {
         "command": "planfs.applySavedFilter",
@@ -140,9 +141,15 @@
       ]
     },
     "menus": {
+      "commandPalette": [
+        {
+          "command": "planfs.openTask",
+          "when": "false"
+        }
+      ],
       "view/item/context": [
         {
-          "command": "planfs.openEditor",
+          "command": "planfs.openItem",
           "when": "view == planfs-explorer && viewItem =~ /^(task|epic|milestone|decision)$/",
           "group": "navigation"
         },

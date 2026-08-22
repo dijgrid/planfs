@@ -24,7 +24,7 @@ In VS Code:
    - `PlanFS: Open Backlog`
    - `PlanFS: Open Board`
    - `PlanFS: Open Insights`
-   - `PlanFS: Open Structured Editor`
+   - `PlanFS: Open Item`
    - `PlanFS: Initialize Repository`
    - `PlanFS: Create Task`
    - `PlanFS: Refresh Views`
@@ -72,7 +72,7 @@ After installation, open a repository containing `.planfs/`. The PlanFS activity
 - `PlanFS: Open Board`
 - `PlanFS: Open Backlog`
 - `PlanFS: Open Insights`
-- `PlanFS: Open Structured Editor`
+- `PlanFS: Open Item`
 - `PlanFS: Initialize Repository`
 - `PlanFS: Create Task`
 - `PlanFS: Refresh Views`

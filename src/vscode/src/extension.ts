@@ -56,6 +56,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand('planfs.createMilestone', () => createMilestoneCommand(explorerProvider)),
     vscode.commands.registerCommand('planfs.createDecision', () => createDecisionCommand(explorerProvider)),
     vscode.commands.registerCommand('planfs.openTask', (item) => openTaskCommand(item)),
+    vscode.commands.registerCommand('planfs.openItem', (item) => editorProvider.open(resolveEditorEntityId(item))),
+    // Compatibility alias for integrations using the pre-1.3 command ID.
     vscode.commands.registerCommand('planfs.openEditor', (item) => editorProvider.open(resolveEditorEntityId(item))),
     vscode.commands.registerCommand('planfs.applySavedFilter', () => explorerProvider.applySavedFilter()),
     vscode.commands.registerCommand('planfs.clearSavedFilter', () => explorerProvider.clearSavedFilter()),

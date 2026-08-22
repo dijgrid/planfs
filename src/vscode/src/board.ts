@@ -424,7 +424,7 @@ export class BoardProvider {
       return;
     }
 
-    await vscode.commands.executeCommand('planfs.openEditor', {
+    await vscode.commands.executeCommand('planfs.openItem', {
       entity: { id: entityId }
     });
   }

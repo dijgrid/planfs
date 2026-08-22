@@ -67,7 +67,7 @@ The CLI gives agents and automation structured planning summaries, previewable t
 - `PlanFS: Create Task`
 - `PlanFS: Create Epic`
 - `PlanFS: Create Milestone`
-- `PlanFS: Open Structured Editor`
+- `PlanFS: Open Item`
 - `PlanFS: Apply Saved Filter`
 - `PlanFS: Open Archive`
 - `PlanFS: Refresh Views`

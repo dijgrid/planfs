@@ -164,7 +164,7 @@ Then open a repository with `.planfs/` and verify:
 - The Insights dependency graph renders task nodes by epic lane, supports filters, zoom controls, and dependency highlighting.
 - The Insights timeline shows a now marker with dated tasks, epics, and milestones placed on the time axis.
 - `PlanFS: Create Task`, `PlanFS: Create Epic`, and `PlanFS: Create Milestone` work.
-- `PlanFS: Open Structured Editor` shows an epic-scoped task board for epics, renders common Markdown sections, and keeps full body editing in the Markdown file through Open Markdown.
+- `PlanFS: Open Item` shows an epic-scoped task board for epics, renders common Markdown sections, and keeps full body editing in the Markdown file through Open Markdown.
 - Assignee and owner inputs still accept arbitrary text while offering Git-derived developer suggestions when available.
 - `planfs next` lists ranked next-work candidates and can include blocked work with explanations.
 - `planfs backlog list`, `planfs backlog capture`, `planfs backlog set-state`, and `planfs backlog review` work.
