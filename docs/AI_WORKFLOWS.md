@@ -16,7 +16,7 @@ Preview the change first with:
 planfs ai initialize --dry-run
 ```
 
-The command creates or updates a marked PlanFS section in `AGENTS.md` so future AI coding agents know to start planning questions with the compact summary command. Generated guidance uses the portable `planfs` executable by default. Repositories with a wrapper can override it, for example `planfs ai initialize --command "./tools/planfs"`.
+The command adds a short marked PlanFS section when missing, or replaces that section when present while preserving surrounding guidance. Generated guidance uses the portable `planfs` executable by default. Repositories with a wrapper can override it, for example `planfs ai initialize --command "./tools/planfs"`.
 
 ## Review Board State
 

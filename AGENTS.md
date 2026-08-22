@@ -71,43 +71,27 @@ node src/cli/dist/cli.js validate
 ```
 
 <!-- PLANFS-AI-AWARENESS:START -->
-## AI Planning Awareness
+## PlanFS AI
 
-Before answering planning-status questions, recommending next work, or proposing planning updates, start with:
-
-```sh
-node src/cli/dist/cli.js ai summary
-```
-
-Use the returned IDs and file paths for targeted follow-up reads instead of scanning all of `.planfs`.
-
-For one relevant entity, retrieve its shared human/AI semantic context with:
+Before planning or status work:
 
 ```sh
-node src/cli/dist/cli.js ai context --id TASK-061
+node src/cli/dist/cli.js ai summary --compact
 ```
 
-The context includes intent, recognized sections, criteria, readiness, and resolved authoritative relationships. Add `--nlp` only when local advisory prose signals are useful.
+For one item, use `node src/cli/dist/cli.js ai context --id TASK-061 --compact`. Use `node src/cli/dist/cli.js inspect TASK-061 --format json` only for full semantic evidence or source ranges. Prose analysis is advisory; never infer metadata changes from it.
 
-Use `node src/cli/dist/cli.js ai summary --only ready --compact` when only one low-overhead planning section is needed.
-
-Preview metadata updates before writing. Use `update-task` for one task:
+Preview metadata writes before applying them:
 
 ```sh
 node src/cli/dist/cli.js ai update-task --id TASK-061 --status in-progress --dry-run
 ```
 
-When replaying a JSON preview, pass its `expectedUpdatedAt` value through `--expected-updated-at` so newer human edits are refused. Use `none` when the preview token is `null`.
+Use `bulk-update-tasks` for bounded batches. Replay `expectedUpdatedAt` with `--expected-updated-at` (`none` for `null`).
 
-Use `bulk-update-tasks` when applying the same bounded metadata change to multiple tasks:
-
-```sh
-node src/cli/dist/cli.js ai bulk-update-tasks --ids TASK-061,TASK-062 --status review --dry-run
-```
-
-Prefer these preview/apply helpers over editing task frontmatter directly for status, priority, assignee, milestone, estimate, due date, tags, or refinement-state updates. After applying AI-assisted planning updates, run:
+Preview Markdown normalization with `node src/cli/dist/cli.js format TASK-061`; apply only with its fingerprint. Finish with:
 
 ```sh
-node src/cli/dist/cli.js validate
+node src/cli/dist/cli.js validate --semantic automation-ready
 ```
 <!-- PLANFS-AI-AWARENESS:END -->

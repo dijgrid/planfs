@@ -1113,13 +1113,41 @@ describe('CLI commands', () => {
       .toContain('status: in-progress');
   });
 
-  it('initializes agent instructions for AI planning awareness', async () => {
+  it('adds agent instructions when AGENTS.md is missing', async () => {
+    await expect(aiCommand(rootPath, 'initialize', {
+      format: 'json'
+    })).resolves.toBe(0);
+
+    const output = JSON.parse(
+      logSpy.mock.calls[logSpy.mock.calls.length - 1]?.[0] as string
+    );
+    expect(output).toMatchObject({
+      created: true,
+      updated: true,
+      dryRun: false
+    });
+
+    const agents = await fs.readFile(path.join(rootPath, 'AGENTS.md'), 'utf-8');
+    expect(agents).toContain('planfs ai summary --compact');
+    expect(agents).toContain('planfs inspect TASK-061 --format json');
+    expect(agents).toContain('planfs format TASK-061');
+    expect(agents).toContain('planfs validate --semantic automation-ready');
+    expect(agents.match(/PLANFS-AI-AWARENESS:START/g)).toHaveLength(1);
+  });
+
+  it('updates marked agent instructions and preserves surrounding guidance', async () => {
     await fs.writeFile(
       path.join(rootPath, 'AGENTS.md'),
       [
         '# AGENTS.md',
         '',
-        'Existing guidance.',
+        'Before guidance.',
+        '',
+        '<!-- PLANFS-AI-AWARENESS:START -->',
+        'Stale PlanFS guidance.',
+        '<!-- PLANFS-AI-AWARENESS:END -->',
+        '',
+        'After guidance.',
         ''
       ].join('\n'),
       'utf-8'
@@ -1141,7 +1169,8 @@ describe('CLI commands', () => {
     expect(output.content).toContain('PLANFS-AI-AWARENESS:START');
 
     let agents = await fs.readFile(path.join(rootPath, 'AGENTS.md'), 'utf-8');
-    expect(agents).not.toContain('PLANFS-AI-AWARENESS:START');
+    expect(agents).toContain('Stale PlanFS guidance.');
+    expect(agents).not.toContain('planfs ai summary --compact');
 
     await expect(aiCommand(rootPath, 'initialize', {
       format: 'json'
@@ -1157,11 +1186,12 @@ describe('CLI commands', () => {
     });
 
     agents = await fs.readFile(path.join(rootPath, 'AGENTS.md'), 'utf-8');
-    expect(agents).toContain('Existing guidance.');
-    expect(agents).toContain('planfs ai summary');
-    expect(agents).toContain('planfs ai context --id TASK-061');
-    expect(agents).toContain('planfs ai bulk-update-tasks --ids TASK-061,TASK-062 --status review --dry-run');
-    expect(agents).toContain('Prefer these preview/apply helpers over editing task frontmatter directly');
+    expect(agents).toContain('Before guidance.');
+    expect(agents).toContain('After guidance.');
+    expect(agents).not.toContain('Stale PlanFS guidance.');
+    expect(agents).toContain('planfs ai summary --compact');
+    expect(agents).toContain('planfs ai context --id TASK-061 --compact');
+    expect(agents).toContain('planfs validate --semantic automation-ready');
     expect(agents.match(/PLANFS-AI-AWARENESS:START/g)).toHaveLength(1);
 
     await expect(aiCommand(rootPath, 'initialize', {
@@ -1178,8 +1208,9 @@ describe('CLI commands', () => {
       format: 'json'
     })).resolves.toBe(0);
     output = JSON.parse(logSpy.mock.calls[logSpy.mock.calls.length - 1]?.[0] as string);
-    expect(output.content).toContain('node tools/planfs.js ai summary');
-    expect(output.content).toContain('node tools/planfs.js ai context --id TASK-061');
+    expect(output.content).toContain('node tools/planfs.js ai summary --compact');
+    expect(output.content).toContain('node tools/planfs.js ai context --id TASK-061 --compact');
+    expect(output.content).toContain('node tools/planfs.js inspect TASK-061 --format json');
   });
 
   it('lists pull request provider boundaries', async () => {
