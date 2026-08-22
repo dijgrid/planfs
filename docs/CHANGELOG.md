@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.1] - 2026-08-21
+
+### Changed
+- Shortened generated PlanFS agent guidance and added the 1.4 semantic inspection, formatting, and validation commands.
+- Made `planfs ai initialize` explicitly tested for both creating a missing `AGENTS.md` block and refreshing an existing marked block without disturbing surrounding guidance.
+
 ## [1.4.0] - 2026-08-21
 
 ### Added
