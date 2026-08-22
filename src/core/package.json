@@ -1,6 +1,6 @@
 {
   "name": "planfs-core",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "Core parsing and validation library for PlanFS",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -31,7 +31,7 @@
   "dependencies": {
     "@lezer/markdown": "^1.7.2",
     "ajv": "^8.12.0",
-    "planfs-schema": "1.3.0",
+    "planfs-schema": "1.4.0",
     "yaml": "^2.3.0"
   },
   "devDependencies": {

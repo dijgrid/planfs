@@ -7,8 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-08-21
+
 ### Added
 - Versioned semantic planning context in core and `planfs ai context`, with compact JSON, human-readable text, readiness, source traceability, and resolved authoritative relationships.
+- Loss-aware semantic Markdown parsing, inspection, validation, formatting, and optional local advisory analysis.
+- Semantic content and diagnostics in the VS Code structured item editor.
+
+### Changed
+- Unified task, epic, milestone, and decision opening behind `PlanFS: Open Item`.
+- Split repository, CLI, editor, board, and insights responsibilities into smaller focused modules.
+- Kept semantic formatting opt-in with preview, idempotence, and stale-write protection.
 
 ## [1.3.0] - 2026-08-12
 
