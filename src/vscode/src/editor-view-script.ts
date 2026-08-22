@@ -3,7 +3,7 @@
  */
 
 import { HELP_SCRIPT } from './help';
-import type { EditorPayload } from './editor';
+import type { EditorPayload } from './editor-types';
 
 export function renderEditorBrowserScript(payload: EditorPayload): string {
   const serializedEntity = escapeScriptJson(JSON.stringify(payload.entity));

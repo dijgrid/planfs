@@ -8,7 +8,7 @@ import { renderHelpButton, renderHelpPanel } from './help';
 import { renderEditorBrowserScript } from './editor-view-script';
 import { EDITOR_VIEW_STYLES } from './editor-view-styles';
 import { escapeHtml, getNonce } from './webview';
-import type { EditableEntity, EditorPayload, EpicBoardColumn, EpicBoardTask } from './editor';
+import type { EditableEntity, EditorPayload, EpicBoardColumn, EpicBoardTask } from './editor-types';
 
 export function renderEditor(webview: vscode.Webview, payload: EditorPayload): string {
   const nonce = getNonce();

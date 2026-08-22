@@ -6,96 +6,26 @@ import * as vscode from 'vscode';
 import {
   archiveEntity,
   Entity,
-  Epic,
-  Decision,
-  getRepositoryDevelopers,
-  getMilestoneRollup,
-  inspectSemanticEntity,
   loadRepository,
-  Milestone,
-  MilestoneRollup,
   Repository,
-  reviewBacklog,
   readFile,
   saveEntity,
   SemanticInspectionCache,
-  Task,
   updateTask,
   validateEntity
 } from 'planfs-core';
-import type {
-  SemanticAdvisoryConclusion,
-  SemanticInspectionResult
-} from 'planfs-core';
+import { handleHelpMessage } from './help';
+import { createEditorPayload } from './editor-payload';
 import {
-  createHelpTopics,
-  handleHelpMessage,
-  HelpTopic
-} from './help';
+  createSemanticEditorPayload,
+  sameSemanticSuggestionApplication
+} from './editor-semantic';
+import type { EditableEntity, SemanticEditorPayload } from './editor-types';
+export * from './editor-types';
 import { renderEditor } from './editor-view';
 import { PlanFSUiPreferences, UI_PREFERENCES } from './preferences';
 import { renderMessageDocument } from './webview';
 import { getPlanFSWorkspaceFolder } from './workspace';
-
-export interface EditorPayload {
-  entity: EditableEntity;
-  diagnostics: Array<{ message: string; severity: 'error' | 'warning'; path?: string }>;
-  options: {
-    epics: Array<{ id: string; title: string }>;
-    milestones: Array<{ id: string; title: string }>;
-    tasks: Array<{ id: string; title: string }>;
-    tags: string[];
-    developers: string[];
-  };
-  epicBoard?: EpicBoardColumn[];
-  backlogReadiness?: BacklogReadinessInfo;
-  milestoneRollup?: MilestoneRollup;
-  semantic: SemanticEditorPayload;
-  helpTopics: HelpTopic[];
-}
-
-export interface SemanticEditorSuggestion {
-  key: string;
-  conclusion: SemanticAdvisoryConclusion;
-  evidence: string[];
-  application: SemanticSuggestionApplication | null;
-}
-
-export interface SemanticSuggestionApplication {
-  field: 'dependsOn' | 'epic' | 'milestone';
-  value: string;
-  exactChange: string;
-  explanation: string;
-}
-
-export interface SemanticEditorPayload {
-  inspection: SemanticInspectionResult;
-  analysisEnabled: boolean;
-  suggestions: SemanticEditorSuggestion[];
-  suppressedCount: number;
-}
-
-export type EditableEntity = Task | Epic | Milestone | Decision;
-
-export interface EpicBoardTask {
-  id: string;
-  title: string;
-  status: Task['status'];
-  priority?: string;
-  assignee?: string;
-  milestone?: string;
-  dueDate?: string;
-}
-
-export interface EpicBoardColumn {
-  status: Task['status'];
-  tasks: EpicBoardTask[];
-}
-
-export interface BacklogReadinessInfo {
-  needsReview: boolean;
-  reasons: string[];
-}
 
 interface EditorSession {
   workspaceUri: string;
@@ -223,7 +153,7 @@ export class EntityEditorProvider {
       });
       panel.webview.html = renderEditor(
         panel.webview,
-        await createPayload(
+        await createEditorPayload(
           repository,
           entity,
           this.extensionUri,
@@ -331,7 +261,7 @@ export class EntityEditorProvider {
       }
       await panel.webview.postMessage({
         type: 'saved',
-        payload: await createPayload(
+        payload: await createEditorPayload(
           refreshed,
           saved,
           this.extensionUri,
@@ -360,7 +290,7 @@ export class EntityEditorProvider {
     if (!workspaceFolder) return;
     await panel.webview.postMessage({
       type: 'updateEditor',
-      payload: await createPayload(
+      payload: await createEditorPayload(
         repository,
         entity,
         this.extensionUri,
@@ -422,7 +352,7 @@ export class EntityEditorProvider {
       const refreshed = await loadRepository(workspaceFolder.uri.fsPath);
       panel.webview.html = renderEditor(
         panel.webview,
-        await createPayload(
+        await createEditorPayload(
           refreshed,
           milestone,
           this.extensionUri,
@@ -661,7 +591,7 @@ export class EntityEditorProvider {
         this.semanticInspectionCache
       );
       suggestion = semantic.suggestions.find(candidate => candidate.key === key);
-      if (!suggestion?.application || !sameApplication(application, suggestion.application)) {
+      if (!suggestion?.application || !sameSemanticSuggestionApplication(application, suggestion.application)) {
         throw new Error('The suggestion changed while it was being reviewed. Refresh and review it again.');
       }
 
@@ -682,7 +612,7 @@ export class EntityEditorProvider {
       const saved = refreshed.tasks.get(entity.id) ?? result.task;
       await panel.webview.postMessage({
         type: 'saved',
-        payload: await createPayload(
+        payload: await createEditorPayload(
           refreshed,
           saved,
           this.extensionUri,
@@ -777,169 +707,6 @@ function findEditableEntity(
     ?? repository.decisions.get(entityId);
 }
 
-async function createPayload(
-  repository: Repository,
-  entity: EditableEntity,
-  extensionUri: vscode.Uri,
-  uiPreferences: PlanFSUiPreferences | undefined,
-  workspaceFolder: vscode.WorkspaceFolder,
-  semanticInspectionCache?: SemanticInspectionCache
-): Promise<EditorPayload> {
-  const tags = new Set<string>();
-  for (const task of repository.tasks.values()) {
-    for (const tag of task.tags ?? []) {
-      tags.add(tag);
-    }
-  }
-  for (const epic of repository.epics.values()) {
-    for (const tag of epic.tags ?? []) {
-      tags.add(tag);
-    }
-  }
-
-  const developers = await getRepositoryDevelopers(repository.root);
-  const payload: EditorPayload = {
-    entity,
-    diagnostics: validateEntity(entity).map(diagnostic => ({
-      message: diagnostic.message,
-      severity: diagnostic.severity,
-      path: diagnostic.path
-    })),
-    options: {
-      epics: Array.from(repository.epics.values()).map(epic => ({
-        id: epic.id,
-        title: epic.title
-      })),
-      milestones: Array.from(repository.milestones.values()).map(milestone => ({
-        id: milestone.id,
-        title: milestone.title
-      })),
-      tasks: Array.from(repository.tasks.values()).map(task => ({
-        id: task.id,
-        title: task.title
-      })),
-      tags: Array.from(tags).sort(),
-      developers: developers.map(developer => developer.label)
-    },
-    semantic: await createSemanticEditorPayload(
-      repository,
-      entity,
-      uiPreferences,
-      workspaceFolder,
-      semanticInspectionCache
-    ),
-    helpTopics: createHelpTopics(extensionUri, ['editor'])
-  };
-
-  if (entity.type === 'epic') {
-    payload.epicBoard = createEpicBoard(repository, entity.id);
-  }
-
-  if (entity.type === 'task') {
-    payload.backlogReadiness = createBacklogReadinessInfo(repository, entity.id);
-  }
-
-  if (entity.type === 'milestone') {
-    payload.milestoneRollup = getMilestoneRollup(repository, entity.id);
-  }
-
-  return payload;
-}
-
-async function createSemanticEditorPayload(
-  repository: Repository,
-  entity: EditableEntity,
-  uiPreferences: PlanFSUiPreferences | undefined,
-  workspaceFolder: vscode.WorkspaceFolder,
-  semanticInspectionCache?: SemanticInspectionCache
-): Promise<SemanticEditorPayload> {
-  const analysisEnabled = uiPreferences?.get(
-    UI_PREFERENCES.semanticAnalysisEnabled,
-    workspaceFolder
-  ) ?? true;
-  const suppressed = new Set(uiPreferences?.get(
-    UI_PREFERENCES.semanticSuggestionSuppressions,
-    workspaceFolder
-  ) ?? []);
-  const inspectionOptions = {
-    tier: 'automation-ready',
-    analysis: analysisEnabled,
-    language: 'en'
-  } as const;
-  const inspection = semanticInspectionCache
-    ? await semanticInspectionCache.inspect(entity, inspectionOptions)
-    : await inspectSemanticEntity(entity, inspectionOptions);
-  const suggestions = inspection.advisory.conclusions.map(conclusion => {
-    const key = semanticSuggestionKey(entity.id, conclusion);
-    const evidence = inspection.analysis?.signals
-      .filter(signal => conclusion.signalKinds.includes(signal.kind) && signalMatchesConclusion(signal, conclusion))
-      .flatMap(signal => signal.evidence.map(item => item.text)) ?? [];
-    return {
-      key,
-      conclusion,
-      evidence: [...new Set(evidence)],
-      application: createSemanticSuggestionApplication(repository, entity, conclusion)
-    };
-  });
-  return {
-    inspection,
-    analysisEnabled,
-    suggestions: suggestions.filter(suggestion => !suppressed.has(suggestion.key)),
-    suppressedCount: suggestions.filter(suggestion => suppressed.has(suggestion.key)).length
-  };
-}
-
-function createSemanticSuggestionApplication(
-  repository: Repository,
-  entity: EditableEntity,
-  conclusion: SemanticAdvisoryConclusion
-): SemanticSuggestionApplication | null {
-  if (entity.type !== 'task' || conclusion.code !== 'analysis.relationship.metadata-missing') return null;
-  const field = conclusion.data.suggestedField;
-  const value = conclusion.data.targetId;
-  if ((field !== 'dependsOn' && field !== 'epic' && field !== 'milestone') || typeof value !== 'string') {
-    return null;
-  }
-  if (field === 'dependsOn') {
-    if (!repository.tasks.has(value) || entity.dependsOn?.includes(value)) return null;
-    return {
-      field,
-      value,
-      exactChange: `append ${value} to dependsOn`,
-      explanation: `${value} was found near dependency wording in this task's Markdown.`
-    };
-  }
-  const targetExists = field === 'epic' ? repository.epics.has(value) : repository.milestones.has(value);
-  if (!targetExists || entity[field]) return null;
-  return {
-    field,
-    value,
-    exactChange: `set ${field} to ${value}`,
-    explanation: `${value} was found near parent relationship wording in this task's Markdown.`
-  };
-}
-
-function sameApplication(
-  left: SemanticSuggestionApplication,
-  right: SemanticSuggestionApplication
-): boolean {
-  return left.field === right.field && left.value === right.value;
-}
-
-function semanticSuggestionKey(entityId: string, conclusion: SemanticAdvisoryConclusion): string {
-  const identity = conclusion.data.targetId ?? conclusion.data.criterionId ?? conclusion.range.start.offset;
-  return `${entityId}:${conclusion.code}:${String(identity)}`;
-}
-
-function signalMatchesConclusion(
-  signal: { data: Record<string, string | number | boolean | null> },
-  conclusion: SemanticAdvisoryConclusion
-): boolean {
-  if (conclusion.data.targetId) return signal.data.targetId === conclusion.data.targetId;
-  if (conclusion.data.criterionId) return signal.data.criterionId === conclusion.data.criterionId;
-  return false;
-}
-
 function locateBodyStart(content: string, body: string): number {
   if (!body) return content.length;
   const firstDelimiterEnd = content.indexOf('\n---', 3);
@@ -955,43 +722,6 @@ function positionAt(content: string, offset: number): vscode.Position {
   const line = prefix.split('\n').length - 1;
   const character = bounded - (lastNewline + 1);
   return new vscode.Position(line, character);
-}
-
-function createBacklogReadinessInfo(
-  repository: Repository,
-  taskId: string
-): BacklogReadinessInfo {
-  const reviewItem = reviewBacklog(repository).find(item => item.task.id === taskId);
-  return {
-    needsReview: Boolean(reviewItem),
-    reasons: reviewItem?.reasons ?? []
-  };
-}
-
-function createEpicBoard(repository: Repository, epicId: string): EpicBoardColumn[] {
-  const statuses: Array<Task['status']> = ['todo', 'in-progress', 'review', 'done'];
-  const tasks = Array.from(repository.tasks.values())
-    .filter(task => task.epic === epicId)
-    .sort((a, b) => statusIndex(a.status) - statusIndex(b.status) || a.id.localeCompare(b.id));
-
-  return statuses.map(status => ({
-    status,
-    tasks: tasks
-      .filter(task => task.status === status)
-      .map(task => ({
-        id: task.id,
-        title: task.title,
-        status: task.status,
-        priority: task.priority,
-        assignee: task.assignee,
-        milestone: task.milestone,
-        dueDate: task.dueDate
-      }))
-  }));
-}
-
-function statusIndex(status: Task['status']): number {
-  return ['todo', 'in-progress', 'review', 'done'].indexOf(status);
 }
 
 function mergeEditableEntity(
