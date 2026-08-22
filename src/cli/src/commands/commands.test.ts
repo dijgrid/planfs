@@ -853,6 +853,70 @@ describe('CLI commands', () => {
     expect(textOutput).not.toContain('TASK-002');
   });
 
+  it('emits shared semantic planning context as compact JSON and human-readable text', async () => {
+    await writeTask('TASK-001', [
+      'title: Semantic context target',
+      'status: todo',
+      'dependsOn:',
+      '  - TASK-999'
+    ]);
+    const taskPath = path.join(rootPath, '.planfs', 'tasks', 'TASK-001.md');
+    await fs.writeFile(taskPath, [
+      '---',
+      'id: TASK-001',
+      'title: Semantic context target',
+      'status: todo',
+      'dependsOn:',
+      '  - TASK-999',
+      '---',
+      '',
+      'Give people and agents one intent.',
+      '',
+      '## Acceptance Criteria',
+      '',
+      '- [ ] Render concise context after TASK-999.',
+      '',
+      '## Non-Goals',
+      '',
+      '- Mutating relationships.',
+      ''
+    ].join('\n'), 'utf-8');
+
+    await expect(aiCommand(rootPath, 'context', {
+      id: 'TASK-001', compact: true, nlp: true, format: 'json'
+    })).resolves.toBe(0);
+    const compactOutput = logSpy.mock.calls[logSpy.mock.calls.length - 1]?.[0] as string;
+    expect(compactOutput).not.toContain('\n');
+    expect(JSON.parse(compactOutput)).toMatchObject({
+      contextVersion: '1.0.0',
+      entity: { id: 'TASK-001' },
+      intent: { text: 'Give people and agents one intent.' },
+      readiness: { status: 'missing-dependency', missingDependencyIds: ['TASK-999'] },
+      relationships: {
+        dependsOn: [{ id: 'TASK-999', entity: null, authoritative: true }]
+      },
+      advisory: {
+        enabled: true,
+        analysis: { analyzer: { id: 'planfs-local-english-rules' } }
+      }
+    });
+
+    await expect(aiCommand(rootPath, 'context', {
+      id: 'TASK-001', format: 'text'
+    })).resolves.toBe(0);
+    const textOutput = logSpy.mock.calls[logSpy.mock.calls.length - 1]?.[0] as string;
+    expect(textOutput).toContain('TASK-001: Semantic context target [todo]');
+    expect(textOutput).toContain('missing-dependency: Missing dependency TASK-999');
+    expect(textOutput).toContain('TASK-999 (unresolved)');
+    expect(textOutput).toContain('- [ ] Render concise context after TASK-999.');
+    expect(textOutput).toContain('Advisory analysis: disabled');
+
+    await expect(aiCommand(rootPath, 'context', {
+      id: 'TASK-404', format: 'json'
+    })).resolves.toBe(1);
+    expect(errorSpy).toHaveBeenCalledWith('Error:', 'Entity not found: TASK-404');
+  });
+
   it('previews and applies AI task updates', async () => {
     await writeTask('TASK-001', [
       'title: Update with AI command',
@@ -1095,6 +1159,7 @@ describe('CLI commands', () => {
     agents = await fs.readFile(path.join(rootPath, 'AGENTS.md'), 'utf-8');
     expect(agents).toContain('Existing guidance.');
     expect(agents).toContain('planfs ai summary');
+    expect(agents).toContain('planfs ai context --id TASK-061');
     expect(agents).toContain('planfs ai bulk-update-tasks --ids TASK-061,TASK-062 --status review --dry-run');
     expect(agents).toContain('Prefer these preview/apply helpers over editing task frontmatter directly');
     expect(agents.match(/PLANFS-AI-AWARENESS:START/g)).toHaveLength(1);
@@ -1114,6 +1179,7 @@ describe('CLI commands', () => {
     })).resolves.toBe(0);
     output = JSON.parse(logSpy.mock.calls[logSpy.mock.calls.length - 1]?.[0] as string);
     expect(output.content).toContain('node tools/planfs.js ai summary');
+    expect(output.content).toContain('node tools/planfs.js ai context --id TASK-061');
   });
 
   it('lists pull request provider boundaries', async () => {

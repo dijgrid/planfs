@@ -32,16 +32,16 @@ export async function main(): Promise<void> {
     .version(pkg.version)
     .command(
       'ai <action>',
-      'AI-oriented planning summary and update helpers',
+      'AI-oriented planning summary, semantic context, and update helpers',
       (y) =>
         y
           .positional('action', {
             describe: 'AI helper to run',
-            choices: ['summary', 'update-task', 'bulk-update-tasks', 'initialize']
+            choices: ['summary', 'context', 'update-task', 'bulk-update-tasks', 'initialize']
           })
           .option('id', {
             type: 'string',
-            description: 'Task ID to update'
+            description: 'Entity ID for context or task ID to update'
           })
           .option('ids', {
             type: 'array',
@@ -103,6 +103,16 @@ export async function main(): Promise<void> {
             default: false,
             description: 'Emit minified JSON for lower-overhead agent context'
           })
+          .option('nlp', {
+            type: 'boolean',
+            default: false,
+            description: 'Enable local advisory prose analysis for semantic context'
+          })
+          .option('language', {
+            type: 'string',
+            default: 'en',
+            description: 'Language for advisory semantic-context analysis'
+          })
           .option('expected-updated-at', {
             type: 'string',
             description: 'Refuse a task update if updatedAt changed since preview (use none for an unset timestamp)'
@@ -149,6 +159,8 @@ export async function main(): Promise<void> {
             format: args.format as 'json' | 'text',
             only: args.only as AiSummarySection | undefined,
             compact: args.compact as boolean,
+            nlp: args.nlp as boolean,
+            language: args.language as string,
             expectedUpdatedAt: args.expectedUpdatedAt as string | undefined,
             command: args.command as string | undefined
           }

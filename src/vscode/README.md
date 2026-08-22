@@ -94,7 +94,7 @@ Explain the work here.
 
 The extension uses these files as its source of truth. It does not require a hosted PlanFS service or copy the plan into an opaque local database.
 
-The structured editor derives its semantic view from the same `planfs-core` API used by the CLI. Checked, unchecked, and ordinary list criteria remain distinct; findings and questions retain source navigation; unknown sections stay visible. Prose mentions are advisory and are shown separately from authoritative frontmatter relationships. Suggestions can be dismissed or restored, and any metadata guidance is preview-only.
+The structured editor derives its semantic view from the same `planfs-core` API used by the CLI. Checked, unchecked, and ordinary list criteria remain distinct and include accessible completion progress; findings and questions retain source navigation; unknown sections stay visible. Empty semantic groups and relationships that do not apply to the current entity are omitted. Secondary sections, mentions, and diagnostics use native disclosure controls, and long section previews are clamped until expanded. Prose mentions are advisory and are shown separately from authoritative frontmatter relationships. Suggestions can be dismissed or restored, and any metadata guidance is preview-only.
 
 ## Documentation and Support
 

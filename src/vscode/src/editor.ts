@@ -1306,6 +1306,54 @@ function renderEditor(webview: vscode.Webview, payload: EditorPayload): string {
       font-size: 13px;
     }
 
+    .semanticProgress {
+      margin-left: auto;
+    }
+
+    .semanticProgress progress {
+      width: 112px;
+      height: 7px;
+      accent-color: var(--vscode-progressBar-background, var(--vscode-focusBorder));
+    }
+
+    .semanticDisclosure {
+      border-top: 1px solid var(--border);
+      padding-top: 10px;
+    }
+
+    .semanticDisclosure > summary,
+    .semanticPreviewDisclosure > summary {
+      cursor: pointer;
+      color: var(--vscode-textLink-foreground);
+    }
+
+    .semanticDisclosure > summary {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      font-size: 13px;
+      font-weight: 600;
+      list-style: none;
+    }
+
+    .semanticDisclosure > summary::before {
+      content: '›';
+      color: var(--muted);
+      font-size: 16px;
+      line-height: 1;
+      transition: transform 120ms ease;
+    }
+
+    .semanticDisclosure[open] > summary::before {
+      transform: rotate(90deg);
+    }
+
+    .semanticDisclosureBody {
+      display: grid;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
     .semanticItem {
       display: grid;
       grid-template-columns: auto minmax(0, 1fr) auto;
@@ -1322,7 +1370,16 @@ function renderEditor(webview: vscode.Webview, payload: EditorPayload): string {
       text-decoration: line-through;
     }
 
+    .semanticItem.checked {
+      border-left: 3px solid var(--vscode-testing-iconPassed, var(--vscode-charts-green, var(--border)));
+    }
+
+    .semanticItem.unchecked {
+      border-left: 3px solid var(--vscode-focusBorder, var(--border));
+    }
+
     .semanticItem.uncheckable {
+      border-left: 3px solid var(--vscode-disabledForeground, var(--border));
       border-style: dashed;
     }
 
@@ -1389,15 +1446,40 @@ function renderEditor(webview: vscode.Webview, payload: EditorPayload): string {
 
     .semanticDiagnostic.warning,
     .semanticSuggestion {
+      border-left: 3px solid var(--vscode-inputValidation-warningBorder, var(--border));
       border-color: var(--vscode-inputValidation-warningBorder, var(--border));
     }
 
     .semanticDiagnostic.error {
+      border-left: 3px solid var(--vscode-inputValidation-errorBorder, var(--border));
       border-color: var(--vscode-inputValidation-errorBorder, var(--border));
     }
 
     .semanticDiagnostic.info {
+      border-left: 3px solid var(--vscode-inputValidation-infoBorder, var(--border));
       border-color: var(--vscode-inputValidation-infoBorder, var(--border));
+    }
+
+    .semanticSectionPreview {
+      display: -webkit-box;
+      overflow: hidden;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 3;
+    }
+
+    .semanticPreviewDisclosure {
+      margin-top: 5px;
+    }
+
+    .semanticPreviewDisclosure > summary {
+      font-size: 11px;
+    }
+
+    .semanticFullPreview {
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.45;
     }
 
     .relationshipGrid {
@@ -1409,6 +1491,7 @@ function renderEditor(webview: vscode.Webview, payload: EditorPayload): string {
     .relationshipBox {
       padding: 7px 8px;
       border: 1px solid var(--border);
+      border-left: 3px solid var(--vscode-focusBorder, var(--border));
       border-radius: 4px;
       background: var(--vscode-input-background);
     }
@@ -1754,6 +1837,7 @@ function renderEditor(webview: vscode.Webview, payload: EditorPayload): string {
       const mentions = inspection.advisory.mentions || [];
       const suggestions = semantic.suggestions || [];
       const analysis = inspection.analysis;
+      const progressLabel = checked + ' of ' + checkable + ' checkable acceptance criteria completed';
 
       container.innerHTML =
         '<div class="semanticHeader"><div><strong>Semantic inspection</strong>' +
@@ -1762,35 +1846,30 @@ function renderEditor(webview: vscode.Webview, payload: EditorPayload): string {
             (semantic.analysisEnabled ? 'Disable local analysis' : 'Enable local analysis') + '</button>' +
             (semantic.suppressedCount ? '<button type="button" id="restoreSemanticSuggestions" class="secondary">Restore ' + semantic.suppressedCount + ' dismissed</button>' : '') +
           '</div></div>' +
-        '<div class="semanticGroup"><h3>Authoritative relationships</h3><div class="relationshipGrid">' +
-          relationshipBox('Depends on', relationships.dependsOn) +
-          relationshipBox('Epic', relationships.epic) +
-          relationshipBox('Milestone', relationships.milestone) +
-          relationshipBox('Supersedes', relationships.supersedes) +
-          relationshipBox('Superseded by', relationships.supersededBy) +
-        '</div></div>' +
+        renderRelationships(inspection.entity.type, relationships) +
         '<div class="semanticGroup"><div class="semanticRow"><h3>Acceptance criteria</h3>' +
-          '<span class="semanticBadge">' + checked + ' / ' + checkable + ' checked' +
-          (criteria.length !== checkable ? ' · ' + (criteria.length - checkable) + ' ordinary' : '') + '</span></div>' +
+          '<div class="semanticProgress"><span class="semanticBadge">' + checked + ' / ' + checkable + ' checked' +
+          (criteria.length !== checkable ? ' · ' + (criteria.length - checkable) + ' ordinary' : '') + '</span>' +
+          (checkable ? '<progress value="' + checked + '" max="' + checkable + '" aria-label="' + escapeHtml(progressLabel) + '"></progress>' : '') +
+          '</div></div>' +
           (criteria.length ? criteria.map(renderCriterion).join('') : emptySemantic('No acceptance criteria found.')) +
         '</div>' +
-        renderEntryGroup('Findings', findings, 'finding', 'No findings recorded.') +
-        renderEntryGroup('Questions', questions, 'question', 'No questions recorded.') +
-        '<div class="semanticGroup"><h3>Ordered sections</h3>' +
-          (documentView.sections.length ? documentView.sections.map(renderSectionSummary).join('') : emptySemantic('No level-two sections found.')) +
-        '</div>' +
+        renderEntryGroup('Findings', findings, 'finding') +
+        renderEntryGroup('Questions', questions, 'question') +
+        renderDisclosureGroup('Ordered sections', documentView.sections.map(renderSectionSummary).join(''), documentView.sections.length) +
         '<div class="semanticGroup"><div class="semanticRow"><h3>Advisory suggestions</h3>' +
           (analysis ? '<span class="semanticBadge">' + escapeHtml(analysis.analyzer.id + '@' + analysis.analyzer.version + ' · ' + analysis.language) + '</span>' : '') +
           '</div>' +
           (!semantic.analysisEnabled ? emptySemantic('Local analysis is disabled for this workspace.') :
             suggestions.length ? suggestions.map(renderSuggestion).join('') : emptySemantic('No actionable suggestions.')) +
         '</div>' +
-        '<div class="semanticGroup"><h3>Advisory body mentions</h3>' +
-          (mentions.length ? mentions.map(renderMention).join('') : emptySemantic('No entity-ID mentions found in prose.')) +
-        '</div>' +
-        '<div class="semanticGroup"><h3>Semantic diagnostics</h3>' +
-          (inspection.diagnostics.length ? inspection.diagnostics.map(renderSemanticDiagnostic).join('') : emptySemantic('No semantic diagnostics.')) +
-        '</div>';
+        renderDisclosureGroup('Advisory body mentions', mentions.map(renderMention).join(''), mentions.length) +
+        renderDisclosureGroup(
+          'Semantic diagnostics',
+          inspection.diagnostics.map(renderSemanticDiagnostic).join(''),
+          inspection.diagnostics.length,
+          inspection.diagnostics.some(item => item.severity === 'error')
+        );
 
       container.querySelectorAll('[data-source-start]').forEach(button => {
         button.addEventListener('click', () => vscode.postMessage({
@@ -1834,18 +1913,23 @@ function renderEditor(webview: vscode.Webview, payload: EditorPayload): string {
         sourceButton(criterion.range) + '</div>';
     }
 
-    function renderEntryGroup(title, entries, kind, emptyMessage) {
+    function renderEntryGroup(title, entries, kind) {
+      if (!entries.length) return '';
       return '<div class="semanticGroup"><h3>' + title + '</h3>' +
-        (entries.length ? entries.map(entry => '<div class="semanticItem"><span class="semanticMark">' + (kind === 'question' ? '?' : '•') + '</span>' +
+        entries.map(entry => '<div class="semanticItem"><span class="semanticMark">' + (kind === 'question' ? '?' : '•') + '</span>' +
           '<div><div class="semanticText">' + escapeHtml(entry.text) + '</div><div class="semanticMeta">' + escapeHtml(entry.provenance) + '</div></div>' +
-          sourceButton(entry.range) + '</div>').join('') : emptySemantic(emptyMessage)) + '</div>';
+          sourceButton(entry.range) + '</div>').join('') + '</div>';
     }
 
     function renderSectionSummary(section) {
+      const preview = section.text ? '<div class="semanticMeta semanticSectionPreview">' + escapeHtml(section.text) + '</div>' : '';
+      const expansion = section.text && section.text.length > 180
+        ? '<details class="semanticPreviewDisclosure"><summary>Expand preview</summary><div class="semanticFullPreview">' + escapeHtml(section.text) + '</div></details>'
+        : '';
       return '<div class="semanticItem"><span class="semanticMark">' + (section.index + 1) + '</span><div>' +
         '<div class="semanticText">' + escapeHtml(section.heading) + ' <span class="semanticBadge">' + escapeHtml(section.key || 'custom') + '</span></div>' +
         '<div class="semanticMeta">' + escapeHtml(section.provenance + ' · ' + section.contentShape) + '</div>' +
-        (section.text ? '<div class="semanticMeta">' + escapeHtml(section.text) + '</div>' : '') + '</div>' +
+        preview + expansion + '</div>' +
         sourceButton(section.headingRange) + '</div>';
     }
 
@@ -1887,9 +1971,32 @@ function renderEditor(webview: vscode.Webview, payload: EditorPayload): string {
         (range ? sourceButton(range) : '') + '</div>';
     }
 
+    function renderRelationships(entityType, relationships) {
+      const boxes = entityType === 'task'
+        ? [
+            relationshipBox('Depends on', relationships.dependsOn),
+            relationshipBox('Epic', relationships.epic),
+            relationshipBox('Milestone', relationships.milestone)
+          ]
+        : entityType === 'decision'
+          ? [
+              relationshipBox('Supersedes', relationships.supersedes),
+              relationshipBox('Superseded by', relationships.supersededBy)
+            ]
+          : [];
+      if (!boxes.length) return '';
+      return '<div class="semanticGroup semanticAuthoritative"><h3>Authoritative relationships</h3><div class="relationshipGrid">' + boxes.join('') + '</div></div>';
+    }
+
+    function renderDisclosureGroup(title, content, count, open) {
+      if (!count) return '';
+      return '<details class="semanticGroup semanticDisclosure"' + (open ? ' open' : '') + '><summary><span>' + escapeHtml(title) + '</span>' +
+        '<span class="semanticBadge">' + count + '</span></summary><div class="semanticDisclosureBody">' + content + '</div></details>';
+    }
+
     function relationshipBox(label, value) {
       const display = Array.isArray(value) ? (value.join(', ') || 'None') : (value || 'None');
-      return '<div class="relationshipBox"><div class="semanticMeta">' + label + '</div><div class="semanticText">' + escapeHtml(display) + '</div></div>';
+      return '<div class="relationshipBox" aria-label="Authoritative ' + escapeHtml(label) + '"><div class="semanticMeta">' + label + '</div><div class="semanticText">' + escapeHtml(display) + '</div></div>';
     }
 
     function sourceButton(range) {

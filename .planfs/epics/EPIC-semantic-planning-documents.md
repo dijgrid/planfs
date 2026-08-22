@@ -47,6 +47,8 @@ Dependencies, parent relationships, status, and other planning metadata remain a
 - TASK-117: Evaluate non-LLM NLP libraries for semantic ticket analysis
 - TASK-118: Prototype advisory NLP signals for ticket quality and relationships
 - TASK-119: Integrate advisory non-LLM NLP analysis into PlanFS core and CLI
+- TASK-120: Expose shared semantic planning context for agents and humans
+- TASK-121: Polish semantic task view hierarchy and visual states
 
 ## Follow-on Epics
 
@@ -57,6 +59,8 @@ Dependencies, parent relationships, status, and other planning metadata remain a
 - The v1.4 implementation now provides the loss-aware model, entity profiles, stable diagnostics, shared core/CLI inspection, optional local analysis, conservative formatter, and VS Code presentation described by this epic.
 - TASK-116 release verification found the active repository baseline-conformant with zero semantic diagnostics; stricter automation-ready findings remain advisory and visible rather than triggering rewrites.
 - The VS Code Apply path remains separate from analysis and accepts only narrow, explained, user-confirmed, validation-safe metadata changes.
+- Core and `planfs ai context` now project bounded semantic intent, criteria, readiness, diagnostics, and resolved authoritative relationships for shared agent and human planning workflows.
+- The VS Code semantic view now emphasizes primary planning content while suppressing empty groups, collapsing secondary detail, and presenting accessible, theme-safe progress and state cues.
 
 ## Questions
 

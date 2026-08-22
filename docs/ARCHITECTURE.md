@@ -199,7 +199,7 @@ node src/cli/dist/cli.js validate --format json
 
 See [CI Validation](./CI.md) for automation examples.
 
-AI-assisted workflows should start from `planfs ai summary` and apply common metadata changes through `planfs ai update-task --dry-run` before writing. See [AI-Assisted Planning Workflows](./AI_WORKFLOWS.md).
+AI-assisted workflows should start from `planfs ai summary`, use `planfs ai context --id <id>` for a shared semantic view of relevant work, and apply common metadata changes through `planfs ai update-task --dry-run` before writing. See [AI-Assisted Planning Workflows](./AI_WORKFLOWS.md).
 
 ## Extension Packaging
 

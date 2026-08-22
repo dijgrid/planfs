@@ -39,7 +39,9 @@ The December 15 target is provisional. The release should favor tolerant reading
 ## Findings
 
 - Verified behavior now covers typed loss-aware extraction, stable inspection JSON, baseline/automation-ready/lifecycle validation, local advisory English signals, explicit formatting, and shared VS Code inspection.
-- The 2026-08-15 release check passed lint, all workspace builds, 246 workspace tests, repository validation, CLI inspection, semantic validation, and formatter preview checks.
+- The latest release check passed lint, all workspace builds, 252 workspace tests, repository validation, CLI inspection and context smoke checks, semantic validation, formatter preview checks, and VSIX packaging.
+- A versioned compact planning-context projection now bridges semantic Markdown inspection with both AI workflows and concise human review.
+- Semantic task views now use a clearer visual hierarchy with empty-state suppression, accessible progress, collapsible secondary detail, expandable previews, and theme-safe status cues.
 - Existing format-v1 artifacts require no rewrite. Archived artifacts are immutable; optional formatting applies only to active artifacts after an explicit preview.
 
 ## Questions

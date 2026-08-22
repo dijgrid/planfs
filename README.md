@@ -70,6 +70,7 @@ After building, use the CLI against a repository containing `.planfs/`:
 node src/cli/dist/cli.js init
 node src/cli/dist/cli.js validate
 node src/cli/dist/cli.js list tasks
+node src/cli/dist/cli.js ai context --id TASK-001 --format text
 node src/cli/dist/cli.js list epics
 node src/cli/dist/cli.js show TASK-001
 node src/cli/dist/cli.js branch

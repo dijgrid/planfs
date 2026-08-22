@@ -231,11 +231,13 @@ planfs ai summary
 planfs ai summary --assignee justin --limit 10
 planfs ai summary --only review --compact
 planfs ai summary --only blocked --format text
+planfs ai context --id TASK-001
+planfs ai context --id TASK-001 --format text
 planfs ai update-task --id TASK-001 --status in-progress --dry-run
 planfs ai update-task --id TASK-001 --status in-progress --expected-updated-at 2026-06-20T00:00:00.000Z
 ```
 
-`planfs ai summary` emits structured planning context and can select one section with `--only`, minify JSON with `--compact`, or produce concise text. `planfs ai update-task` supports validated dry-run previews and optional `updatedAt` conflict checks before applying. See [AI-Assisted Planning Workflows](./AI_WORKFLOWS.md).
+`planfs ai summary` emits repository-wide planning context and can select one section with `--only`, minify JSON with `--compact`, or produce concise text. After selecting relevant work, `planfs ai context --id <id>` returns a bounded semantic projection of its intent, recognized sections, criteria, readiness, diagnostics, and resolved authoritative relationships; local advisory prose analysis remains opt-in with `--nlp`. `planfs ai update-task` supports validated dry-run previews and optional `updatedAt` conflict checks before applying. See [AI-Assisted Planning Workflows](./AI_WORKFLOWS.md).
 
 ### Create Planning Artifacts from CLI
 

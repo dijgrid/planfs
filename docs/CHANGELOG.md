@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Versioned semantic planning context in core and `planfs ai context`, with compact JSON, human-readable text, readiness, source traceability, and resolved authoritative relationships.
+
 ## [1.3.0] - 2026-08-12
 
 ### Added

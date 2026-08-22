@@ -46,6 +46,20 @@ For a focused next-work list, use:
 planfs next --format json
 ```
 
+## Read Semantic Planning Context
+
+After the summary identifies a relevant task, epic, milestone, or decision, retrieve a compact semantic context instead of reparsing its Markdown:
+
+```sh
+planfs ai context --id TASK-061
+planfs ai context --id TASK-061 --compact
+planfs ai context --id TASK-061 --format text
+```
+
+The shared core projection includes the entity's intent, recognized sections, acceptance criteria, findings, decisions, open questions, references, diagnostics, and authoritative relationships. Task context also includes readiness and resolved summaries for dependencies, its epic, and its milestone. Unresolved relationship IDs stay visible.
+
+Context generation is read-only. Frontmatter relationships remain authoritative, source ranges trace extracted content back to Markdown, and advisory prose analysis is disabled by default. Enable the bundled local English rules explicitly with `--nlp`; those signals remain separate and never update planning data.
+
 ## Preview Planning Updates
 
 Use `ai update-task` for common task metadata changes. Preview first:

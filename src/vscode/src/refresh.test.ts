@@ -6,6 +6,7 @@ import { promisify } from 'util';
 import * as vscode from 'vscode';
 import {
   archiveEntity,
+  createDecisionTemplate,
   createEpicTemplate,
   createMilestoneTemplate,
   createTaskTemplate,
@@ -1593,7 +1594,7 @@ describe('VS Code view refresh workspace selection', () => {
       '',
       '## Experiment Notes',
       '',
-      'Custom content remains visible with raw <script>markup</script>.'
+      'Custom content remains visible with raw <script>markup</script>. This deliberately long section preview exercises the collapsed summary treatment while preserving enough planning context for a reader to understand what the section contains before choosing to expand it and inspect the complete source-backed text.'
     ].join('\n');
     await saveEntity(firstRoot, {
       ...createTaskTemplate('TASK-020', 'Semantic editor task'),
@@ -1610,6 +1611,7 @@ describe('VS Code view refresh workspace selection', () => {
     await editor.open('TASK-020');
 
     const editorPanel = jest.mocked(vscode.window.createWebviewPanel).mock.results[0].value;
+    const renderedSemantic = renderSemanticMarkup(editorPanel.webview.html);
     expect(editorPanel.webview.html).toContain('"analysisEnabled":true');
     expect(editorPanel.webview.html).toContain('"checked":true');
     expect(editorPanel.webview.html).toContain('"checked":false');
@@ -1630,6 +1632,35 @@ describe('VS Code view refresh workspace selection', () => {
     expect(editorPanel.webview.html).toContain('data-dismiss-suggestion');
     expect(editorPanel.webview.html).toContain('data-source-start');
     expect(editorPanel.webview.html).toContain('Non-authoritative prose mention');
+    expect(editorPanel.webview.html).toContain('class="semanticProgress"');
+    expect(editorPanel.webview.html).toContain('<progress value=');
+    expect(editorPanel.webview.html).toContain('checkable acceptance criteria completed');
+    expect(editorPanel.webview.html).toContain('renderRelationships(inspection.entity.type, relationships)');
+    expect(editorPanel.webview.html).toContain("entityType === 'task'");
+    expect(editorPanel.webview.html).toContain("entityType === 'decision'");
+    expect(editorPanel.webview.html).toContain('class="semanticGroup semanticDisclosure"');
+    expect(editorPanel.webview.html).toContain("if (!entries.length) return '';");
+    expect(editorPanel.webview.html).toContain("if (!count) return '';");
+    expect(editorPanel.webview.html).toContain('semanticSectionPreview');
+    expect(editorPanel.webview.html).toContain('section.text.length > 180');
+    expect(editorPanel.webview.html).toContain('Expand preview');
+    expect(editorPanel.webview.html).toContain('.semanticItem.checked');
+    expect(editorPanel.webview.html).toContain('.semanticItem.unchecked');
+    expect(editorPanel.webview.html).toContain('.semanticItem.uncheckable');
+    expect(editorPanel.webview.html).toContain('semanticDiagnostic.warning');
+    expect(editorPanel.webview.html).toContain('semanticDiagnostic.error');
+    expect(editorPanel.webview.html).toContain('semanticDiagnostic.info');
+    expect(renderedSemantic).toContain('<progress value="1" max="2"');
+    expect(renderedSemantic).toContain('aria-label="1 of 2 checkable acceptance criteria completed"');
+    expect(renderedSemantic).toContain('Authoritative relationships');
+    expect(renderedSemantic).toContain('Depends on');
+    expect(renderedSemantic).not.toContain('Supersedes');
+    expect(renderedSemantic).toContain('<details class="semanticGroup semanticDisclosure"');
+    expect(renderedSemantic).toContain('Ordered sections');
+    expect(renderedSemantic).toContain('Advisory body mentions');
+    expect(renderedSemantic).toContain('Semantic diagnostics');
+    expect(renderedSemantic).toContain('semanticSectionPreview');
+    expect(renderedSemantic).toContain('Expand preview');
 
     selectPlanFSWorkspaceFolder(secondFolder);
     await editorPanel.webview.postMessage({
@@ -1747,6 +1778,57 @@ describe('VS Code view refresh workspace selection', () => {
     expect(editorPanel.webview.postedMessages).toContainEqual(expect.objectContaining({ type: 'saved' }));
   });
 
+  it('suppresses empty semantic detail and renders entity-specific relationships', async () => {
+    selectPlanFSWorkspaceFolder(firstFolder);
+    await saveEntity(firstRoot, {
+      ...createTaskTemplate('TASK-023', 'Focused semantic task'),
+      body: [
+        'A focused task description.',
+        '',
+        '## Acceptance Criteria',
+        '',
+        '- [ ] Keep the semantic view concise.'
+      ].join('\n')
+    });
+
+    const editor = new EntityEditorProvider(vscode.Uri.file('/extension'));
+    await editor.open('TASK-023');
+    let editorPanel = jest.mocked(vscode.window.createWebviewPanel).mock.results[0].value;
+    let renderedSemantic = renderSemanticMarkup(editorPanel.webview.html);
+
+    expect(renderedSemantic).toContain('Depends on');
+    expect(renderedSemantic).toContain('Epic');
+    expect(renderedSemantic).toContain('Milestone');
+    expect(renderedSemantic).not.toContain('Supersedes');
+    expect(renderedSemantic).not.toContain('>Findings<');
+    expect(renderedSemantic).not.toContain('>Questions<');
+    expect(renderedSemantic).not.toContain('Advisory body mentions');
+    expect(renderedSemantic).not.toContain('Semantic diagnostics');
+
+    await saveEntity(firstRoot, {
+      ...createDecisionTemplate('DECISION-semantic-visuals', 'Semantic visual policy'),
+      supersedes: 'DECISION-older',
+      body: [
+        '## Context',
+        '',
+        'Semantic state needs a clear hierarchy.',
+        '',
+        '## Decision',
+        '',
+        'Use theme-safe disclosure controls.'
+      ].join('\n')
+    });
+    await editor.open('DECISION-semantic-visuals');
+    editorPanel = jest.mocked(vscode.window.createWebviewPanel).mock.results[1].value;
+    renderedSemantic = renderSemanticMarkup(editorPanel.webview.html);
+
+    expect(renderedSemantic).toContain('Supersedes');
+    expect(renderedSemantic).toContain('Superseded by');
+    expect(renderedSemantic).not.toContain('Depends on');
+    expect(renderedSemantic).not.toContain('>Epic<');
+    expect(renderedSemantic).not.toContain('>Milestone<');
+  });
+
   it('keeps editor documents stable on refresh and refuses stale structured saves', async () => {
     selectPlanFSWorkspaceFolder(firstFolder);
     const initial = { ...createTaskTemplate('TASK-conflict', 'Original title'), updatedAt: '2026-01-01T00:00:00Z' };
@@ -1842,7 +1924,7 @@ describe('VS Code view refresh workspace selection', () => {
       ...createTaskTemplate('TASK-022', 'Ready backlog task'),
       priority: 'medium',
       body: 'Ready body content.',
-      updatedAt: '2026-06-20T00:00:00Z'
+      updatedAt: new Date().toISOString()
     });
 
     const editor = new EntityEditorProvider(vscode.Uri.file('/extension'));
@@ -1879,6 +1961,27 @@ describe('VS Code view refresh workspace selection', () => {
     expect(vscode.commands.executeCommand).toHaveBeenCalledWith('planfs.refreshExplorer');
   });
 });
+
+function renderSemanticMarkup(webviewHtml: string): string {
+  const semanticMatch = webviewHtml.match(/\n {6}semantic: (.+)\n {4}};/);
+  if (!semanticMatch?.[1]) throw new Error('Semantic payload not found in editor HTML');
+  const semantic = JSON.parse(semanticMatch[1]);
+  const start = webviewHtml.indexOf('function renderSemantic(semantic)');
+  const end = webviewHtml.indexOf('renderSemantic(state.semantic);', start);
+  if (start < 0 || end < 0) throw new Error('Semantic renderer not found in editor HTML');
+  const rendererSource = webviewHtml.slice(start, end);
+  const container = { innerHTML: '', querySelectorAll: () => [] };
+  const documentStub = {
+    getElementById: (id: string) => id === 'semanticContent' ? container : null
+  };
+  const execute = new Function(
+    'document',
+    'vscode',
+    'semantic',
+    `${rendererSource}\nrenderSemantic(semantic);\nreturn document.getElementById('semanticContent').innerHTML;`
+  ) as (documentValue: unknown, vscodeValue: unknown, semanticValue: unknown) => string;
+  return execute(documentStub, { postMessage: () => undefined }, semantic);
+}
 
 async function initializeGitIdentity(rootPath: string): Promise<void> {
   await execFileAsync('git', ['init'], { cwd: rootPath });

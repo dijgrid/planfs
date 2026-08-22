@@ -15,6 +15,7 @@ Command-line interface for PlanFS.
 - **Create** - Create new entities
 - **PR** - Generate pull request planning context
 - **Format** - Check, preview, and explicitly apply conservative semantic Markdown repairs
+- **Semantic context** - Share compact, traceable planning intent and relationship context between agents and people
 
 ## Installation
 
@@ -109,6 +110,19 @@ planfs backlog list --format json
 ```
 
 Backlog refinement states are `captured`, `needs-refinement`, `ready`, `deferred`, and `discarded`. Explicit non-ready backlog items are separate from next-work recommendations.
+
+### AI Planning Context
+
+Start with the repository summary, then retrieve bounded semantic context for relevant work:
+
+```bash
+planfs ai summary --only ready --compact
+planfs ai context --id TASK-001
+planfs ai context --id TASK-001 --format text
+planfs ai context --id TASK-001 --nlp --language en
+```
+
+`ai context` uses the shared core semantic parser and returns intent, recognized sections, acceptance criteria, findings, decisions, questions, references, diagnostics, readiness, and resolved authoritative relationships. JSON retains source ranges and provenance for traceability; text presents the same contract for human review. Advisory prose analysis is local, optional, and never mutates metadata.
 
 ### Show
 

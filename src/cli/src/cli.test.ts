@@ -56,6 +56,47 @@ describe('CLI argument wiring', () => {
     expect(logSpy).toHaveBeenLastCalledWith(expect.stringContaining('"section":"ready"'));
   });
 
+  it('parses semantic planning context options through the public CLI surface', async () => {
+    process.argv = ['node', 'planfs', 'init', '--format', 'json'];
+    await main();
+    exitSpy.mockClear();
+    await fs.writeFile(path.join(rootPath, '.planfs', 'tasks', 'TASK-001.md'), [
+      '---',
+      'id: TASK-001',
+      'title: Context through CLI',
+      'status: todo',
+      '---',
+      '',
+      'Shared intent.',
+      '',
+      '## Acceptance Criteria',
+      '',
+      '- [ ] This should remain reviewable.',
+      ''
+    ].join('\n'), 'utf-8');
+
+    process.argv = [
+      'node', 'planfs', 'ai', 'context',
+      '--id', 'TASK-001',
+      '--nlp',
+      '--language', 'en-US',
+      '--compact',
+      '--format', 'json'
+    ];
+    await main();
+
+    expect(exitSpy).toHaveBeenCalledWith(0);
+    const output = JSON.parse(logSpy.mock.calls[logSpy.mock.calls.length - 1]?.[0] as string);
+    expect(output).toMatchObject({
+      contextVersion: '1.0.0',
+      entity: { id: 'TASK-001' },
+      advisory: {
+        enabled: true,
+        analysis: { language: 'en' }
+      }
+    });
+  });
+
   it('parses semantic validation options and allows JSON output to flush naturally', async () => {
     process.argv = ['node', 'planfs', 'init', '--format', 'json'];
     await main();

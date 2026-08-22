@@ -81,6 +81,14 @@ node src/cli/dist/cli.js ai summary
 
 Use the returned IDs and file paths for targeted follow-up reads instead of scanning all of `.planfs`.
 
+For one relevant entity, retrieve its shared human/AI semantic context with:
+
+```sh
+node src/cli/dist/cli.js ai context --id TASK-061
+```
+
+The context includes intent, recognized sections, criteria, readiness, and resolved authoritative relationships. Add `--nlp` only when local advisory prose signals are useful.
+
 Use `node src/cli/dist/cli.js ai summary --only ready --compact` when only one low-overhead planning section is needed.
 
 Preview metadata updates before writing. Use `update-task` for one task:
